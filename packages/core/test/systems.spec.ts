@@ -162,7 +162,9 @@ describe('assets', () => {
 
   it('loads extra file types through registered loaders', async () => {
     const models = new AssetStore({ files: { 'models/hero.glb': '/hero.glb' } });
-    const loader = vi.fn((path: string, url: string) => Promise.resolve({ path, url }));
+    const loader = vi.fn((path: string, url: string, _assets: AssetStore) =>
+      Promise.resolve({ path, url }),
+    );
     AssetStore.registerLoader(['GLB'], loader);
     expect(() => models.get('models/hero.glb')).toThrow(/static assets/);
     await models.load(['models/hero.glb', 'models/hero.glb']);
