@@ -62,6 +62,9 @@ export default defineConfig({
         items: [
           { text: 'Snapshots', link: '/guide/snapshots' },
           { text: 'Debugging', link: '/guide/debugging' },
+          { text: 'Command line tools', link: '/guide/tooling' },
+          { text: 'Hot reload', link: '/guide/hot-reload' },
+          { text: 'VS Code extension', link: '/guide/vscode' },
         ],
       },
       {
