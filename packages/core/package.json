@@ -1,0 +1,29 @@
+{
+  "name": "@blacklight/core",
+  "version": "0.0.0",
+  "description": "Blacklight Engine runtime: game loop, scenes, objects, input, audio.",
+  "license": "MIT",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "pixi.js": "8.22.0"
+  },
+  "devDependencies": {
+    "tsup": "9.0.0",
+    "typescript": "6.0.3"
+  }
+}

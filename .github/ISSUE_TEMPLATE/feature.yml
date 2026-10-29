@@ -1,0 +1,16 @@
+name: Feature request
+description: Something the engine should do.
+labels: [enhancement]
+body:
+  - type: textarea
+    id: need
+    attributes:
+      label: What you want to make
+      description: The game feature you are building and what blocks you today.
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: Proposed API
+      description: Optional. How you would like the code to look.

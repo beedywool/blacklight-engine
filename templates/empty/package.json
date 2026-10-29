@@ -1,0 +1,19 @@
+{
+  "name": "blacklight-template-empty",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "blacklight dev",
+    "build": "blacklight build --target web",
+    "preview": "blacklight preview",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@blacklight/core": "workspace:*"
+  },
+  "devDependencies": {
+    "@blacklight/cli": "workspace:*",
+    "typescript": "6.0.3"
+  }
+}

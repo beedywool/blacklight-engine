@@ -1,0 +1,8 @@
+packages:
+  - packages/*
+  - templates/*
+  - docs
+
+# Dependencies allowed to run install scripts (pnpm blocks the others).
+allowBuilds:
+  esbuild: true

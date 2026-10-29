@@ -1,0 +1,127 @@
+/* BlackLight look (blacklight-website, blacklight-sso): black surface, grey M3 Expressive
+   containers, white bold links. Fonts are bundled: the sites ship a same-origin-only CSP. */
+@font-face {
+  font-family: 'Google Sans Flex';
+  font-style: normal;
+  font-weight: 300 700;
+  font-display: swap;
+  src: url('./fonts/google-sans-flex-latin-ext.woff2') format('woff2');
+  unicode-range:
+    U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329,
+    U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F,
+    U+A720-A7FF;
+}
+@font-face {
+  font-family: 'Google Sans Flex';
+  font-style: normal;
+  font-weight: 300 700;
+  font-display: swap;
+  src: url('./fonts/google-sans-flex-latin.woff2') format('woff2');
+  unicode-range:
+    U+0020-007E, U+00A0-00FF, U+0152-0153, U+2013-2014, U+2018-201E, U+2022, U+2026, U+20AC, U+2122;
+}
+
+:root,
+.dark {
+  --bl-surface: #080808;
+  --bl-surface-container: #181818;
+  --bl-surface-high: #222222;
+  --bl-surface-highest: #2c2c2c;
+  --bl-primary-container: #303030;
+  --bl-on-surface: #ededed;
+  --bl-on-surface-variant: #c2c2c2;
+  --bl-outline: #8e8e8e;
+  --bl-outline-variant: #3a3a3a;
+  --bl-ease: cubic-bezier(0.2, 0, 0, 1);
+
+  --vp-font-family-base: 'Google Sans Flex', 'Google Sans', 'Roboto Flex', system-ui, sans-serif;
+  --vp-font-family-mono:
+    'Google Sans Code', ui-monospace, 'SF Mono', 'JetBrains Mono', Menlo, monospace;
+
+  --vp-c-bg: var(--bl-surface);
+  --vp-c-bg-alt: #0d0d0d;
+  --vp-c-bg-elv: var(--bl-surface-container);
+  --vp-c-bg-soft: var(--bl-surface-container);
+  --vp-c-text-1: var(--bl-on-surface);
+  --vp-c-text-2: var(--bl-on-surface-variant);
+  --vp-c-text-3: var(--bl-outline);
+  --vp-c-divider: var(--bl-outline-variant);
+  --vp-c-gutter: #000000;
+  --vp-c-border: var(--bl-outline-variant);
+
+  --vp-c-brand-1: #ffffff;
+  --vp-c-brand-2: #e6e6e6;
+  --vp-c-brand-3: var(--bl-primary-container);
+  --vp-c-brand-soft: rgba(255, 255, 255, 0.08);
+
+  --vp-c-default-soft: var(--bl-surface-high);
+  --vp-code-bg: var(--bl-surface-container);
+  --vp-code-block-bg: #111111;
+  --vp-code-color: #f1f1f1;
+
+  --vp-button-brand-bg: #ffffff;
+  --vp-button-brand-text: #080808;
+  --vp-button-brand-hover-bg: #e6e6e6;
+  --vp-button-brand-hover-text: #080808;
+  --vp-button-brand-active-bg: #c2c2c2;
+  --vp-button-alt-bg: var(--bl-primary-container);
+  --vp-button-alt-text: var(--bl-on-surface);
+  --vp-button-alt-hover-bg: var(--bl-surface-highest);
+
+  --vp-home-hero-name-color: var(--bl-on-surface);
+  --vp-home-hero-image-background-image: radial-gradient(
+    circle,
+    rgba(255, 255, 255, 0.28) 0%,
+    rgba(255, 255, 255, 0) 62%
+  );
+  --vp-home-hero-image-filter: blur(48px);
+
+  --vp-custom-block-tip-bg: var(--bl-surface-container);
+  --vp-custom-block-tip-border: var(--bl-outline-variant);
+  --vp-custom-block-tip-text: var(--bl-on-surface);
+  --vp-custom-block-warning-bg: #2a1f10;
+  --vp-custom-block-danger-bg: #8c1d18;
+  --vp-custom-block-danger-text: #f9dedc;
+}
+
+.vp-doc a {
+  color: #ffffff;
+  font-weight: 700;
+  text-decoration: none;
+}
+.vp-doc a:hover {
+  text-decoration: underline;
+}
+.vp-doc h1,
+.vp-doc h2,
+.vp-doc h3 {
+  font-weight: 500;
+}
+.VPHero .name,
+.VPHero .text {
+  font-weight: 500;
+  letter-spacing: -0.01em;
+}
+.VPHero .image-src {
+  /* The bulb glows like on blacklight-website. */
+  filter: drop-shadow(0 0 6px #ffffff5a) drop-shadow(0 0 26px #ffffff38);
+  max-width: 180px;
+}
+.VPButton,
+.VPFeature {
+  transition:
+    background-color 0.2s var(--bl-ease),
+    border-color 0.2s var(--bl-ease);
+}
+.VPFeature {
+  border-radius: 20px;
+  background: var(--bl-surface-container);
+}
+:focus-visible {
+  outline: 2px solid #ffffff;
+  outline-offset: 2px;
+}
+::selection {
+  background: var(--bl-primary-container);
+  color: #f1f1f1;
+}

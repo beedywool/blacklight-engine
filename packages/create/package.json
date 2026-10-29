@@ -1,0 +1,29 @@
+{
+  "name": "create-blacklight",
+  "version": "0.0.0",
+  "description": "Create a Blacklight Engine game: `pnpm create blacklight`.",
+  "license": "MIT",
+  "type": "module",
+  "bin": {
+    "create-blacklight": "./dist/index.js"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/scaffold.d.ts",
+      "import": "./dist/scaffold.js"
+    }
+  },
+  "files": [
+    "dist",
+    "templates"
+  ],
+  "scripts": {
+    "build": "tsup && node scripts/copy-templates.js",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "24.19.2",
+    "tsup": "9.0.0",
+    "typescript": "6.0.3"
+  }
+}

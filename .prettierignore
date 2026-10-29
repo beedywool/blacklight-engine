@@ -1,0 +1,7 @@
+pnpm-lock.yaml
+dist/
+coverage/
+docs/.vitepress/cache/
+docs/.vitepress/dist/
+SPEC.md
+CLAUDE.md
