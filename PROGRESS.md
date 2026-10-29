@@ -9,7 +9,7 @@ One line per `SPEC.md` requirement: `- [x] ID · where · test`. A requirement i
 - [x] Phase 2 UI core · Persona-style pause menu (templates/persona-menu) fully navigable by a simulated gamepad; screenshots at 1920×1080 and phone; release build loads screens and Kenney glyphs · e2e: `e2e/ui.spec.ts` (local Linux)
 - [ ] Phase 3a UI complete
 - [x] Phase 3b Light 3D · glTF model between two 2D layers and inside a menu (RTT with filter + mask, Vue `<ModelView>`), Draco + KTX2 offline from the build, benchmark frame budget (templates/2d-with-3d) · e2e: `e2e/three.spec.ts` (local Linux; fps asserted on a hardware GPU, CPU budget everywhere)
-- [ ] Phase 3c Desktop
+- [x] Phase 3c Desktop · Electron e2e (app:// protocol, sandbox, bridge allowlist, saves in the OS folder, modified save rejected + backup, devtools shortcut ignored in release, window ratio/fullscreen/quit, SDL pads over IPC, packaged app: fuses verified, bytecode main, debug switches refused, steam depots dry run) and web release security checks · e2e: `e2e/desktop.spec.ts`, `e2e/security.spec.ts` (local Linux under Xvfb; Windows/macOS jobs in `.github/workflows/ci.yml`, not yet run: no remote); signing dry run: cli `desktop.spec.ts`
 - [ ] Phase 3d Mobile
 - [x] Phase 3e Modules & services · `blacklight add sqlite` (and accounts-oidc, achievements) in a fresh project through a static registry index, typed `game.modules`, sql.js persisted across reloads, OIDC login against a mock provider with account linking on the reference server, offline queues replayed when the network returns, release build · e2e: `e2e/modules.spec.ts` (local Linux)
 - [x] Phase 3f Networking · 4 simulated players, 150 ms latency (+20 ms jitter), 2 % loss, 10 min of game time on the Push-Push online scene: no desync; V8 (Node, Chromium) and JavaScriptCore (WebKit; Bun locally) give the same checksums; two browsers play a live match through the relay · test: `packages/net/test/gate.spec.ts`, e2e: `e2e/net.spec.ts` (local Linux: WebKit skipped for missing system libraries, JavaScriptCore checked through Bun; CI installs WebKit)
@@ -30,7 +30,7 @@ One line per `SPEC.md` requirement: `- [x] ID · where · test`. A requirement i
 - [x] RT-09 Collisions · collision/* · test: collision.spec.ts, scene.spec.ts
 - [x] RT-10 Physics · packages/physics (Rapier 2D) · test: physics.spec.ts
 - [x] RT-11 Input · input/input.ts, bindings.ts (actions, rebinding saved in settings, last device, 8 players, join) · test: input.spec.ts, e2e runtime.spec.ts
-- [ ] RT-12 Gamepads — partial · web/mobile: Gamepad API + SDL_GameControllerDB (input/gamepad.ts) · test: input.spec.ts; desktop SDL in Electron arrives with phase 3c
+- [x] RT-12 Gamepads · web/mobile: Gamepad API + SDL_GameControllerDB (core input/gamepad.ts); desktop: SDL in the Electron main process (packages/native/src/main/sdl.ts, @kmamal/sdl 0.11.13 + bundled DB), hot-plug, rumble, trigger rumble, LED, pads forwarded over IPC as standard gamepads (renderer/gamepads.ts) · test: input.spec.ts, native services.spec.ts (fake SDL), e2e desktop.spec.ts "RT-12"; gyro not exposed by the binding (docs/guide/desktop.md Limits); real pads in MANUAL_TESTS.md
 - [x] RT-13 Audio · audio.ts (buses, fades, crossfade, loop points, positional, unlock, format choice) · test: e2e runtime.spec.ts; audible output in MANUAL_TESTS.md
 - [x] RT-14 Tweens · tween.ts (Motion easings and springs on the game clock) · test: systems.spec.ts
 - [x] RT-15 Events · events.ts, listen() on scenes/objects · test: systems.spec.ts
@@ -84,37 +84,37 @@ One line per `SPEC.md` requirement: `- [x] ID · where · test`. A requirement i
 ## Platforms (PF)
 
 - [ ] PF-01 Web/PWA
-- [ ] PF-02 Electron
-- [ ] PF-03 Builds
+- [x] PF-02 Electron · packages/native/src/main/app.ts (app:// privileged scheme, contextIsolation + sandbox, no nodeIntegration, 3-member preload, validated allowlist, window ratio, fullscreen, quit) · test: native bridge.spec.ts, e2e desktop.spec.ts "PF-02" ×2
+- [x] PF-03 Builds · cli targets/desktop.ts + native build/package.ts (NSIS + portable, dmg + zip x64/arm64, AppImage + deb) · test: native services.spec.ts "builds", e2e desktop.spec.ts (unpacked Linux package); AppImage + deb built locally; installers per OS in CI job `desktop-packages`
 - [ ] PF-04 Capacitor Android and iOS
-- [ ] PF-05 Steam
+- [x] PF-05 Steam · native main/steam.ts (achievements, Cloud, rich presence, overlay with electronEnableSteamOverlay), build/steam.ts (depot VDFs, steamcmd), `blacklight upload --target steam --dry-run` · test: native services.spec.ts (fake Steamworks), e2e desktop.spec.ts "PF-05"; Steam client in MANUAL_TESTS.md
 - [ ] PF-06 Everything works offline; online features fail gracefully…
-- [ ] PF-07 Signing and notarization in the CLI, optional, enabled by…
+- [x] PF-07 Signing and notarization · native build/sign.ts (plan from electron-builder variables), `blacklight sign --dry-run` (cli commands/desktop.ts), signing while packaging · test: cli desktop.spec.ts "sign --dry-run", native services.spec.ts "plans signing"; real certificates in MANUAL_TESTS.md
 - [ ] PF-08 Updates through stores only.
 - [ ] PF-09 Templates ship a GitHub Actions workflow building every…
 
 ## Saves (SV)
 
-- [ ] SV-01 `game.save`
-- [ ] SV-02 Default location
-- [ ] SV-03 AES-256-GCM with a random per-install key stored via…
-- [ ] SV-04 Atomic writes (temp file + rename) and a backup of the…
-- [ ] SV-05 Password-protected export/import to move saves between…
-- [ ] SV-06 Cloud saves module (game server or Steam Cloud) with…
-- [ ] SV-07 Dev builds write readable plain saves.
+- [x] SV-01 `game.save` · core save/manager.ts (slots, autosave, metadata incl. date/play time/thumbnail, list/load/delete, migrations) · test: core save.spec.ts, e2e desktop.spec.ts "SV-01"
+- [x] SV-02 Default location · native main/files.ts (`%APPDATA%`, `~/Library/Application Support`, `$XDG_DATA_HOME`, `save.location` override), IndexedDB on the web · test: native bridge.spec.ts "data folder", e2e desktop.spec.ts (folder checked)
+- [x] SV-03 Encryption + HMAC · core save/format.ts (AES-256-GCM, HMAC-SHA-256), key from Electron safeStorage (native main/keystore.ts) or non-extractable WebCrypto · test: core save.spec.ts, native bridge.spec.ts "save key", e2e desktop.spec.ts + security.spec.ts (modified save rejected)
+- [x] SV-04 Atomic writes + backup · native main/files.ts (temp + fsync + rename), save manager backup of valid files only, corrupted save offers the backup · test: native bridge.spec.ts, core save.spec.ts, e2e desktop.spec.ts and security.spec.ts ("tampered+backup")
+- [x] SV-05 Password export/import · core save/format.ts (PBKDF2 600k + AES-GCM, game id checked) · test: core save.spec.ts "export and import"
+- [x] SV-06 Cloud saves · sync and conflict rules in core (`useCloud`, `sync`, newest or player choice) + `ModuleSaves` for the cloud-save module (3e) + Steam Cloud provider (`steam(game).cloud`) · test: core save.spec.ts "cloud saves hook" and "ModuleSaves", cloud-save.spec.ts (3e)
+- [x] SV-07 Dev plain saves · core save/config.ts (encryption off in dev), readable JSON · test: core save.spec.ts "dev builds write readable JSON"
 
 ## Production hardening (SEC)
 
-- [ ] SEC-01 DevTools, F12, Ctrl/Cmd+Shift+I, context menu and…
-- [ ] SEC-02 Electron Fuses (no `--inspect`, no `ELECTRON_RUN_AS_NODE`…
-- [ ] SEC-03 JS obfuscation with adjustable level.
-- [ ] SEC-04 V8 bytecode compilation on desktop (L5).
-- [ ] SEC-05 Protected in-memory values (masked copy + checksum) for…
-- [ ] SEC-06 Debugger detection.
-- [ ] SEC-07 WebView not inspectable in mobile release builds.
-- [ ] SEC-08 Strict CSP, no `eval`.
-- [ ] SEC-09 Tamper reaction
-- [ ] SEC-10 Obfuscation + bytecode cost at most 10 % on the reference…
+- [x] SEC-01 DevTools blocked · core security/runtime.ts (keys, context menu), native main (devTools off, before-input-event, no menu, debug switches refused when packaged) · test: core security.spec.ts, e2e desktop.spec.ts "SEC-01" (+ dev positive control) and "SEC-02, SEC-04" (switches), security.spec.ts "SEC-01"
+- [x] SEC-02 Fuses + ASAR integrity · native build/package.ts (electronFuses, asar) · test: e2e desktop.spec.ts (fuse wire read from the packaged binary, ELECTRON_RUN_AS_NODE ignored, --inspect refused)
+- [x] SEC-03 Obfuscation · cli security.ts (javascript-obfuscator on game chunks, low/medium/high) · test: cli desktop.spec.ts, e2e security.spec.ts "SEC-03"
+- [x] SEC-04 V8 bytecode · native build/bytecode.ts (bytenode, compiled in an Electron main process; main process only, see docs) · test: e2e desktop.spec.ts (packaged app runs from blacklight-main.jsc, no source)
+- [x] SEC-05 Protected values · core security/protect.ts, runtime.ts (`security.protect`) · test: core security.spec.ts, e2e security.spec.ts "SEC-05"
+- [x] SEC-06 Debugger detection · core security/runtime.ts (timed `debugger`, kept through minification), native devtools-opened report · test: core security.spec.ts, e2e security.spec.ts "SEC-06" (CDP debugger attached)
+- [ ] SEC-07 WebView not inspectable — partial · switch `security.webview` resolved by `resolveSecurity` (core security/config.ts) · test: core security.spec.ts; applied by the mobile build (3d)
+- [x] SEC-08 Strict CSP, no eval · core contentSecurityPolicy, cli hardening plugin (meta tag, pixi.js/unsafe-eval), desktop header · test: core security.spec.ts, e2e security.spec.ts "SEC-08", desktop.spec.ts (EvalError, header)
+- [x] SEC-09 Tamper reaction · `game.on('tamper')`, default restore + log, `onTamper: 'quit'` · test: core security.spec.ts "tamper reaction", e2e security.spec.ts
+- [x] SEC-10 Cost ≤ 10 % · default level `low` (measured ×1.04, `medium` ×1.30); bytecode covers the main process only (no per-frame cost) · test: cli desktop.spec.ts "costs at most 10 %"
 
 ## Networking (NET)
 
@@ -128,7 +128,7 @@ One line per `SPEC.md` requirement: `- [x] ID · where · test`. A requirement i
 
 - [x] SVC-01 Accounts · packages/modules/accounts-oidc (PKCE S256, system browser, web redirect, custom-scheme deep link, refresh token in secure storage, BlackLight SSO preset, server linking) · test: accounts.spec.ts (desktop flow with simulated deep link), e2e modules.spec.ts (web flow against the mock provider); real SSO and devices in MANUAL_TESTS.md
 - [x] SVC-02 Achievements · packages/modules/achievements (Steam, Game Center, Play Games through platform.invoke, reference server, offline queue) · test: achievements.spec.ts, e2e modules.spec.ts; real stores in MANUAL_TESTS.md
-- [ ] SVC-03 Discord Rich Presence on desktop (presence, party…
+- [x] SVC-03 Discord Rich Presence · native main/discord.ts (own client of the local RPC protocol: presence, party, join, ask-to-join), renderer `discord(game)` · test: native services.spec.ts (fake Discord socket); real Discord in MANUAL_TESTS.md
 - [x] SVC-04 Telemetry and crash reports · packages/modules/telemetry (opt-in, consent helper, Sentry envelopes, scrubbing, offline queue) · test: telemetry.spec.ts; real backend in MANUAL_TESTS.md
 - [ ] SVC-05 Reference server — partial · servers/reference (cloud saves, achievements/leaderboards, OIDC account linking, Docker image checked) · test: servers/reference/test/*.spec.ts, cloud-save.spec.ts, achievements.spec.ts, e2e modules.spec.ts; the relay is servers/relay (3f), one compose file joins them at merge
 

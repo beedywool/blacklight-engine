@@ -77,3 +77,23 @@ Every dependency that ships inside a game or a published package, and every asse
 | @blacklight/core (parts) | —       | MIT        | VS Code extension (bundled: animation and sheet resolution)          |
 
 Development tools of the extension, not shipped: @vscode/test-electron 3.1.0 (MIT), @vscode/vsce 4.0.0 (MIT), ovsx 1.3.0 (EPL-2.0, publishing CLI only), @types/vscode 1.125.0 (MIT), happy-dom 21.0.4 (MIT).
+
+## Desktop app (phase 3c: inside desktop builds)
+
+| Package              | Version | License                                          | Used by                                                                                          |
+| -------------------- | ------- | ------------------------------------------------ | ------------------------------------------------------------------------------------------------ |
+| electron             | 44.9.3  | MIT (Chromium BSD-3-Clause, Node.js MIT, others) | desktop builds (runtime of the app)                                                              |
+| @kmamal/sdl          | 0.11.13 | MIT                                              | @blacklight/native (gamepads, main process)                                                      |
+| SDL2                 | 2.x     | zlib                                             | shipped inside @kmamal/sdl's prebuilt binary                                                     |
+| steamworks.js        | 0.4.0   | MIT                                              | @blacklight/native (steam target only)                                                           |
+| Steamworks SDK       | —       | Valve Steamworks SDK Access Agreement            | redistributable steam_api library inside steamworks.js (steam target only, optional per SPEC §9) |
+| bytenode             | 2.1.0   | MIT                                              | V8 bytecode loader of release desktop builds                                                     |
+| SDL_GameControllerDB | —       | zlib                                             | bundled into the main process (same file as core)                                                |
+
+## Desktop tooling (published, not inside games)
+
+| Package               | Version | License      | Used by                                           |
+| --------------------- | ------- | ------------ | ------------------------------------------------- |
+| electron-builder      | 26.18.1 | MIT          | @blacklight/native/build (installers)             |
+| @electron/fuses       | 2.1.3   | MIT          | @blacklight/native/build (fuses, verification)    |
+| javascript-obfuscator | 5.9.0   | BSD-2-Clause | @blacklight/cli (release obfuscation, build time) |
