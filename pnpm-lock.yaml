@@ -532,6 +532,9 @@ importers:
       '@blacklight/core':
         specifier: workspace:*
         version: link:../../core
+      '@blacklight/native':
+        specifier: workspace:*
+        version: link:../../native
       '@types/better-sqlite3':
         specifier: 7.6.13
         version: 7.6.13

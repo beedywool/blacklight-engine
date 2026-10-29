@@ -1,0 +1,32 @@
+# Both reference servers for a self-hosted deployment: the relay (online play, SPEC NET-01) and the
+# reference server (cloud saves, achievements, leaderboards, account linking, SVC-05).
+# Build the relay bundle first: `pnpm --filter @blacklight/relay build`. Then, from servers/:
+#   cp reference/games.example.json reference/games.json   # list your games
+#   echo "SESSION_SECRET=$(openssl rand -base64 48)" > .env
+#   docker compose up --build -d
+# Put a TLS reverse proxy in front of both ports for public use (the relay speaks WebSocket).
+services:
+  relay:
+    build: ./relay
+    restart: unless-stopped
+    ports:
+      - '5360:5360'
+
+  reference:
+    build: ./reference
+    restart: unless-stopped
+    ports:
+      - '8080:8080'
+    environment:
+      SESSION_SECRET: ${SESSION_SECRET:?set SESSION_SECRET in .env}
+      OIDC_PROVIDERS: >-
+        [{"issuer":"https://sso.example.com","audiences":["mygame"]}]
+      GAMES_FILE: /config/games.json
+      CORS_ORIGINS: '*'
+      TRUST_PROXY: 'false'
+    volumes:
+      - reference_data:/data
+      - ./reference/games.json:/config/games.json:ro
+
+volumes:
+  reference_data:

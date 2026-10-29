@@ -44,7 +44,8 @@
     ]
   },
   "peerDependencies": {
-    "@blacklight/core": "workspace:*"
+    "@blacklight/core": "workspace:*",
+    "@blacklight/native": "workspace:*"
   },
   "dependencies": {
     "sql.js": "1.15.2",
@@ -55,6 +56,12 @@
     "tsup": "9.0.0",
     "typescript": "6.0.3",
     "@types/better-sqlite3": "7.6.13",
-    "@types/sql.js": "1.4.11"
+    "@types/sql.js": "1.4.11",
+    "@blacklight/native": "workspace:*"
+  },
+  "peerDependenciesMeta": {
+    "@blacklight/native": {
+      "optional": true
+    }
   }
 }

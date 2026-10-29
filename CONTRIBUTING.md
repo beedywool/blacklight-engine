@@ -28,16 +28,21 @@ cd ../my-game && pnpm install && pnpm dev
 
 ## Layout
 
-| Folder             | Content                                                                                                                                                  |
-| ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `packages/core`    | `@blacklight/core`: the runtime                                                                                                                          |
-| `packages/physics` | `@blacklight/physics`: Rapier rigid bodies                                                                                                               |
-| `packages/ui`      | `@blacklight/ui`: Vue UI layer (`prompts/` holds Kenney's CC0 glyphs; `node scripts/prompt-urls.mjs` regenerates `src/prompt-urls.js`)                   |
-| `packages/cli`     | `@blacklight/cli`: the `blacklight` command and its Vite configuration                                                                                   |
-| `packages/create`  | `create-blacklight`: the project scaffolder                                                                                                              |
-| `templates/`       | project templates, copied by `create-blacklight`                                                                                                         |
-| `docs/`            | VitePress documentation site                                                                                                                             |
-| `e2e/`             | Playwright tests, including the phase gates; `e2e/fixtures/runtime` is a test game (`node e2e/fixtures/generate-runtime-assets.mjs` regenerates its art) |
+| Folder                             | Content                                                                                                                                |
+| ---------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| `packages/core`                    | `@blacklight/core`: the runtime                                                                                                        |
+| `packages/ui`                      | `@blacklight/ui`: Vue UI layer (`prompts/` holds Kenney's CC0 glyphs; `node scripts/prompt-urls.mjs` regenerates `src/prompt-urls.js`) |
+| `packages/three`, `physics`, `net` | optional runtime packages: 3D, rigid bodies, online play                                                                               |
+| `packages/native`, `mobile`        | desktop (Electron) and mobile (Capacitor) platforms                                                                                    |
+| `packages/modules/*`, `registry`   | official modules and the module registry                                                                                               |
+| `packages/eslint-plugin`           | `eslint-plugin-blacklight` (deterministic simulation code)                                                                             |
+| `packages/cli`                     | `@blacklight/cli`: the `blacklight` command, its Vite configuration, build targets and runners                                         |
+| `packages/create`                  | `create-blacklight`: the project scaffolder                                                                                            |
+| `packages/vscode`                  | VS Code extension (`pnpm --filter blacklight-vscode test:integration` runs its integration tests under Xvfb)                           |
+| `servers/`                         | relay and reference server (Docker)                                                                                                    |
+| `templates/`                       | project templates, copied by `create-blacklight`                                                                                       |
+| `docs/`                            | VitePress documentation site                                                                                                           |
+| `e2e/`                             | Playwright tests, including the phase gates; `e2e/fixtures/` holds test games (generators for their art and media sit next to them)    |
 
 ## Rules
 

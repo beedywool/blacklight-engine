@@ -1,16 +1,5 @@
 {
   "extends": "../../../tsconfig.base.json",
-  "compilerOptions": {
-    // @blacklight/native is built by the desktop area; until both land, the native part compiles
-    // against its source (DECISIONS.md, "define-native contract").
-    "types": ["node"],
-    "paths": { "@blacklight/native/define-native": ["../../native/src/define-native.ts"] }
-  },
-  "include": [
-    "src",
-    "test",
-    "tsup.config.ts",
-    "../../native/src/define-native.ts",
-    "../../native/test"
-  ]
+  "compilerOptions": { "types": ["node"] },
+  "include": ["src", "test", "tsup.config.ts"]
 }

@@ -20,7 +20,7 @@ Encrypted saves, obfuscation, bytecode and blocked developer tools stop casual c
 
 ## Bytecode follows the Electron version
 
-Release builds compile JavaScript to V8 bytecode, which is tied to the exact V8 in Electron: every Electron upgrade rebuilds it. Stack traces from release builds need the private source maps kept with each release.
+Release builds compile the Electron main process to V8 bytecode, which is tied to the exact V8 in Electron: every Electron upgrade rebuilds it. The game code in the page is obfuscated instead (loading bytecode there would need Node in the sandboxed renderer). Stack traces from release builds need the private source maps kept with each release.
 
 ## Physical devices need a person
 
