@@ -58,6 +58,18 @@ export default defineConfig({
         ],
       },
       {
+        text: 'Modules and services',
+        items: [
+          { text: 'Modules', link: '/guide/modules' },
+          { text: 'Native parts', link: '/guide/modules-native' },
+          { text: 'Module registry', link: '/guide/modules-registry' },
+          { text: 'Accounts', link: '/guide/accounts' },
+          { text: 'Achievements', link: '/guide/achievements' },
+          { text: 'Telemetry', link: '/guide/telemetry' },
+          { text: 'Reference server', link: '/guide/server' },
+        ],
+      },
+      {
         text: 'Tools',
         items: [
           { text: 'Snapshots', link: '/guide/snapshots' },
