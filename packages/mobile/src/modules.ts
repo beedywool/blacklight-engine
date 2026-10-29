@@ -1,0 +1,272 @@
+import { IMPACT_STYLES, NOTIFICATION_TYPES, type MobilePlugins } from './plugins';
+
+/** Functions of one native module, called by `platform.invoke(module, method, ...args)`. */
+export type NativeModule = Record<string, (...args: unknown[]) => unknown>;
+
+/** Secure-storage keys the engine keeps for itself (the save key). */
+export const RESERVED_PREFIX = 'blacklight.';
+
+function text(value: unknown, what: string, example: string): string {
+  if (typeof value !== 'string' || value === '') {
+    throw new TypeError(`${what} must be a non-empty string, e.g. ${example}.`);
+  }
+  return value;
+}
+
+function number(value: unknown, what: string): number {
+  if (typeof value !== 'number' || !Number.isFinite(value) || value < 0) {
+    throw new TypeError(`${what} must be a finite number ≥ 0.`);
+  }
+  return value;
+}
+
+function params(value: unknown): unknown[] {
+  if (value === undefined) return [];
+  if (!Array.isArray(value)) {
+    throw new TypeError('SQL parameters must be an array, e.g. ["alice", 3] for "VALUES (?, ?)".');
+  }
+  return value;
+}
+
+function userKey(value: unknown): string {
+  const key = text(value, 'A secure-storage key', '"refreshToken"');
+  if (key.startsWith(RESERVED_PREFIX)) {
+    throw new Error(
+      `Secure-storage keys starting with "${RESERVED_PREFIX}" are reserved by the engine (the save key); choose another name than "${key}".`,
+    );
+  }
+  return key;
+}
+
+/**
+ * `secure-storage`: strings kept by the Android Keystore (encrypted shared preferences) or the
+ * iOS Keychain. `get(key) → string | undefined`, `set(key, value)`, `remove(key)`, `keys()`.
+ */
+export function secureStorageModule(plugins: Pick<MobilePlugins, 'secureStorage'>): NativeModule {
+  const store = plugins.secureStorage;
+  return {
+    async get(key) {
+      const name = userKey(key);
+      const { value: keys } = await store.keys();
+      if (!keys.includes(name)) return undefined;
+      return (await store.get({ key: name })).value;
+    },
+    async set(key, value) {
+      await store.set({ key: userKey(key), value: text(value, 'A secure-storage value', '"abc"') });
+    },
+    async remove(key) {
+      const name = userKey(key);
+      const { value: keys } = await store.keys();
+      if (keys.includes(name)) await store.remove({ key: name });
+    },
+    async keys() {
+      return (await store.keys()).value.filter((key) => !key.startsWith(RESERVED_PREFIX));
+    },
+  };
+}
+
+/** Result of `invoke('sqlite', 'execute', …)`. */
+export interface SqliteChanges {
+  /** Rows inserted, updated or deleted. */
+  changes: number;
+  /** Row id of the last insert, when there was one. */
+  lastInsertId?: number;
+}
+
+/**
+ * `sqlite`, through `@capacitor-community/sqlite`. Databases live in the app's private database
+ * folder, by name:
+ * - `open(name, options?: { readOnly?: boolean })`
+ * - `execute(name, sql, params?) → { changes, lastInsertId? }` (several statements when there are
+ *   no parameters)
+ * - `query(name, sql, params?) → rows` (objects keyed by column name)
+ * - `close(name)`
+ */
+export function sqliteModule(plugins: Pick<MobilePlugins, 'sqlite'>): NativeModule {
+  const db = plugins.sqlite;
+  const open = new Map<string, boolean>();
+  let cleaned = false;
+  const name = (value: unknown) => {
+    const database = text(value, 'A database name', '"game"');
+    if (!/^[\w-]+$/.test(database)) {
+      throw new Error(
+        `Database name "${database}" may only use letters, digits, "_" and "-" (it becomes a file name).`,
+      );
+    }
+    return database;
+  };
+  const opened = (value: unknown) => {
+    const database = name(value);
+    const readonly = open.get(database);
+    if (readonly === undefined) {
+      throw new Error(`Database "${database}" is not open: call open("${database}") first.`);
+    }
+    return { database, readonly };
+  };
+  const changes = (result: { changes?: { changes?: number; lastId?: number } }): SqliteChanges => {
+    const { changes: count = 0, lastId } = result.changes ?? {};
+    return lastId !== undefined && lastId > 0
+      ? { changes: count, lastInsertId: lastId }
+      : { changes: count };
+  };
+  return {
+    async open(value, options) {
+      const database = name(value);
+      if (open.has(database)) return;
+      const readonly = !!(options as { readOnly?: boolean } | undefined)?.readOnly;
+      if (!cleaned) {
+        // Connections survive a WebView reload on the native side; drop them so open() works.
+        await db.checkConnectionsConsistency({ dbNames: [], openModes: [] });
+        cleaned = true;
+      }
+      await db.createConnection({
+        database,
+        version: 1,
+        encrypted: false,
+        mode: 'no-encryption',
+        readonly,
+      });
+      await db.open({ database, readonly });
+      open.set(database, readonly);
+    },
+    async execute(value, sql, values) {
+      const { database, readonly } = opened(value);
+      const statement = text(sql, 'The SQL', '"CREATE TABLE scores (name TEXT, points INTEGER)"');
+      const list = params(values);
+      if (list.length === 0) {
+        return changes(
+          await db.execute({ database, statements: statement, transaction: false, readonly }),
+        );
+      }
+      return changes(
+        await db.run({ database, statement, values: list, transaction: false, readonly }),
+      );
+    },
+    async query(value, sql, values) {
+      const { database, readonly } = opened(value);
+      const statement = text(sql, 'The SQL', '"SELECT * FROM scores"');
+      const { values: rows = [] } = await db.query({
+        database,
+        statement,
+        values: params(values),
+        readonly,
+      });
+      // iOS puts the column names in a first row.
+      return rows.length > 0 && 'ios_columns' in rows[0]! ? rows.slice(1) : rows;
+    },
+    async close(value) {
+      const database = name(value);
+      const readonly = open.get(database);
+      if (readonly === undefined) return;
+      open.delete(database);
+      await db.close({ database, readonly });
+      await db.closeConnection({ database, readonly });
+    },
+  };
+}
+
+/**
+ * `haptics`: `impact(style = 'medium')` with `light | medium | heavy`, `notification(type)` with
+ * `success | warning | error`, `vibrate(ms = 300)`, `selection()` (a light tick for focus moves).
+ */
+export function hapticsModule(plugins: Pick<MobilePlugins, 'haptics'>): NativeModule {
+  const haptics = plugins.haptics;
+  const pick = (table: Record<string, string>, value: unknown, what: string) => {
+    const found = table[String(value)];
+    if (!found) throw new TypeError(`${what} must be one of ${Object.keys(table).join(', ')}.`);
+    return found;
+  };
+  return {
+    impact: (style = 'medium') =>
+      haptics.impact({ style: pick(IMPACT_STYLES, style, 'The impact style') }),
+    notification: (type = 'success') =>
+      haptics.notification({ type: pick(NOTIFICATION_TYPES, type, 'The notification type') }),
+    vibrate: (duration = 300) =>
+      haptics.vibrate({ duration: number(duration, 'The vibration duration (ms)') }),
+    async selection() {
+      await haptics.selectionStart();
+      await haptics.selectionChanged();
+      await haptics.selectionEnd();
+    },
+  };
+}
+
+/**
+ * `app`: `info() → { id, name, version, build }`, `exit()`, `minimize()` (Android),
+ * `orientation('landscape' | 'portrait' | 'any')`, `keepAwake(on)`, `statusBar(visible)`,
+ * `launchUrl() → string | undefined`.
+ */
+export function appModule(
+  plugins: Pick<
+    MobilePlugins,
+    'app' | 'keepAwake' | 'screenOrientation' | 'systemBars' | 'platform'
+  >,
+): NativeModule {
+  return {
+    info: () => plugins.app.getInfo(),
+    exit: () => plugins.app.exitApp(),
+    async minimize() {
+      if (plugins.platform === 'android') await plugins.app.minimizeApp();
+    },
+    async orientation(value) {
+      if (value === 'any') return plugins.screenOrientation.unlock();
+      if (value !== 'landscape' && value !== 'portrait') {
+        throw new TypeError('The orientation must be "landscape", "portrait" or "any".');
+      }
+      return plugins.screenOrientation.lock({ orientation: value });
+    },
+    keepAwake: (on = true) => (on ? plugins.keepAwake.keepAwake() : plugins.keepAwake.allowSleep()),
+    statusBar: (visible = true) =>
+      visible ? plugins.systemBars.show() : plugins.systemBars.hide(),
+    async launchUrl() {
+      return (await plugins.app.getLaunchUrl())?.url || undefined;
+    },
+  };
+}
+
+/**
+ * `gamecenter` (iOS) and `playgames` (Android): `signIn() → { authenticated, playerId?,
+ * displayName? }`, `unlock(id)`, `progress(id, current, total)` (Game Center reports the
+ * percentage; Play Games sets the steps of an incremental achievement to `current`), `show()`
+ * (the system achievements screen).
+ */
+export function gamesModule(
+  plugins: Pick<MobilePlugins, 'games' | 'platform'>,
+  service: 'gamecenter' | 'playgames',
+): NativeModule {
+  const expected = service === 'gamecenter' ? 'ios' : 'android';
+  const check = () => {
+    if (plugins.platform !== expected) {
+      throw new Error(
+        service === 'gamecenter'
+          ? 'Game Center exists only on iOS; on Android use the "playgames" backend.'
+          : 'Google Play Games Services exist only on Android; on iOS use the "gamecenter" backend.',
+      );
+    }
+  };
+  const id = (value: unknown) => text(value, 'An achievement id', '"first_win"');
+  return {
+    async signIn() {
+      check();
+      return plugins.games.signIn();
+    },
+    async unlock(value) {
+      check();
+      await plugins.games.unlock({ id: id(value) });
+    },
+    async progress(value, current, total) {
+      check();
+      const max = number(total, 'The achievement total');
+      if (max === 0) throw new TypeError('The achievement total must be greater than 0.');
+      await plugins.games.progress({
+        id: id(value),
+        current: Math.min(number(current, 'The progress'), max),
+        total: max,
+      });
+    },
+    async show() {
+      check();
+      await plugins.games.show();
+    },
+  };
+}

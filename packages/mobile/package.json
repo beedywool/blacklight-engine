@@ -1,0 +1,48 @@
+{
+  "name": "@blacklight/mobile",
+  "version": "0.0.0",
+  "description": "Android and iOS platform for Blacklight Engine (Capacitor): files, secure storage, SQLite, haptics, lifecycle, achievements.",
+  "license": "MIT",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "android/src",
+    "android/build.gradle",
+    "ios/Sources",
+    "Package.swift",
+    "BlacklightMobile.podspec"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "typecheck": "tsc --noEmit"
+  },
+  "peerDependencies": {
+    "@blacklight/core": "workspace:*"
+  },
+  "dependencies": {
+    "@capacitor/android": "8.6.0",
+    "@capacitor/app": "8.1.2",
+    "@capacitor/core": "8.6.0",
+    "@capacitor/filesystem": "8.1.5",
+    "@capacitor/haptics": "8.0.2",
+    "@capacitor/ios": "8.6.0",
+    "@capacitor/screen-orientation": "8.0.2",
+    "@capacitor/browser": "8.0.5",
+    "@capacitor-community/keep-awake": "8.0.1",
+    "@capacitor-community/sqlite": "8.1.1",
+    "capacitor-secure-storage-plugin": "0.13.0"
+  },
+  "devDependencies": {
+    "@blacklight/core": "workspace:*",
+    "tsup": "9.0.0",
+    "typescript": "6.0.3"
+  }
+}
