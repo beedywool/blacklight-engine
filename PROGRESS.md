@@ -12,7 +12,7 @@ One line per `SPEC.md` requirement: `- [x] ID · where · test`. A requirement i
 - [ ] Phase 3c Desktop
 - [ ] Phase 3d Mobile
 - [x] Phase 3e Modules & services · `blacklight add sqlite` (and accounts-oidc, achievements) in a fresh project through a static registry index, typed `game.modules`, sql.js persisted across reloads, OIDC login against a mock provider with account linking on the reference server, offline queues replayed when the network returns, release build · e2e: `e2e/modules.spec.ts` (local Linux)
-- [ ] Phase 3f Networking
+- [x] Phase 3f Networking · 4 simulated players, 150 ms latency (+20 ms jitter), 2 % loss, 10 min of game time on the Push-Push online scene: no desync; V8 (Node, Chromium) and JavaScriptCore (WebKit; Bun locally) give the same checksums; two browsers play a live match through the relay · test: `packages/net/test/gate.spec.ts`, e2e: `e2e/net.spec.ts` (local Linux: WebKit skipped for missing system libraries, JavaScriptCore checked through Bun; CI installs WebKit)
 - [ ] Phase 3g Tooling
 - [ ] Phase 4 Docs & templates
 - [ ] Phase 5 Release
@@ -118,11 +118,11 @@ One line per `SPEC.md` requirement: `- [x] ID · where · test`. A requirement i
 
 ## Networking (NET)
 
-- [ ] NET-01 Relay server (Node, Docker image)
-- [ ] NET-02 Rollback
-- [ ] NET-03 Determinism
-- [ ] NET-04 Lockstep mode for turn-based games.
-- [ ] NET-05 Test harness
+- [x] NET-01 Relay server (Node, Docker image) · servers/relay (rooms, codes, lobby, WebSocket, `startRelay`, `relayNativeModule` for LAN), packages/net/src/relay-client.ts, lan.ts · test: servers/relay/test/relay.spec.ts, e2e/net.spec.ts (live match); Docker image checked by hand (MANUAL_TESTS)
+- [x] NET-02 Rollback · packages/net/src/rollback.ts, scene-rollback.ts (prediction, rollback ≤ 8 steps, adjustable delay, RT-19 restore, checksums + desync report, 8 players, spectators incl. late join) · test: packages/net/test/rollback.spec.ts, scene-rollback.spec.ts, gate.spec.ts
+- [x] NET-03 Determinism · packages/core/src/dmath.ts (`DMath`), packages/eslint-plugin (`blacklight/deterministic`) · test: packages/core/test/dmath.spec.ts (golden fingerprint), packages/eslint-plugin/test/deterministic.spec.ts, e2e/net.spec.ts (same bits on JavaScriptCore)
+- [x] NET-04 Lockstep mode for turn-based games · packages/net/src/lockstep.ts · test: packages/net/test/lockstep.spec.ts
+- [x] NET-05 Test harness · packages/net/src/testing.ts (`SimulatedNetwork`, `simulateMatch`, `headlessGame`) · test: packages/net/test/rollback.spec.ts, gate.spec.ts
 
 ## Platform services (SVC)
 

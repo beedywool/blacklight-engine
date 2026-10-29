@@ -8,7 +8,7 @@ import { resolveProjectPath } from './assets';
 import type { PlayOptions, SoundHandle } from './audio';
 import type { Behavior } from './behaviors/behavior';
 import { Camera, type FollowOptions } from './camera';
-import { CollisionWorld, type RaycastHit } from './collision/world';
+import { CollisionWorld, type CollisionState, type RaycastHit } from './collision/world';
 import type { WorldShape } from './collision/shapes';
 import { Disposables, EventBus, type EventMap, type Unsubscribe } from './events';
 import type { Game, GotoOptions, SceneUi } from './game';
@@ -90,7 +90,11 @@ export interface SceneSnapshot {
     followOptions: FollowOptions;
   }[];
   objects: ObjectSnapshot[];
-  memory?: { timers: TimersState; objectTimers: Map<number, TimersState> };
+  memory?: {
+    timers: TimersState;
+    objectTimers: Map<number, TimersState>;
+    collisions?: CollisionState;
+  };
 }
 
 /** Audio bound to a scene: keys are looked up in the scene's folder first. */
@@ -530,7 +534,11 @@ export abstract class Scene<P = void> {
         followOptions: JSON.parse(JSON.stringify(c.followSettings)) as FollowOptions,
       })),
       objects,
-      memory: { timers: this.timers.capture(), objectTimers },
+      memory: {
+        timers: this.timers.capture(),
+        objectTimers,
+        collisions: this.collisions.capture(),
+      },
     };
   }
 
@@ -609,8 +617,12 @@ export abstract class Scene<P = void> {
       const timers = snapshot.memory?.objectTimers.get(saved.id);
       if (timers) o.timers.restore(timers);
     }
+    // Same update order and ids as when the snapshot was taken: re-created objects were appended,
+    // and objects spawned after a rollback must get the ids they had the first time.
+    const order = new Map(snapshot.objects.map((o, i) => [o.id, i]));
+    this.objectList.sort((a, b) => (order.get(a.id) ?? 0) - (order.get(b.id) ?? 0));
     this.steps = snapshot.steps;
-    this.nextId = Math.max(this.nextId, snapshot.nextId);
+    this.nextId = snapshot.nextId;
     this.random.state = [...snapshot.random];
     snapshot.cameras.forEach((saved, i) => {
       const camera = this.cameras[i] ?? this.addCamera(saved.viewport);
@@ -623,6 +635,7 @@ export abstract class Scene<P = void> {
     });
     while (this.cameras.length > snapshot.cameras.length) this.removeCamera(this.cameras.at(-1)!);
     if (snapshot.memory) this.timers.restore(snapshot.memory.timers);
+    if (snapshot.memory?.collisions) this.collisions.restore(snapshot.memory.collisions, lookup);
   }
 
   // Engine side.

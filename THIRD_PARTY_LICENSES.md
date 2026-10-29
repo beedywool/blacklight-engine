@@ -59,3 +59,11 @@ Every dependency that ships inside a game or a published package, and every asse
 | ---------------- | ------- | -------------------------------- | ---------------------------------------------------------- |
 | semver           | 7.8.5   | ISC                              | @blacklight/cli, @blacklight/registry                      |
 | node:24-alpine   | 24      | MIT (Node.js), Alpine components | servers/reference Docker image; the server has no npm deps |
+
+## Relay server (Docker image; desktop builds that host LAN games)
+
+| Package | Version | License | Used by                                                  |
+| ------- | ------- | ------- | -------------------------------------------------------- |
+| ws      | 8.22.0  | MIT     | @blacklight/relay (bundled into the image's `relay.cjs`) |
+
+`@blacklight/net` and `eslint-plugin-blacklight` have no runtime dependencies.
