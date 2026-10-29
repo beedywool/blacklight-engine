@@ -7,6 +7,7 @@ export {
   type ResolutionMode,
   type ResolvedGameConfig,
 } from './config';
+export type { MobileConfig } from './config-mobile';
 export {
   Game,
   createGame,

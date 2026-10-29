@@ -1,3 +1,4 @@
+import { checkMobileConfig, type MobileConfig } from './config-mobile';
 import { parseBinding } from './input/bindings';
 import type { InputConfig } from './input/input';
 import {
@@ -89,12 +90,16 @@ export interface GameConfig {
    * ```
    */
   modules?: Partial<ModulesConfig>;
+  /** Android and iOS options (`@blacklight/mobile`). */
+  mobile?: MobileConfig;
 }
 
 export interface ResolvedGameConfig
   extends
-    Required<Omit<GameConfig, 'resolution' | 'input' | 'seed' | 'ui' | 'modules' | DesktopKeys>>,
-    Pick<GameConfig, 'input' | 'seed' | 'ui' | 'modules' | DesktopKeys> {
+    Required<
+      Omit<GameConfig, 'resolution' | 'input' | 'seed' | 'ui' | 'modules' | 'mobile' | DesktopKeys>
+    >,
+    Pick<GameConfig, 'input' | 'seed' | 'ui' | 'modules' | 'mobile' | DesktopKeys> {
   resolution: Required<ResolutionConfig>;
 }
 
@@ -241,6 +246,7 @@ export function resolveConfig(input: unknown): ResolvedGameConfig {
     ...validateSecurityConfig(input.security),
     ...validateDesktopConfig(input),
   );
+  checkMobileConfig(input.mobile, issues);
 
   if (issues.length > 0) throw new ConfigError(issues);
   return {
@@ -260,5 +266,6 @@ export function resolveConfig(input: unknown): ResolvedGameConfig {
     steam: input.steam as SteamConfig | undefined,
     discord: input.discord as DiscordConfig | undefined,
     modules: input.modules as GameConfig['modules'],
+    mobile: input.mobile as MobileConfig | undefined,
   };
 }

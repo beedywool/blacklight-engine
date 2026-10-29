@@ -13,7 +13,7 @@ import { DiscordClient, startDiscord, toDiscordActivity } from '../src/main/disc
 import { addEventSink, callNative } from '../src/main/registry';
 import {
   mappingsFor,
-  padState,
+  type padState,
   startGamepads,
   type SdlController,
   type SdlDevice,

@@ -46,7 +46,6 @@ test('SEC-08: strict CSP, no eval, no inline script', async ({ page }) => {
         const script = document.createElement('script');
         script.textContent = 'window.__inline = true';
         document.head.append(script);
-        // eslint-disable-next-line @typescript-eslint/no-implied-eval
         setTimeout('window.__evalRan = true' as unknown as () => void, 0);
         setTimeout(() => {
           const w = window as { __inline?: boolean; __evalRan?: boolean };

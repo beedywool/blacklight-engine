@@ -1,5 +1,6 @@
 import { cpSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
+import type * as Bytenode from 'bytenode';
 import { electronBinary, packageDir } from './stage';
 
 /**
@@ -15,9 +16,7 @@ export async function compileMainToBytecode(
   electron = electronBinary(),
 ): Promise<void> {
   // bytenode is CommonJS: its functions sit on the default export when imported from ESM.
-  const loaded = (await import('bytenode')) as typeof import('bytenode') & {
-    default?: typeof import('bytenode');
-  };
+  const loaded = (await import('bytenode')) as typeof Bytenode & { default?: typeof Bytenode };
   const { compileFile } = loaded.default ?? loaded;
   const source = join(appDir, 'blacklight-main.cjs');
   await compileFile({

@@ -8,6 +8,7 @@ export {
   type ResolutionMode,
   type ResolvedGameConfig,
 } from './config';
+export type { MobileConfig } from './config-mobile';
 export { DEFAULT_ACTIONS, parseBinding, type Binding } from './input/bindings';
 export {
   DEFAULT_OBFUSCATION,

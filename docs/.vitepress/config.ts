@@ -93,6 +93,8 @@ export default defineConfig({
           { text: 'Saves', link: '/guide/saves' },
           { text: 'Production hardening', link: '/guide/security' },
         ],
+        text: 'Mobile',
+        items: [{ text: 'Android and iOS', link: '/guide/mobile' }],
       },
       {
         text: 'Online',

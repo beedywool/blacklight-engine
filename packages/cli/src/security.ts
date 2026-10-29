@@ -155,7 +155,11 @@ export function hardening(options: { root: string }): Plugin {
       }
       // SEC-06 times a `debugger` statement; the minifier drops those by default.
       return settings.debugger
-        ? { build: { rolldownOptions: { output: { minify: { compress: { dropDebugger: false } } } } } }
+        ? {
+            build: {
+              rolldownOptions: { output: { minify: { compress: { dropDebugger: false } } } },
+            },
+          }
         : undefined;
     },
     transform(code, id) {

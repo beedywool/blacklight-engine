@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { signCommand } from '../src/commands/desktop';
 import { OBFUSCATION_LEVELS, isGameChunk, obfuscate } from '../src/security';
 import { desktopEntry, hostOs, unpackedDir } from '../src/targets/desktop';
+import { capacitorConfig } from '../src/targets/mobile-native';
 import { nativeEntry } from '../src/targets/natives';
 import { runners } from '../src/targets/runners';
 import { targets } from '../src/targets/index';
@@ -148,7 +149,6 @@ describe('obfuscation (SEC-03, SEC-10)', () => {
   `;
 
   async function measure(source: string): Promise<{ time: number; result: number }> {
-    // eslint-disable-next-line @typescript-eslint/no-implied-eval
     const run = new Function(`${source}; return run;`)() as (steps: number) => number;
     run(200); // warm up the JIT
     const times: number[] = [];
@@ -182,4 +182,25 @@ describe('obfuscation (SEC-03, SEC-10)', () => {
       );
     },
   );
+});
+
+describe('SEC-07 switch on mobile builds', () => {
+  it('turns WebView inspection off in release unless security.webview is false', () => {
+    const game = {
+      name: 'G',
+      id: 'com.x.g',
+      version: '1.0.0',
+      resolution: { width: 640, height: 360 },
+    };
+    const debugging = (security: unknown, release: boolean) =>
+      (
+        capacitorConfig({ ...game, security } as never, { release, plugins: [] }).android as {
+          webContentsDebuggingEnabled: boolean;
+        }
+      ).webContentsDebuggingEnabled;
+    expect(debugging(undefined, true)).toBe(false);
+    expect(debugging(undefined, false)).toBe(true);
+    expect(debugging({ webview: false }, true)).toBe(true);
+    expect(debugging(false, true)).toBe(true);
+  });
 });

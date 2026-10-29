@@ -6,6 +6,7 @@ import { createRequire } from 'node:module';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import type { ResolvedGameConfig, ResolvedSecurity } from '@blacklight/core/config';
+import type * as CoreConfig from '@blacklight/core/config';
 import type * as NativeBuild from '@blacklight/native/build';
 import { build, type InlineConfig, type Plugin } from 'vite';
 import { loadGameConfig } from '../project';
@@ -52,7 +53,7 @@ async function loadSecurity(
 ): Promise<ResolvedSecurity> {
   const core = (await import(
     pathToFileURL(gameRequire(root).resolve('@blacklight/core/config')).href
-  )) as typeof import('@blacklight/core/config');
+  )) as typeof CoreConfig;
   return core.resolveSecurity(config.security, release);
 }
 

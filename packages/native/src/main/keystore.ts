@@ -37,6 +37,7 @@ export async function loadSaveKey(
     if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
       throw new Error(
         `The save key in ${file} cannot be read (${(error as Error).message}); saves of this install cannot be opened. Restore the file or delete it to start without saves.`,
+        { cause: error },
       );
     }
   }

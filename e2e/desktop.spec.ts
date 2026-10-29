@@ -18,6 +18,8 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { _electron, expect, test, type ElectronApplication, type Page } from '@playwright/test';
+import type { NativeBridge } from '@blacklight/native';
+import type * as NativeBuild from '@blacklight/native/build';
 import { run } from './server';
 
 const root = resolve(import.meta.dirname, '..');
@@ -152,7 +154,6 @@ test('PF-02: app:// protocol, sandboxed window, minimal validated bridge', async
         await bridge.invoke('relay', 'stop', []).then(() => bridge.invoke('relay', 'status', [])),
         await fail(bridge.invoke('relay', 'start', [{ port: 80 }])),
       ],
-      // eslint-disable-next-line no-eval
       evalBlocked: (() => {
         try {
           return String(eval('1 + 1'));
@@ -222,7 +223,9 @@ test('SEC-01: developer tools shortcuts are ignored in release, work in dev', as
     electron.evaluate(({ BrowserWindow }) =>
       BrowserWindow.getAllWindows()[0]!.webContents.isDevToolsOpened(),
     );
-  let { electron, page } = await launch(appDir, box.env);
+  const release = await launch(appDir, box.env);
+  const page = release.page;
+  let electron = release.electron;
   for (const keys of ['F12', 'Control+Shift+I', 'Control+Shift+J', 'Meta+Alt+I']) {
     await page.keyboard.press(keys);
     await press(electron, keys);
@@ -250,7 +253,7 @@ test('SEC-01: developer tools shortcuts are ignored in release, work in dev', as
   manifest.release = false;
   manifest.security = { devtools: false, debugger: false, csp: null };
   writeFileSync(join(devApp, 'blacklight.json'), JSON.stringify(manifest));
-  ({ electron, page } = await launch(devApp, box.env));
+  ({ electron } = await launch(devApp, box.env));
   await press(electron, 'F12');
   await expect.poll(() => opened(electron)).toBe(true);
   await electron.close();
@@ -356,7 +359,7 @@ const listening = (port: number) =>
 test('SEC-02, SEC-04: packaged app has its fuses set, runs from bytecode and refuses debugging switches', async () => {
   const { readFuses } = (await import(
     pathToFileURL(join(root, 'packages/native/dist/build/index.js')).href
-  )) as typeof import('@blacklight/native/build');
+  )) as typeof NativeBuild;
   const executable = packagedExecutable();
   expect(existsSync(executable)).toBe(true);
   const fuses = await readFuses(executable);
@@ -441,6 +444,6 @@ test.afterAll(() => {
 
 declare global {
   interface Window {
-    blacklightNative?: import('@blacklight/native').NativeBridge;
+    blacklightNative?: NativeBridge;
   }
 }

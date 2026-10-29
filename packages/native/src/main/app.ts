@@ -58,6 +58,7 @@ function readManifest(dir: string): AppManifest {
   } catch (error) {
     throw new Error(
       `Cannot read ${file} (${(error as Error).message}). Build the app with \`blacklight build --target <win|mac|linux|steam>\`.`,
+      { cause: error },
     );
   }
 }
