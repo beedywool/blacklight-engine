@@ -1,0 +1,26 @@
+{
+  "name": "blacklight-template-2d-with-3d",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "blacklight dev",
+    "build": "blacklight build --target web",
+    "preview": "blacklight preview",
+    "typecheck": "blacklight types && vue-tsc --noEmit"
+  },
+  "dependencies": {
+    "@blacklight/core": "workspace:*",
+    "@blacklight/three": "workspace:*",
+    "@blacklight/ui": "workspace:*",
+    "pixi.js": "8.22.0",
+    "three": "0.186.1",
+    "vue": "3.5.44"
+  },
+  "devDependencies": {
+    "@blacklight/cli": "workspace:*",
+    "@types/three": "0.186.0",
+    "typescript": "6.0.3",
+    "vue-tsc": "3.3.14"
+  }
+}

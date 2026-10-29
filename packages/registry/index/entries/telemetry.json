@@ -1,0 +1,5 @@
+{
+  "name": "telemetry",
+  "package": "@blacklight/module-telemetry",
+  "official": true
+}

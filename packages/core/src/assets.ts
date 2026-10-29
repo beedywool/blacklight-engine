@@ -83,6 +83,15 @@ function kindOf(path: string): Kind {
 export type AudioDecoder = (path: string, url: string) => Promise<void>;
 
 /**
+ * Loads a file type core does not know (glTF models…). Gets the project path, its URL and the
+ * store (to find related files); what it resolves is returned by `assets.get(path)`.
+ */
+export type AssetLoader = (path: string, url: string, assets: AssetStore) => Promise<unknown>;
+
+/** Loaders added by packages, by lowercase extension. */
+const loaders = new Map<string, AssetLoader>();
+
+/**
  * Finds and loads the game's files. Loading puts them in a cache; sprites, sounds and texts then
  * read them synchronously.
  */
@@ -90,12 +99,26 @@ export class AssetStore {
   private readonly json = new Map<string, unknown>();
   private readonly text = new Map<string, string>();
   private readonly textures = new Map<string, Texture>();
+  private readonly custom = new Map<string, unknown>();
   private readonly loading = new Map<string, Promise<void>>();
   private readonly loaded = new Set<string>();
   /** @internal Set by the audio manager. */
   decodeAudio: AudioDecoder | undefined;
 
   constructor(readonly manifest: AssetManifest = { files: {} }) {}
+
+  /**
+   * Teaches every asset store to load more file types. Packages call it when their module loads,
+   * so only games (and scenes) that import them pay for the loader.
+   *
+   * @example
+   * ```ts
+   * AssetStore.registerLoader(['glb', 'gltf'], (path, url) => loadModel(url));
+   * ```
+   */
+  static registerLoader(extensions: string[], loader: AssetLoader): void {
+    for (const ext of extensions) loaders.set(ext.toLowerCase(), loader);
+  }
 
   /** Every project path in the manifest. */
   get paths(): string[] {
@@ -223,8 +246,11 @@ export class AssetStore {
         document.fonts.add(face);
         return;
       }
-      default:
+      default: {
+        const loader = loaders.get(extension(path));
+        if (loader) this.custom.set(path, await loader(path, url, this));
         return;
+      }
     }
   }
 
@@ -255,6 +281,12 @@ export class AssetStore {
   getJson<T = unknown>(path: string): T {
     if (!this.json.has(path)) throw notLoaded(path);
     return this.json.get(path) as T;
+  }
+
+  /** What a registered loader made of a file (see {@link AssetStore.registerLoader}). */
+  get<T = unknown>(path: string): T {
+    if (!this.custom.has(path)) throw notLoaded(path);
+    return this.custom.get(path) as T;
   }
 
   /** Loaded content of a text file. */

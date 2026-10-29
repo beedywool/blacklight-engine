@@ -58,6 +58,25 @@ export default defineConfig({
         ],
       },
       {
+        text: '3D',
+        items: [
+          { text: '3D models', link: '/guide/3d' },
+          { text: 'Render to texture', link: '/guide/3d-render-to-texture' },
+        ],
+      },
+      {
+        text: 'Modules and services',
+        items: [
+          { text: 'Modules', link: '/guide/modules' },
+          { text: 'Native parts', link: '/guide/modules-native' },
+          { text: 'Module registry', link: '/guide/modules-registry' },
+          { text: 'Accounts', link: '/guide/accounts' },
+          { text: 'Achievements', link: '/guide/achievements' },
+          { text: 'Telemetry', link: '/guide/telemetry' },
+          { text: 'Reference server', link: '/guide/server' },
+        ],
+      },
+      {
         text: 'Tools',
         items: [
           { text: 'Snapshots', link: '/guide/snapshots' },
@@ -67,6 +86,15 @@ export default defineConfig({
       {
         text: 'Mobile',
         items: [{ text: 'Android and iOS', link: '/guide/mobile' }],
+      },
+      {
+        text: 'Online',
+        items: [
+          { text: 'Networking', link: '/guide/networking' },
+          { text: 'Determinism', link: '/guide/networking-determinism' },
+          { text: 'Testing online play', link: '/guide/networking-testing' },
+          { text: 'Relay server', link: '/guide/networking-relay' },
+        ],
       },
       {
         text: 'Reference',

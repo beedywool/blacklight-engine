@@ -1,6 +1,7 @@
 import { checkMobileConfig, type MobileConfig } from './config-mobile';
 import { parseBinding } from './input/bindings';
 import type { InputConfig } from './input/input';
+import type { ModulesConfig } from './modules/define';
 
 /**
  * How the virtual resolution fits the screen.
@@ -64,14 +65,23 @@ export interface GameConfig {
   seed?: string | number;
   /** UI layer defaults (`@blacklight/ui`); the player's saved choices win. */
   ui?: { theme?: string; scale?: number };
+  /**
+   * Modules to set up, each with its options (checked by the module's schema at startup).
+   *
+   * @example
+   * ```ts
+   * modules: { http: { baseUrl: 'https://api.example.com' }, sqlite: {} }
+   * ```
+   */
+  modules?: Partial<ModulesConfig>;
   /** Android and iOS options (`@blacklight/mobile`). */
   mobile?: MobileConfig;
 }
 
 export interface ResolvedGameConfig
   extends
-    Required<Omit<GameConfig, 'resolution' | 'input' | 'seed' | 'ui' | 'mobile'>>,
-    Pick<GameConfig, 'input' | 'seed' | 'ui' | 'mobile'> {
+    Required<Omit<GameConfig, 'resolution' | 'input' | 'seed' | 'ui' | 'modules' | 'mobile'>>,
+    Pick<GameConfig, 'input' | 'seed' | 'ui' | 'modules' | 'mobile'> {
   resolution: Required<ResolutionConfig>;
 }
 
@@ -171,6 +181,12 @@ export function resolveConfig(input: unknown): ResolvedGameConfig {
   if (input.ui !== undefined && !isRecord(input.ui)) {
     issues.push('`ui` must be an object, e.g. `ui: { theme: "persona" }`');
   }
+  if (
+    input.modules !== undefined &&
+    (!isRecord(input.modules) || !Object.values(input.modules).every(isRecord))
+  ) {
+    issues.push('`modules` must map module names to their options, e.g. `modules: { sqlite: {} }`');
+  }
   if (seed !== undefined && typeof seed !== 'string' && typeof seed !== 'number') {
     issues.push('`seed` must be a string or a number');
   }
@@ -219,6 +235,7 @@ export function resolveConfig(input: unknown): ResolvedGameConfig {
     input: inputConfig as InputConfig | undefined,
     seed: seed as string | number | undefined,
     ui: input.ui as GameConfig['ui'],
+    modules: input.modules as GameConfig['modules'],
     mobile: input.mobile as MobileConfig | undefined,
   };
 }

@@ -11,3 +11,4 @@ playwright-report/
 packages/create/templates/
 e2e/fixtures/*/dist/
 release/
+.claude/

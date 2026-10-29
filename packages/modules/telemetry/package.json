@@ -1,0 +1,50 @@
+{
+  "name": "@blacklight/module-telemetry",
+  "version": "0.0.0",
+  "description": "Opt-in telemetry and crash reports for Blacklight Engine games, sent with the Sentry protocol.",
+  "license": "MIT",
+  "type": "module",
+  "sideEffects": false,
+  "keywords": [
+    "blacklight",
+    "blacklight-module",
+    "telemetry"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "typecheck": "tsc --noEmit"
+  },
+  "blacklight": {
+    "module": "telemetry",
+    "engine": ">=0.0.0 <2.0.0",
+    "platforms": [
+      "web",
+      "desktop",
+      "android",
+      "ios"
+    ],
+    "permissions": [
+      "network",
+      "telemetry"
+    ]
+  },
+  "peerDependencies": {
+    "@blacklight/core": "workspace:*"
+  },
+  "devDependencies": {
+    "@blacklight/core": "workspace:*",
+    "happy-dom": "21.0.4",
+    "tsup": "9.0.0",
+    "typescript": "6.0.3"
+  }
+}

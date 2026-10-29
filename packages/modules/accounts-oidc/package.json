@@ -1,0 +1,61 @@
+{
+  "name": "@blacklight/module-accounts-oidc",
+  "version": "0.0.0",
+  "description": "Player accounts over OpenID Connect (authorization code + PKCE) for Blacklight Engine games, with a BlackLight SSO preset.",
+  "license": "MIT",
+  "type": "module",
+  "sideEffects": false,
+  "keywords": [
+    "blacklight",
+    "blacklight-module",
+    "accounts-oidc"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    },
+    "./testing": {
+      "types": "./dist/testing.d.ts",
+      "import": "./dist/testing.js",
+      "default": "./dist/testing.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "typecheck": "tsc --noEmit"
+  },
+  "blacklight": {
+    "module": "accounts-oidc",
+    "engine": ">=0.0.0 <2.0.0",
+    "platforms": [
+      "web",
+      "desktop",
+      "android",
+      "ios"
+    ],
+    "permissions": [
+      "network",
+      "accounts"
+    ],
+    "dependencies": [
+      "http"
+    ]
+  },
+  "peerDependencies": {
+    "@blacklight/core": "workspace:*",
+    "@blacklight/module-http": "workspace:*"
+  },
+  "devDependencies": {
+    "@blacklight/core": "workspace:*",
+    "@blacklight/module-http": "workspace:*",
+    "@types/node": "24.19.2",
+    "happy-dom": "21.0.4",
+    "tsup": "9.0.0",
+    "typescript": "6.0.3"
+  }
+}

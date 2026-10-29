@@ -1,0 +1,40 @@
+{
+  "name": "@blacklight/net",
+  "version": "0.0.0",
+  "description": "Online play for Blacklight Engine: relay rooms, rollback and lockstep sessions, network test harness.",
+  "license": "MIT",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    },
+    "./protocol": {
+      "types": "./dist/protocol.d.ts",
+      "import": "./dist/protocol.js",
+      "default": "./dist/protocol.js"
+    },
+    "./testing": {
+      "types": "./dist/testing.d.ts",
+      "import": "./dist/testing.js",
+      "default": "./dist/testing.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "typecheck": "tsc --noEmit"
+  },
+  "peerDependencies": {
+    "@blacklight/core": "workspace:*"
+  },
+  "devDependencies": {
+    "@blacklight/core": "workspace:*",
+    "tsup": "9.0.0",
+    "typescript": "6.0.3"
+  }
+}

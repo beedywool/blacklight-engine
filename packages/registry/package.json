@@ -1,0 +1,33 @@
+{
+  "name": "@blacklight/registry",
+  "version": "0.0.0",
+  "description": "Blacklight module registry: index format, validator and static API generator.",
+  "license": "MIT",
+  "type": "module",
+  "bin": {
+    "blacklight-registry": "./dist/cli.js"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "semver": "7.8.5"
+  },
+  "devDependencies": {
+    "@types/node": "24.19.2",
+    "@types/semver": "7.8.0",
+    "tsup": "9.0.0",
+    "typescript": "6.0.3"
+  }
+}

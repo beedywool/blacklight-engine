@@ -8,6 +8,7 @@ import {
   type Transform,
   type WorldShape,
 } from '../collision/shapes';
+import { DMath } from '../dmath';
 import { Disposables, type EventBus, type Unsubscribe } from '../events';
 import type { Game } from '../game';
 import type { PlayerInput } from '../input/input';
@@ -35,6 +36,7 @@ export type SpawnProps<T> = {
 export type GameObjectClass<T extends GameObject = GameObject> = (new () => T) & typeof GameObject;
 
 const ENGINE_KEYS = Symbol('blacklight.engineKeys');
+const POSITION_KEYS = ['_lx', '_ly', 'prevX', 'prevY'];
 
 /**
  * Base class of everything placed in a scene. Positions are in virtual pixels; speeds in virtual
@@ -63,6 +65,13 @@ export class GameObject extends PixiContainer {
   static tags: string[] | undefined;
   /** Extra files to preload with the object, relative to its folder. */
   static assets: string[] | undefined;
+  /**
+   * Files an engine class needs besides `static assets` (the model of a `Model3D`), relative to
+   * the object's folder. Preloaded with the scene like `static assets`.
+   */
+  static requiredAssets(): string[] {
+    return [];
+  }
   /** Fields saved in snapshots; by default every data field the class declares. */
   static serialize: string[] | undefined;
   /** Registry name (PascalCase folder name), set when the object is discovered. */
@@ -109,7 +118,11 @@ export class GameObject extends PixiContainer {
    * game's subclass adds. Engine subclasses call it at the end of their constructor.
    */
   protected markEngineKeys(): void {
-    (this as unknown as Record<symbol, Set<string>>)[ENGINE_KEYS] = new Set(Object.keys(this));
+    // Position fields are declared, not initialized: they appear later and are not game data.
+    (this as unknown as Record<symbol, Set<string>>)[ENGINE_KEYS] = new Set([
+      ...Object.keys(this),
+      ...POSITION_KEYS,
+    ]);
   }
 
   /** @internal */
@@ -278,8 +291,8 @@ export class GameObject extends PixiContainer {
     let t: Transform = { x: 0, y: 0, rotation: 0, scaleX: 1, scaleY: 1 };
     for (let i = chain.length - 1; i >= 0; i--) {
       const node = chain[i]!;
-      const cos = Math.cos(t.rotation);
-      const sin = Math.sin(t.rotation);
+      const cos = DMath.cos(t.rotation);
+      const sin = DMath.sin(t.rotation);
       const px = node.x * t.scaleX;
       const py = node.y * t.scaleY;
       t = {
