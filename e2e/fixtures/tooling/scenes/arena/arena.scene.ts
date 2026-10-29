@@ -3,7 +3,7 @@ import type Hero from '@objects/hero/hero.object';
 import layout from './arena.layout.json';
 
 export default class Arena extends Scene {
-  static override assets = ['@assets/unused.png'];
+  static override assets = ['@assets/arena-bg.png'];
   hero!: Hero;
   ticks = 0;
 

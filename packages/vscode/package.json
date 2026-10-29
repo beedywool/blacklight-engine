@@ -1,0 +1,383 @@
+{
+  "name": "blacklight-vscode",
+  "displayName": "Blacklight Engine",
+  "description": "Blacklight Engine tools: scene, object, animation, sprite-sheet, UI timeline and config editors, completion, asset browser and live game debugging.",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "publisher": "blacklight",
+  "license": "MIT",
+  "icon": "media/icon.png",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/blacklight-engine/blacklight-engine"
+  },
+  "engines": {
+    "vscode": "^1.125.0"
+  },
+  "categories": [
+    "Programming Languages",
+    "Snippets",
+    "Debuggers",
+    "Visualization"
+  ],
+  "keywords": [
+    "blacklight",
+    "game",
+    "gamedev",
+    "pixi",
+    "typescript"
+  ],
+  "main": "./dist/extension.cjs",
+  "activationEvents": [
+    "workspaceContains:**/game.config.ts",
+    "workspaceContains:**/game.config.js"
+  ],
+  "capabilities": {
+    "untrustedWorkspaces": {
+      "supported": "limited",
+      "description": "Editors and completion work everywhere; the live game panels connect to the dev server of trusted workspaces only."
+    }
+  },
+  "contributes": {
+    "commands": [
+      {
+        "command": "blacklight.newScene",
+        "title": "New Scene",
+        "category": "Blacklight"
+      },
+      {
+        "command": "blacklight.newObject",
+        "title": "New Object",
+        "category": "Blacklight"
+      },
+      {
+        "command": "blacklight.sliceSheet",
+        "title": "Slice Sprite Sheet",
+        "category": "Blacklight"
+      },
+      {
+        "command": "blacklight.openAnimationEditor",
+        "title": "Open Animation Editor",
+        "category": "Blacklight",
+        "icon": "$(play)"
+      },
+      {
+        "command": "blacklight.openSceneEditor",
+        "title": "Open Scene Editor",
+        "category": "Blacklight"
+      },
+      {
+        "command": "blacklight.newTimeline",
+        "title": "New UI Timeline",
+        "category": "Blacklight"
+      },
+      {
+        "command": "blacklight.previewUi",
+        "title": "Preview UI Component",
+        "category": "Blacklight",
+        "icon": "$(open-preview)"
+      },
+      {
+        "command": "blacklight.openConfig",
+        "title": "Edit Game Configuration",
+        "category": "Blacklight",
+        "icon": "$(settings-gear)"
+      },
+      {
+        "command": "blacklight.openAssets",
+        "title": "Open Asset Browser",
+        "category": "Blacklight"
+      },
+      {
+        "command": "blacklight.debugGame",
+        "title": "Debug Game in Browser",
+        "category": "Blacklight"
+      },
+      {
+        "command": "blacklight.refreshObjects",
+        "title": "Refresh",
+        "category": "Blacklight",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "blacklight.pauseGame",
+        "title": "Pause Game",
+        "category": "Blacklight",
+        "icon": "$(debug-pause)"
+      },
+      {
+        "command": "blacklight.resumeGame",
+        "title": "Resume Game",
+        "category": "Blacklight",
+        "icon": "$(debug-continue)"
+      },
+      {
+        "command": "blacklight.stepGame",
+        "title": "Step Game",
+        "category": "Blacklight",
+        "icon": "$(debug-step-over)"
+      },
+      {
+        "command": "blacklight.editVariable",
+        "title": "Edit Value",
+        "category": "Blacklight",
+        "icon": "$(edit)"
+      },
+      {
+        "command": "blacklight.revealObject",
+        "title": "Open Object Source",
+        "category": "Blacklight",
+        "icon": "$(go-to-file)"
+      }
+    ],
+    "menus": {
+      "explorer/context": [
+        {
+          "command": "blacklight.newScene",
+          "when": "explorerResourceIsFolder && resourceFilename == scenes",
+          "group": "1_blacklight"
+        },
+        {
+          "command": "blacklight.newObject",
+          "when": "explorerResourceIsFolder",
+          "group": "1_blacklight"
+        },
+        {
+          "command": "blacklight.sliceSheet",
+          "when": "resourceExtname == .png",
+          "group": "1_blacklight"
+        },
+        {
+          "command": "blacklight.previewUi",
+          "when": "resourceExtname == .vue",
+          "group": "1_blacklight"
+        },
+        {
+          "command": "blacklight.openSceneEditor",
+          "when": "resourceFilename =~ /\\.(scene\\.ts|layout\\.json)$/",
+          "group": "1_blacklight"
+        }
+      ],
+      "editor/title": [
+        {
+          "command": "blacklight.openAnimationEditor",
+          "when": "resourceFilename =~ /\\.anim\\.json$/ && activeCustomEditorId != blacklight.animationEditor",
+          "group": "navigation"
+        },
+        {
+          "command": "blacklight.previewUi",
+          "when": "resourceExtname == .vue",
+          "group": "navigation"
+        },
+        {
+          "command": "blacklight.openConfig",
+          "when": "resourceFilename =~ /^game\\.config\\.[jt]s$/",
+          "group": "navigation"
+        }
+      ],
+      "view/title": [
+        {
+          "command": "blacklight.refreshObjects",
+          "when": "view == blacklight.objects",
+          "group": "navigation@3"
+        },
+        {
+          "command": "blacklight.pauseGame",
+          "when": "view == blacklight.objects",
+          "group": "navigation@1"
+        },
+        {
+          "command": "blacklight.stepGame",
+          "when": "view == blacklight.objects",
+          "group": "navigation@2"
+        },
+        {
+          "command": "blacklight.resumeGame",
+          "when": "view == blacklight.objects",
+          "group": "navigation@0"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "blacklight.editVariable",
+          "when": "view == blacklight.objects && viewItem == variable",
+          "group": "inline"
+        },
+        {
+          "command": "blacklight.revealObject",
+          "when": "view == blacklight.objects && viewItem == object",
+          "group": "inline"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "blacklight.editVariable",
+          "when": "false"
+        },
+        {
+          "command": "blacklight.revealObject",
+          "when": "false"
+        }
+      ]
+    },
+    "customEditors": [
+      {
+        "viewType": "blacklight.animationEditor",
+        "displayName": "Blacklight Animation Editor",
+        "selector": [
+          {
+            "filenamePattern": "*.anim.json"
+          }
+        ],
+        "priority": "option"
+      },
+      {
+        "viewType": "blacklight.sceneEditor",
+        "displayName": "Blacklight Scene Editor",
+        "selector": [
+          {
+            "filenamePattern": "*.layout.json"
+          }
+        ],
+        "priority": "default"
+      },
+      {
+        "viewType": "blacklight.timelineEditor",
+        "displayName": "Blacklight UI Timeline Editor",
+        "selector": [
+          {
+            "filenamePattern": "*.timeline.json"
+          }
+        ],
+        "priority": "default"
+      },
+      {
+        "viewType": "blacklight.sheetSlicer",
+        "displayName": "Blacklight Sprite-Sheet Slicer",
+        "selector": [
+          {
+            "filenamePattern": "*.png"
+          }
+        ],
+        "priority": "option"
+      }
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "blacklight",
+          "title": "Blacklight",
+          "icon": "media/bulb.svg"
+        }
+      ]
+    },
+    "views": {
+      "blacklight": [
+        {
+          "id": "blacklight.objects",
+          "name": "Live Objects",
+          "icon": "media/bulb.svg"
+        }
+      ]
+    },
+    "viewsWelcome": [
+      {
+        "view": "blacklight.objects",
+        "contents": "Start the game with `blacklight dev` and open it in a browser: its objects and their variables show here.\n[Debug Game in Browser](command:blacklight.debugGame)"
+      }
+    ],
+    "snippets": [
+      {
+        "language": "typescript",
+        "path": "./snippets/blacklight.code-snippets"
+      }
+    ],
+    "jsonValidation": [
+      {
+        "fileMatch": "*.anim.json",
+        "url": "./schema/anim.schema.json"
+      },
+      {
+        "fileMatch": "*.layout.json",
+        "url": "./schema/layout.schema.json"
+      },
+      {
+        "fileMatch": "*.timeline.json",
+        "url": "./schema/timeline.schema.json"
+      }
+    ],
+    "debuggers": [
+      {
+        "type": "blacklight",
+        "label": "Blacklight Game",
+        "languages": [
+          "typescript",
+          "vue"
+        ],
+        "configurationAttributes": {
+          "launch": {
+            "properties": {
+              "root": {
+                "type": "string",
+                "description": "Game folder (the one with game.config.ts).",
+                "default": "${workspaceFolder}"
+              },
+              "url": {
+                "type": "string",
+                "description": "Page to open. Defaults to the URL of the running `blacklight dev` server."
+              },
+              "browser": {
+                "enum": [
+                  "chrome",
+                  "msedge"
+                ],
+                "default": "chrome",
+                "description": "Browser to debug in."
+              }
+            }
+          }
+        },
+        "initialConfigurations": [
+          {
+            "type": "blacklight",
+            "request": "launch",
+            "name": "Debug game",
+            "root": "${workspaceFolder}"
+          }
+        ],
+        "configurationSnippets": [
+          {
+            "label": "Blacklight: Debug game",
+            "description": "Opens the game of the running dev server in a browser with breakpoints in scenes, objects and screens.",
+            "body": {
+              "type": "blacklight",
+              "request": "launch",
+              "name": "Debug game",
+              "root": "^\"\\${workspaceFolder}\""
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "scripts": {
+    "build": "tsup && node scripts/copy-schemas.mjs",
+    "typecheck": "tsc --noEmit",
+    "test:integration": "node scripts/integration.mjs",
+    "package": "vsce package --no-dependencies --out dist/blacklight.vsix",
+    "publish:dry-run": "node scripts/publish-dry-run.mjs"
+  },
+  "dependencies": {
+    "typescript": "6.0.3"
+  },
+  "devDependencies": {
+    "@types/node": "24.19.2",
+    "@types/vscode": "1.125.0",
+    "@vscode/test-electron": "3.1.0",
+    "@vscode/vsce": "4.0.0",
+    "happy-dom": "21.0.4",
+    "ovsx": "1.3.0",
+    "tsup": "9.0.0"
+  }
+}

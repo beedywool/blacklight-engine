@@ -7,6 +7,8 @@ packages:
 # Dependencies allowed to run install scripts (pnpm blocks the others).
 allowBuilds:
   esbuild: true
+  # Downloads a native binary to sign extensions on publish; packaging does not need it.
+  '@vscode/vsce-sign': false
 
 minimumReleaseAgeExclude:
   - framer-motion@14.8.0

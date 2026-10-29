@@ -9,6 +9,7 @@ export default tseslint.config(
       '**/dist/**',
       '**/coverage/**',
       '**/.blacklight/**',
+      'packages/vscode/{dist-webview,dist-test,schema,.vscode-test}/**',
       'docs/.vitepress/cache/**',
       'docs/.vitepress/dist/**',
     ],
