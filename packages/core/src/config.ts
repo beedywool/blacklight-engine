@@ -1,5 +1,13 @@
 import { parseBinding } from './input/bindings';
 import type { InputConfig } from './input/input';
+import {
+  validateDesktopConfig,
+  type DiscordConfig,
+  type SteamConfig,
+  type WindowConfig,
+} from './desktop-config';
+import { validateSaveConfig, type SaveConfig } from './save/config';
+import { validateSecurityConfig, type SecurityConfig } from './security/config';
 
 /**
  * How the virtual resolution fits the screen.
@@ -63,14 +71,24 @@ export interface GameConfig {
   seed?: string | number;
   /** UI layer defaults (`@blacklight/ui`); the player's saved choices win. */
   ui?: { theme?: string; scale?: number };
+  /** Save slots, autosave, encryption, migrations, folder (see the Saves guide). */
+  save?: SaveConfig;
+  /** Release-build hardening; every measure is on by default in release, off in dev. */
+  security?: SecurityConfig | false;
+  /** Desktop window. */
+  window?: WindowConfig;
+  steam?: SteamConfig;
+  discord?: DiscordConfig;
 }
 
 export interface ResolvedGameConfig
   extends
-    Required<Omit<GameConfig, 'resolution' | 'input' | 'seed' | 'ui'>>,
-    Pick<GameConfig, 'input' | 'seed' | 'ui'> {
+    Required<Omit<GameConfig, 'resolution' | 'input' | 'seed' | 'ui' | DesktopKeys>>,
+    Pick<GameConfig, 'input' | 'seed' | 'ui' | DesktopKeys> {
   resolution: Required<ResolutionConfig>;
 }
+
+type DesktopKeys = 'save' | 'security' | 'window' | 'steam' | 'discord';
 
 /**
  * Declares the game configuration. It returns its argument unchanged; its role is to give
@@ -202,6 +220,12 @@ export function resolveConfig(input: unknown): ResolvedGameConfig {
     }
   }
 
+  issues.push(
+    ...validateSaveConfig(input.save),
+    ...validateSecurityConfig(input.security),
+    ...validateDesktopConfig(input),
+  );
+
   if (issues.length > 0) throw new ConfigError(issues);
   return {
     name: name as string,
@@ -214,5 +238,10 @@ export function resolveConfig(input: unknown): ResolvedGameConfig {
     input: inputConfig as InputConfig | undefined,
     seed: seed as string | number | undefined,
     ui: input.ui as GameConfig['ui'],
+    save: input.save as SaveConfig | undefined,
+    security: input.security as SecurityConfig | false | undefined,
+    window: input.window as WindowConfig | undefined,
+    steam: input.steam as SteamConfig | undefined,
+    discord: input.discord as DiscordConfig | undefined,
   };
 }
