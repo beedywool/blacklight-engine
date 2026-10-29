@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { builtinModules, createRequire } from 'node:module';
 import { dirname, join, relative, resolve, sep } from 'node:path';
 import type { Plugin, ViteDevServer } from 'vite';
@@ -229,6 +229,39 @@ export function nodeImportError(source: string, importer: string, root: string):
 }
 
 /**
+ * Browser dependencies that module packages import, as Vite `optimizeDeps.include` entries
+ * (`<module> > <import>`). Linked modules (`create --link`, workspaces) are served as source, so
+ * Vite would only discover their CommonJS imports (sql.js) on first use and reload the page.
+ */
+export function moduleDependencies(root: string, modules: ResolvedModule[]): string[] {
+  const include = new Set<string>();
+  for (const module of modules) {
+    if (module.local) continue;
+    const dir = packageRoot(module.source, join(root, 'package.json'));
+    if (!dir) continue;
+    const pkg = JSON.parse(readFileSync(join(dir, 'package.json'), 'utf8')) as {
+      dependencies?: Record<string, string>;
+    };
+    const deps = Object.keys(pkg.dependencies ?? {}).filter(
+      (dep) => !isNodeOnlyPackage(dep, join(dir, 'package.json')),
+    );
+    if (deps.length === 0) continue;
+    const dist = join(dir, 'dist');
+    const files = existsSync(dist) ? readdirSync(dist).filter((f) => f.endsWith('.js')) : [];
+    for (const file of files) {
+      const code = readFileSync(join(dist, file), 'utf8');
+      for (const match of code.matchAll(/(?:from\s*|import\s*\(\s*)["']([^"'.][^"']*)["']/g)) {
+        const spec = match[1]!;
+        if (deps.some((dep) => spec === dep || spec.startsWith(`${dep}/`))) {
+          include.add(`${module.source} > ${spec}`);
+        }
+      }
+    }
+  }
+  return [...include].sort();
+}
+
+/**
  * Vite plugin for modules: serves `virtual:blacklight/modules` (the modules listed in
  * `game.config.ts`) and stops the build when game code imports a Node module.
  */
@@ -247,6 +280,15 @@ export function blacklightModules(options: { root: string }): Plugin {
     name: 'blacklight:modules',
     // Before Vite's resolver, which would otherwise turn Node built-ins into empty browser stubs.
     enforce: 'pre',
+    async config() {
+      try {
+        const include = moduleDependencies(root, resolveModules(root, await moduleNames(root)));
+        return include.length > 0 ? { optimizeDeps: { include } } : undefined;
+      } catch {
+        // An invalid config or a missing module is reported by the build with a full message.
+        return undefined;
+      }
+    },
     configureServer(dev) {
       server = dev;
       const invalidate = (file: string) => {

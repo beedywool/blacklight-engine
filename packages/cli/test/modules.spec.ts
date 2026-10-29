@@ -6,6 +6,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import {
   blacklightModules,
   isNodeBuiltin,
+  moduleDependencies,
   modulesModule,
   modulesTypes,
   nodeImportError,
@@ -64,6 +65,38 @@ describe('module resolution', () => {
     );
     expect(types).toContain(`typeof import("../modules/score/score.module")`);
     expect(types).toContain('moduleConfigs: {');
+  });
+});
+
+describe('module dependencies', () => {
+  it('pre-bundles the browser packages a module imports, never its Node-only ones', () => {
+    const root = game({ '@blacklight/module-db': '1.0.0' });
+    file(
+      'node_modules/@blacklight/module-db/package.json',
+      JSON.stringify({
+        name: '@blacklight/module-db',
+        dependencies: { 'wasm-db': '1.0.0', 'native-db': '1.0.0' },
+      }),
+    );
+    file(
+      'node_modules/@blacklight/module-db/dist/index.js',
+      'const load = () => import("wasm-db/dist/inline.js");\nimport { x } from "./chunk.js";',
+    );
+    file('node_modules/@blacklight/module-db/dist/native.js', 'import Db from "native-db";');
+    file(
+      'node_modules/wasm-db/package.json',
+      JSON.stringify({ name: 'wasm-db', main: 'index.js' }),
+    );
+    file('node_modules/wasm-db/index.js', '');
+    file(
+      'node_modules/native-db/package.json',
+      JSON.stringify({ name: 'native-db', main: 'index.js', gypfile: true }),
+    );
+    file('node_modules/native-db/index.js', '');
+    const modules = resolveModules(root, ['db']);
+    expect(moduleDependencies(root, modules)).toEqual([
+      '@blacklight/module-db > wasm-db/dist/inline.js',
+    ]);
   });
 });
 
