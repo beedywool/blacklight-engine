@@ -116,6 +116,10 @@ export function stageApp(options: StageOptions): void {
         description: manifest.name,
         main: 'main.cjs',
         private: true,
+        // Window class on Linux, so desktops link the window to the installed .desktop entry.
+        desktopName: `${manifest.id}.desktop`,
+        homepage: `https://${manifest.id.split('.').slice(0, 2).reverse().join('.')}`,
+        author: { name: manifest.name },
       },
       null,
       2,

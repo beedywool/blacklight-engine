@@ -97,7 +97,14 @@ export function builderConfig(options: PackageOptions): Configuration {
       ...(sign ? {} : { identity: null }),
       notarize: sign && plan.notarize,
     },
-    linux: { target: targets, category: 'Game', synopsis: options.name },
+    linux: {
+      target: targets,
+      category: 'Game',
+      synopsis: options.name,
+      // deb packages need a maintainer; games without one get the reverse of their id's domain.
+      maintainer: `${options.name} <noreply@${options.id.split('.').slice(0, 2).reverse().join('.')}>`,
+      syncDesktopName: true,
+    },
     // Deep links (`<game id>:/oauth/callback`) open the game: registered by the installers.
     protocols: [{ name: options.name, schemes: [options.id] }],
   } as Configuration;
