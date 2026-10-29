@@ -10,6 +10,7 @@ import { join, resolve } from 'node:path';
 import vue from '@vitejs/plugin-vue';
 import { searchForWorkspaceRoot, type InlineConfig, type Plugin, type ViteDevServer } from 'vite';
 import { buildAtlases, pngSize } from './atlas';
+import { hardening } from './security';
 import { loadGameConfig, scanAssets, typesFile } from './project';
 
 /** Import aliases available in every game (SPEC §6.1). */
@@ -78,7 +79,7 @@ try {
   const plugins = [${
     withUi ? "ui({ screens: import.meta.glob(['../ui/**/*.vue', '../scenes/*/ui/**/*.vue']) })" : ''
   }];
-  const game = await createGame(config, { scenes, objects, assets, mount, plugins });
+  const game = await createGame(config, { scenes, objects, assets, mount, plugins, release: import.meta.env.PROD });
   if (import.meta.env.DEV) {
     // Console and test access in dev: the running game and the engine module itself.
     Object.assign(window, { blacklight: game, blacklightCore: await import('@blacklight/core') });
@@ -282,7 +283,7 @@ export function createViteConfig(gameRoot: string, options: ViteConfigOptions = 
     publicDir: join(root, 'public'),
     envDir: root,
     cacheDir: join(root, 'node_modules', '.vite'),
-    plugins: [blacklight({ root }), vue()],
+    plugins: [blacklight({ root }), vue(), hardening({ root })],
     resolve: {
       // One copy of each, even when engine packages are linked from a checkout.
       dedupe: ['vue', 'pixi.js', 'motion', '@blacklight/core', '@blacklight/ui'],

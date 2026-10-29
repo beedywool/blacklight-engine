@@ -1,0 +1,50 @@
+{
+  "name": "@blacklight/native",
+  "version": "0.0.0",
+  "description": "Desktop app for Blacklight Engine games: Electron main process, preload, IPC bridge, SDL gamepads, Steamworks, Discord Rich Presence.",
+  "license": "MIT",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    },
+    "./main": {
+      "types": "./dist/main/index.d.cts",
+      "require": "./dist/main/index.cjs",
+      "default": "./dist/main/index.cjs"
+    },
+    "./build": {
+      "types": "./dist/build/index.d.ts",
+      "import": "./dist/build/index.js",
+      "default": "./dist/build/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\" && tsup",
+    "typecheck": "tsc --noEmit"
+  },
+  "peerDependencies": {
+    "@blacklight/core": "workspace:*"
+  },
+  "dependencies": {
+    "@electron/fuses": "2.1.3",
+    "@kmamal/sdl": "0.11.13",
+    "bytenode": "2.1.0",
+    "electron": "44.9.3",
+    "electron-builder": "26.18.1",
+    "steamworks.js": "0.4.0"
+  },
+  "devDependencies": {
+    "@blacklight/core": "workspace:*",
+    "@types/node": "24.19.2",
+    "tsup": "9.0.0",
+    "typescript": "6.0.3"
+  }
+}

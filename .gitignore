@@ -10,3 +10,5 @@ playwright-report/
 .DS_Store
 packages/create/templates/
 e2e/fixtures/*/dist/
+# Desktop builds (blacklight build --target win|mac|linux|steam)
+release/
