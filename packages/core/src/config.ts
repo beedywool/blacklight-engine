@@ -8,6 +8,7 @@ import {
 } from './desktop-config';
 import { validateSaveConfig, type SaveConfig } from './save/config';
 import { validateSecurityConfig, type SecurityConfig } from './security/config';
+import type { ModulesConfig } from './modules/define';
 
 /**
  * How the virtual resolution fits the screen.
@@ -79,12 +80,21 @@ export interface GameConfig {
   window?: WindowConfig;
   steam?: SteamConfig;
   discord?: DiscordConfig;
+  /**
+   * Modules to set up, each with its options (checked by the module's schema at startup).
+   *
+   * @example
+   * ```ts
+   * modules: { http: { baseUrl: 'https://api.example.com' }, sqlite: {} }
+   * ```
+   */
+  modules?: Partial<ModulesConfig>;
 }
 
 export interface ResolvedGameConfig
   extends
-    Required<Omit<GameConfig, 'resolution' | 'input' | 'seed' | 'ui' | DesktopKeys>>,
-    Pick<GameConfig, 'input' | 'seed' | 'ui' | DesktopKeys> {
+    Required<Omit<GameConfig, 'resolution' | 'input' | 'seed' | 'ui' | 'modules' | DesktopKeys>>,
+    Pick<GameConfig, 'input' | 'seed' | 'ui' | 'modules' | DesktopKeys> {
   resolution: Required<ResolutionConfig>;
 }
 
@@ -186,6 +196,12 @@ export function resolveConfig(input: unknown): ResolvedGameConfig {
   if (input.ui !== undefined && !isRecord(input.ui)) {
     issues.push('`ui` must be an object, e.g. `ui: { theme: "persona" }`');
   }
+  if (
+    input.modules !== undefined &&
+    (!isRecord(input.modules) || !Object.values(input.modules).every(isRecord))
+  ) {
+    issues.push('`modules` must map module names to their options, e.g. `modules: { sqlite: {} }`');
+  }
   if (seed !== undefined && typeof seed !== 'string' && typeof seed !== 'number') {
     issues.push('`seed` must be a string or a number');
   }
@@ -243,5 +259,6 @@ export function resolveConfig(input: unknown): ResolvedGameConfig {
     window: input.window as WindowConfig | undefined,
     steam: input.steam as SteamConfig | undefined,
     discord: input.discord as DiscordConfig | undefined,
+    modules: input.modules as GameConfig['modules'],
   };
 }

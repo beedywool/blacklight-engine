@@ -1,5 +1,7 @@
 packages:
   - packages/*
+  - packages/modules/*
+  - servers/*
   - templates/*
   - docs
   - e2e/fixtures/*

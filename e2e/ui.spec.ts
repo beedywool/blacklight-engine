@@ -46,12 +46,29 @@ async function fakeGamepad(page: Page): Promise<void> {
   });
 }
 
-/** Presses and releases a pad button; held long enough for a step, short enough not to repeat. */
+/**
+ * Presses a pad button for exactly the steps needed to read it, then releases it: holding it for
+ * a fixed real time would trigger key repeat when the machine is busy and frames stall.
+ */
 async function press(page: Page, button: number): Promise<void> {
-  await page.evaluate((b) => ((window as unknown as { __pad: number[] }).__pad[b] = 1), button);
-  await page.waitForTimeout(90);
-  await page.evaluate((b) => ((window as unknown as { __pad: number[] }).__pad[b] = 0), button);
-  await page.waitForTimeout(120);
+  await page.evaluate(async (b) => {
+    const pad = (window as unknown as { __pad: number[] }).__pad;
+    const game = window.blacklight;
+    const before = game.time.step;
+    pad[b] = 1;
+    // Wait for one step (the UI reads input on steps); a paused game reads it every frame.
+    const deadline = performance.now() + 2000;
+    while (game.time.step === before && !game.paused && performance.now() < deadline) {
+      await new Promise((r) => requestAnimationFrame(r));
+    }
+    if (game.paused) await new Promise((r) => requestAnimationFrame(r));
+    pad[b] = 0;
+    const released = game.time.step;
+    while (game.time.step === released && !game.paused && performance.now() < deadline) {
+      await new Promise((r) => requestAnimationFrame(r));
+    }
+  }, button);
+  await page.waitForTimeout(30);
 }
 
 const focused = (page: Page) =>

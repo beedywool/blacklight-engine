@@ -1,0 +1,5 @@
+{
+  "name": "cloud-save",
+  "package": "@blacklight/module-cloud-save",
+  "official": true
+}

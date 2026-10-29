@@ -1,0 +1,15 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "types": ["node"],
+    "allowImportingTsExtensions": true,
+    "noEmit": true,
+    "erasableSyntaxOnly": true,
+    "paths": {
+      "@blacklight/module-accounts-oidc/testing": [
+        "../../packages/modules/accounts-oidc/src/testing.ts"
+      ]
+    }
+  },
+  "include": ["src", "test", "vitest.config.ts"]
+}

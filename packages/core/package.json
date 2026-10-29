@@ -21,6 +21,11 @@
       "import": "./dist/debug.js",
       "default": "./dist/debug.js"
     },
+    "./schema": {
+      "types": "./dist/schema.d.ts",
+      "import": "./dist/schema.js",
+      "default": "./dist/schema.js"
+    },
     "./schema/anim.schema.json": "./schema/anim.schema.json"
   },
   "files": [

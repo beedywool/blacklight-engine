@@ -11,6 +11,7 @@ import vue from '@vitejs/plugin-vue';
 import { searchForWorkspaceRoot, type InlineConfig, type Plugin, type ViteDevServer } from 'vite';
 import { buildAtlases, pngSize } from './atlas';
 import { hardening } from './security';
+import { blacklightModules, gameModulesTypes } from './modules';
 import { loadGameConfig, scanAssets, typesFile } from './project';
 
 /** Import aliases available in every game (SPEC §6.1). */
@@ -59,6 +60,7 @@ import { createGame, objectsFromGlob, scenesFromGlob } from '@blacklight/core';$
   withUi ? "\nimport { ui } from '@blacklight/ui';\nimport '@blacklight/ui/style.css';" : ''
 }
 import assets from '${ASSETS_ID}';
+import modules from 'virtual:blacklight/modules';
 import config from '../game.config';
 
 const mount = document.getElementById('game')!;
@@ -79,7 +81,7 @@ try {
   const plugins = [${
     withUi ? "ui({ screens: import.meta.glob(['../ui/**/*.vue', '../scenes/*/ui/**/*.vue']) })" : ''
   }];
-  const game = await createGame(config, { scenes, objects, assets, mount, plugins, release: import.meta.env.PROD });
+  const game = await createGame(config, { scenes, objects, assets, mount, plugins, modules, release: import.meta.env.PROD });
   if (import.meta.env.DEV) {
     // Console and test access in dev: the running game and the engine module itself.
     Object.assign(window, { blacklight: game, blacklightCore: await import('@blacklight/core') });
@@ -139,7 +141,10 @@ export async function generateTypes(root: string): Promise<void> {
   const config = await loadGameConfig(root);
   const actions = Object.keys(config.input?.actions ?? {});
   mkdirSync(join(root, GENERATED_DIR), { recursive: true });
-  writeIfChanged(join(root, GENERATED_DIR, 'types.d.ts'), typesFile(root, actions));
+  writeIfChanged(
+    join(root, GENERATED_DIR, 'types.d.ts'),
+    typesFile(root, actions) + gameModulesTypes(root, config.modules),
+  );
 }
 
 /**
@@ -283,10 +288,10 @@ export function createViteConfig(gameRoot: string, options: ViteConfigOptions = 
     publicDir: join(root, 'public'),
     envDir: root,
     cacheDir: join(root, 'node_modules', '.vite'),
-    plugins: [blacklight({ root }), vue(), hardening({ root })],
+    plugins: [blacklight({ root }), blacklightModules({ root }), vue(), hardening({ root })],
     resolve: {
       // One copy of each, even when engine packages are linked from a checkout.
-      dedupe: ['vue', 'pixi.js', 'motion', '@blacklight/core', '@blacklight/ui'],
+      dedupe: ['vue', 'pixi.js', 'motion', 'three', '@blacklight/core', '@blacklight/ui'],
     },
     // The UI package references its glyph files with `new URL(..., import.meta.url)`, which
     // pre-bundling would break.

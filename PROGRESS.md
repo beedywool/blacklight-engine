@@ -8,10 +8,10 @@ One line per `SPEC.md` requirement: `- [x] ID · where · test`. A requirement i
 - [x] Phase 1 Runtime · animated character (`.anim.json`) moved by a behavior, collides, plays audio; screenshot matches; release build packs atlases and strips debug · e2e: `e2e/runtime.spec.ts` (local Linux)
 - [x] Phase 2 UI core · Persona-style pause menu (templates/persona-menu) fully navigable by a simulated gamepad; screenshots at 1920×1080 and phone; release build loads screens and Kenney glyphs · e2e: `e2e/ui.spec.ts` (local Linux)
 - [ ] Phase 3a UI complete
-- [ ] Phase 3b Light 3D
+- [x] Phase 3b Light 3D · glTF model between two 2D layers and inside a menu (RTT with filter + mask, Vue `<ModelView>`), Draco + KTX2 offline from the build, benchmark frame budget (templates/2d-with-3d) · e2e: `e2e/three.spec.ts` (local Linux; fps asserted on a hardware GPU, CPU budget everywhere)
 - [ ] Phase 3c Desktop
 - [ ] Phase 3d Mobile
-- [ ] Phase 3e Modules & services
+- [x] Phase 3e Modules & services · `blacklight add sqlite` (and accounts-oidc, achievements) in a fresh project through a static registry index, typed `game.modules`, sql.js persisted across reloads, OIDC login against a mock provider with account linking on the reference server, offline queues replayed when the network returns, release build · e2e: `e2e/modules.spec.ts` (local Linux)
 - [ ] Phase 3f Networking
 - [ ] Phase 3g Tooling
 - [ ] Phase 4 Docs & templates
@@ -42,13 +42,13 @@ One line per `SPEC.md` requirement: `- [x] ID · where · test`. A requirement i
 
 ## Light 3D (3D)
 
-- [ ] 3D-01 `@blacklight/three`, loaded only by scenes that use it.
-- [ ] 3D-02 Three.js shares Pixi's WebGL context; GL state is reset…
-- [ ] 3D-03 `Model3D` is placed like a sprite
-- [ ] 3D-04 Render-to-texture mode
-- [ ] 3D-05 glTF/GLB loading (optional Draco and KTX2), skeletal…
-- [ ] 3D-06 3D assets go through the same per-scene preload and work…
-- [ ] 3D-07 Budget
+- [x] 3D-01 · packages/three (registers the glTF loader on import; lands in scene chunks only) · test: e2e three.spec.ts (no Three.js script or .glb at the 2D title, dev server and release build)
+- [x] 3D-02 · packages/three/src/context.ts (Three renderer on Pixi's context, draws into Pixi's bound framebuffer, `resetState()` on both, rebinds Pixi's target) · test: context.spec.ts, e2e three.spec.ts (one Pixi reset per model per frame, no GL error, 2D drawn over the model)
+- [x] 3D-03 · packages/three/src/model3d.ts, projection.ts (Pixi `RenderContainer` in the scene graph; 2D transform, layer, zIndex, hitbox, snapshots) · test: projection.spec.ts, model3d.spec.ts, e2e three.spec.ts (hero between the back layer and the front pillar, screenshot)
+- [x] 3D-04 · model3d.ts `static renderToTexture`, preview.ts `ModelPreview`, ui.ts `<ModelView>` (@blacklight/three/ui) · test: model3d.spec.ts, e2e three.spec.ts (sepia filter + round mask on the portrait; model turning in the pause menu while paused)
+- [x] 3D-05 · loader.ts (GLB/glTF, Draco and KTX2 decoders loaded on demand), animator.ts (`play`/`queue`/`onEnd`/`onFrame`, fallback, fixed step), view.ts (`static layers3d`: orthographic or perspective camera, ambient + sun per layer) · test: loader.spec.ts, animator.spec.ts, model3d.spec.ts, e2e three.spec.ts (Draco guard, KTX2 crate)
+- [x] 3D-06 · core `AssetStore.registerLoader`, `GameObject.requiredAssets()`; decoders emitted by the game build from `three` · test: systems.spec.ts, model3d.spec.ts, e2e three.spec.ts (release build with every non-local request blocked; decoder .wasm files in dist)
+- [x] 3D-07 · templates/2d-with-3d/scenes/bench (two animated 10 048-triangle models; fps and main-thread time) · test: e2e three.spec.ts (A54-sized viewport, CPU ×4: < 8.3 ms mean / 16.7 ms p95 per frame; 60 fps asserted on hardware GPUs, 60.0 measured on a Radeon RX 6650 XT); real phones in MANUAL_TESTS.md
 
 ## UI (UI)
 
@@ -74,12 +74,12 @@ One line per `SPEC.md` requirement: `- [x] ID · where · test`. A requirement i
 
 ## Modules (MOD)
 
-- [ ] MOD-01 defineModule (config schema, typed game.modules, dispose)
-- [ ] MOD-02 Context
-- [ ] MOD-03 Native part
-- [ ] MOD-04 node_modules
-- [ ] MOD-05 Registry
-- [ ] MOD-06 Official modules
+- [x] MOD-01 defineModule · packages/core/src/modules (define.ts, host.ts, schema.ts), `modules` in config.ts, game.modules / game.destroy, cli/src/modules.ts (virtual module + Register types) · test: core modules.spec.ts, cli modules.spec.ts, e2e modules.spec.ts (tsc on game.modules)
+- [x] MOD-02 Context · packages/core/src/modules (config, events, ModuleSaves hook, network + OfflineQueue, logger, storage, platform) · test: core modules.spec.ts, http.spec.ts, cloud-save.spec.ts, e2e modules.spec.ts (offline replay)
+- [ ] MOD-03 Native part — partial · defineNative/fn in packages/native/src/define-native.ts (allowlist, argument schemas, inferred types via nativeModule) and the sqlite native part (better-sqlite3) · test: native/test/define-native.spec.ts, sqlite.spec.ts (through a simulated IPC); registration in the Electron main process (3c) and the Capacitor plugin side (3d) connect at merge (DECISIONS "define-native contract")
+- [x] MOD-04 node_modules · packages/cli/src/modules.ts (Node built-ins and native addons refused in game code, module deps pre-bundled) · test: cli modules.spec.ts
+- [x] MOD-05 Registry · packages/registry (manifest, validator, static API, index template with CI workflow), cli/src/commands/registry.ts (add, search, publish) · test: registry.spec.ts, cli registry.spec.ts, e2e modules.spec.ts
+- [x] MOD-06 Official modules · packages/modules/{http,sqlite,cloud-save,accounts-oidc,achievements,telemetry}; physics in packages/physics; discord from 3c · test: http.spec.ts, sqlite.spec.ts, cloud-save.spec.ts, accounts.spec.ts, achievements.spec.ts, telemetry.spec.ts, e2e modules.spec.ts
 
 ## Platforms (PF)
 
@@ -126,11 +126,11 @@ One line per `SPEC.md` requirement: `- [x] ID · where · test`. A requirement i
 
 ## Platform services (SVC)
 
-- [ ] SVC-01 Accounts
-- [ ] SVC-02 Achievements
+- [x] SVC-01 Accounts · packages/modules/accounts-oidc (PKCE S256, system browser, web redirect, custom-scheme deep link, refresh token in secure storage, BlackLight SSO preset, server linking) · test: accounts.spec.ts (desktop flow with simulated deep link), e2e modules.spec.ts (web flow against the mock provider); real SSO and devices in MANUAL_TESTS.md
+- [x] SVC-02 Achievements · packages/modules/achievements (Steam, Game Center, Play Games through platform.invoke, reference server, offline queue) · test: achievements.spec.ts, e2e modules.spec.ts; real stores in MANUAL_TESTS.md
 - [ ] SVC-03 Discord Rich Presence on desktop (presence, party…
-- [ ] SVC-04 Telemetry and crash reports
-- [ ] SVC-05 Reference server (`servers/`, Docker)
+- [x] SVC-04 Telemetry and crash reports · packages/modules/telemetry (opt-in, consent helper, Sentry envelopes, scrubbing, offline queue) · test: telemetry.spec.ts; real backend in MANUAL_TESTS.md
+- [ ] SVC-05 Reference server — partial · servers/reference (cloud saves, achievements/leaderboards, OIDC account linking, Docker image checked) · test: servers/reference/test/*.spec.ts, cloud-save.spec.ts, achievements.spec.ts, e2e modules.spec.ts; the relay is servers/relay (3f), one compose file joins them at merge
 
 ## Tooling (TL)
 

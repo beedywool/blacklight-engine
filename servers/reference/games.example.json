@@ -1,0 +1,10 @@
+{
+  "com.example.mygame": {
+    "achievements": ["first-win", "collector", "speedrunner"],
+    "leaderboards": {
+      "high-score": { "order": "desc" },
+      "best-time": { "order": "asc" }
+    },
+    "saveMaxBytes": 1048576
+  }
+}

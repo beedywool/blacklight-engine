@@ -3,12 +3,14 @@ import { cac } from 'cac';
 import pkg from '../package.json' with { type: 'json' };
 import { registerCoreCommands } from './commands/core';
 import { registerDesktopCommands } from './commands/desktop';
+import { registerRegistryCommands } from './commands/registry';
 
 const cli = cac('blacklight');
 
 // Each area registers its commands from its own file in commands/.
 registerCoreCommands(cli);
 registerDesktopCommands(cli);
+registerRegistryCommands(cli);
 
 cli.help();
 cli.version(pkg.version);

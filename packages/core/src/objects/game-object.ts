@@ -63,6 +63,13 @@ export class GameObject extends PixiContainer {
   static tags: string[] | undefined;
   /** Extra files to preload with the object, relative to its folder. */
   static assets: string[] | undefined;
+  /**
+   * Files an engine class needs besides `static assets` (the model of a `Model3D`), relative to
+   * the object's folder. Preloaded with the scene like `static assets`.
+   */
+  static requiredAssets(): string[] {
+    return [];
+  }
   /** Fields saved in snapshots; by default every data field the class declares. */
   static serialize: string[] | undefined;
   /** Registry name (PascalCase folder name), set when the object is discovered. */
