@@ -285,7 +285,7 @@ export function createViteConfig(gameRoot: string, options: ViteConfigOptions = 
     plugins: [blacklight({ root }), vue()],
     resolve: {
       // One copy of each, even when engine packages are linked from a checkout.
-      dedupe: ['vue', 'pixi.js', 'motion', '@blacklight/core', '@blacklight/ui'],
+      dedupe: ['vue', 'pixi.js', 'motion', 'three', '@blacklight/core', '@blacklight/ui'],
     },
     // The UI package references its glyph files with `new URL(..., import.meta.url)`, which
     // pre-bundling would break.
