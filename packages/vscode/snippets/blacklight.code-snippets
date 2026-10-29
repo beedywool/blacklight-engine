@@ -1,0 +1,82 @@
+{
+  "Blacklight scene": {
+    "prefix": "bl-scene",
+    "description": "A scene class (scenes/<name>/<name>.scene.ts)",
+    "body": [
+      "import { Scene } from '@blacklight/core';",
+      "",
+      "export default class ${1:${TM_FILENAME_BASE/(^|-)(\\w)|\\.scene$/${2:/upcase}/g}} extends Scene {",
+      "  override create() {",
+      "    $0",
+      "  }",
+      "",
+      "  override update() {}",
+      "}",
+    ],
+  },
+  "Blacklight object": {
+    "prefix": "bl-object",
+    "description": "An animated sprite object (objects/<name>/<name>.object.ts)",
+    "body": [
+      "import { Sprite, behaviors } from '@blacklight/core';",
+      "import anims from './${TM_FILENAME_BASE/\\.object$//}.anim.json';",
+      "",
+      "export default class ${1:${TM_FILENAME_BASE/(^|-)(\\w)|\\.object$/${2:/upcase}/g}} extends Sprite {",
+      "  static override animations = anims;",
+      "  static override behaviors = [behaviors.${2:eightDirections}({ ${3:speed: 240} })];",
+      "",
+      "  override update() {",
+      "    this.play(this.velocity.length > 0 ? '${4:run}' : '${5:idle}');",
+      "  }",
+      "}",
+    ],
+  },
+  "Blacklight spawn": {
+    "prefix": "bl-spawn",
+    "description": "Spawn an object",
+    "body": ["this.spawn('${1:Name}', { x: ${2:0}, y: ${3:0} });"],
+  },
+  "Blacklight input": {
+    "prefix": "bl-pressed",
+    "description": "React to an input action",
+    "body": ["if (this.input.pressed('${1:confirm}')) {", "  $0", "}"],
+  },
+  "Blacklight collide": {
+    "prefix": "bl-collide",
+    "description": "Collision handler of an object",
+    "body": [
+      "override onCollide(other: GameObject) {",
+      "  if (other.is('${1:Coin}')) {",
+      "    $0",
+      "  }",
+      "}",
+    ],
+  },
+  "Blacklight timer": {
+    "prefix": "bl-after",
+    "description": "Run code after a delay on the game clock",
+    "body": ["this.after(${1:1000}, () => {", "  $0", "});"],
+  },
+  "Blacklight tween": {
+    "prefix": "bl-tween",
+    "description": "Tween properties on the game clock",
+    "body": [
+      "this.scene.tween(this, { ${1:alpha}: ${2:0} }, { duration: ${3:300}, ease: '${4:easeOut}' });",
+    ],
+  },
+  "Blacklight goto": {
+    "prefix": "bl-goto",
+    "description": "Switch to another scene",
+    "body": ["this.goto('${1:scene}', ${2:undefined}, { transition: 'fade' });"],
+  },
+  "Blacklight layout": {
+    "prefix": "bl-layout",
+    "description": "Load the scene editor's layout",
+    "body": ["this.load(layout);"],
+  },
+  "Blacklight screen": {
+    "prefix": "bl-screen",
+    "description": "Open a UI screen",
+    "body": ["this.ui.push('${1:PauseMenu}');"],
+  },
+}

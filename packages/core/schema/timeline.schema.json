@@ -1,0 +1,64 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Blacklight UI timeline",
+  "description": "A UI timeline as data, edited by the timeline editor and played with applyTimeline(useTimeline(), json).",
+  "type": "object",
+  "required": ["steps"],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": { "type": "string" },
+    "steps": {
+      "type": "array",
+      "description": "Steps in order; each starts after the previous one unless `at` says otherwise.",
+      "items": {
+        "oneOf": [
+          { "$ref": "#/$defs/to" },
+          { "$ref": "#/$defs/label" },
+          { "$ref": "#/$defs/sound" }
+        ]
+      }
+    }
+  },
+  "$defs": {
+    "at": {
+      "description": "Start in seconds: a number, \"+0.1\" / \"-0.1\" (after / before the end of the previous step), \"<\" (with the previous step), a label, or \"label+0.2\".",
+      "oneOf": [{ "type": "number", "minimum": 0 }, { "type": "string" }]
+    },
+    "to": {
+      "type": "object",
+      "required": ["to", "keyframes"],
+      "additionalProperties": false,
+      "properties": {
+        "to": { "type": "string", "description": "CSS selector of the animated elements." },
+        "keyframes": {
+          "type": "object",
+          "description": "Motion keyframes: property → value or [from, to]."
+        },
+        "at": { "$ref": "#/$defs/at" },
+        "duration": { "type": "number", "minimum": 0, "default": 0.3 },
+        "ease": {
+          "description": "Motion easing name or cubic bezier.",
+          "oneOf": [
+            { "type": "string" },
+            { "type": "array", "items": { "type": "number" }, "minItems": 4, "maxItems": 4 }
+          ]
+        }
+      }
+    },
+    "label": {
+      "type": "object",
+      "required": ["label"],
+      "additionalProperties": false,
+      "properties": { "label": { "type": "string" }, "at": { "$ref": "#/$defs/at" } }
+    },
+    "sound": {
+      "type": "object",
+      "required": ["sound"],
+      "additionalProperties": false,
+      "properties": {
+        "sound": { "type": "string", "description": "Asset key of a UI sound." },
+        "at": { "$ref": "#/$defs/at" }
+      }
+    }
+  }
+}

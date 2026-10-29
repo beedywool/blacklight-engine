@@ -13,7 +13,7 @@ One line per `SPEC.md` requirement: `- [x] ID · where · test`. A requirement i
 - [ ] Phase 3d Mobile
 - [x] Phase 3e Modules & services · `blacklight add sqlite` (and accounts-oidc, achievements) in a fresh project through a static registry index, typed `game.modules`, sql.js persisted across reloads, OIDC login against a mock provider with account linking on the reference server, offline queues replayed when the network returns, release build · e2e: `e2e/modules.spec.ts` (local Linux)
 - [x] Phase 3f Networking · 4 simulated players, 150 ms latency (+20 ms jitter), 2 % loss, 10 min of game time on the Push-Push online scene: no desync; V8 (Node, Chromium) and JavaScriptCore (WebKit; Bun locally) give the same checksums; two browsers play a live match through the relay · test: `packages/net/test/gate.spec.ts`, e2e: `e2e/net.spec.ts` (local Linux: WebKit skipped for missing system libraries, JavaScriptCore checked through Bun; CI installs WebKit)
-- [ ] Phase 3g Tooling
+- [x] Phase 3g Tooling · VS Code extension integration tests (@vscode/test-electron) for every TL-03 feature; hot reload keeps state · tests: `packages/vscode/test/integration/suite.ts` (12 tests, `pnpm --filter blacklight-vscode test:integration`, local Linux under Xvfb with VS Code 1.139), e2e `e2e/tooling.spec.ts`
 - [ ] Phase 4 Docs & templates
 - [ ] Phase 5 Release
 
@@ -134,9 +134,9 @@ One line per `SPEC.md` requirement: `- [x] ID · where · test`. A requirement i
 
 ## Tooling (TL)
 
-- [ ] TL-01 CLI — partial · create, dev, build --target web, preview, types (packages/cli); other targets, run, doctor, add/search/publish, lint, sign to do
-- [ ] TL-02 Hot reload
-- [ ] TL-03 VS Code extension (Marketplace + Open VSX), complete in…
+- [ ] TL-01 CLI — partial · create, dev, build --target web, preview, types, doctor, lint, run (web + `runners` registry) in packages/cli · test: cli tools.spec.ts (doctor per target, lint rules, run web/runner/missing runner), project.spec.ts, vite.spec.ts; add/search/publish done by 3e (commands/registry.ts); build targets win/mac/linux/steam/android/ios + their runners (3c/3d) and sign (3c) come from those areas
+- [x] TL-02 Hot reload · cli/src/tooling.ts (HMR code for scene/object modules), core/src/debug/hot.ts (scene rebuilt + snapshot restored, objects patched in place), Vue HMR via @vitejs/plugin-vue · test: core tooling.spec.ts, cli tools.spec.ts, e2e tooling.spec.ts "hot reload keeps the state of scenes, objects and screens"
+- [x] TL-03 VS Code extension · packages/vscode (new scene/object, snippets + completion, sprite-sheet slicer, `.anim.json` editor + JSON Schemas, scene editor + `scene.load(layout)`, UI preview with focus states, UI timeline editor + `applyTimeline`, `game.config.ts` form, asset browser, debugging: launch config, Live Objects, debug channel) · test: vscode integration suite.ts (one test per feature), vscode unit core.spec.ts + webviews.spec.ts, core tooling.spec.ts, ui timeline-json.spec.ts, e2e tooling.spec.ts "the debug channel…"; Marketplace/Open VSX publishing is a dry run (`publish:dry-run`), real publish in MANUAL_TESTS.md
 
 ## Documentation and templates (DOC)
 

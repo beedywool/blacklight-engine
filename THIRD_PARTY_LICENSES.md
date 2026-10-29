@@ -67,3 +67,13 @@ Every dependency that ships inside a game or a published package, and every asse
 | ws      | 8.22.0  | MIT     | @blacklight/relay (bundled into the image's `relay.cjs`) |
 
 `@blacklight/net` and `eslint-plugin-blacklight` have no runtime dependencies.
+
+## Tooling added by phase 3g (CLI and VS Code extension)
+
+| Package                  | Version | License    | Used by                                                              |
+| ------------------------ | ------- | ---------- | -------------------------------------------------------------------- |
+| magic-string             | 1.4.5   | MIT        | @blacklight/cli (hot reload transform, dev only)                     |
+| typescript               | 6.0.3   | Apache-2.0 | VS Code extension (bundled: `game.config.ts` form, scene code edits) |
+| @blacklight/core (parts) | —       | MIT        | VS Code extension (bundled: animation and sheet resolution)          |
+
+Development tools of the extension, not shipped: @vscode/test-electron 3.1.0 (MIT), @vscode/vsce 4.0.0 (MIT), ovsx 1.3.0 (EPL-2.0, publishing CLI only), @types/vscode 1.125.0 (MIT), happy-dom 21.0.4 (MIT).
