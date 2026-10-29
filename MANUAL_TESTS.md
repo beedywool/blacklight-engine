@@ -178,6 +178,21 @@ Build first: `pnpm build`, then install the extension: `pnpm --filter blacklight
 3. Marketplace: `pnpm --filter blacklight-vscode exec vsce publish --no-dependencies -p <Azure DevOps PAT with Marketplace (Manage) scope>`. Expected: the extension page shows the README, icon and categories; installing it in a clean VS Code works offline.
 4. Open VSX: `pnpm --filter blacklight-vscode exec ovsx create-namespace <publisher> -p <token>` once, then `pnpm --filter blacklight-vscode exec ovsx publish dist/blacklight.vsix -p <token>`. Expected: the extension appears on open-vsx.org; VSCodium and Cursor install it.
 
+## UI complete: visual-novel template (phase 3a)
+
+Run `pnpm --filter blacklight-template-visual-novel dev` and open the printed URL (`--host` for phones).
+
+1. Safari on macOS and on an iPhone: NEW GAME, then the cutscene. Expected: the MP4 plays (`document.querySelector('.bl-cutscene video').currentSrc` ends in `.mp4`), with sound after the first tap, subtitles at the bottom; holding the screen or Enter skips it.
+2. Chrome on Android: the cutscene plays the WebM; the red gradient fades in from black during the first second (alpha channel).
+3. Safari: the title logo (NEON RAIN) is visible. Expected: either with the red/blue glitch, or (WebKit refuses foreignObject drawing into WebGL) plain, without errors; `data-bl-pixi-render` is `rendered` or `fallback`.
+4. Speakers on: the title music loops, the first Mira line plays a short voice murmur, the rooftop line plays a chime, typing blips are audible.
+5. Windows (Microsoft IME) and macOS (Kotoeri): NEW GAME, type a Japanese name with the system IME (あおい → 葵). Expected: the composition shows underlined in the field, the name is committed once, the story says 葵.
+6. SETTINGS › LANGUAGE › 日本語 then العربية. Expected: Japanese lines wrap between words, never before 。 or 、; Arabic letters are joined (no isolated forms), the text and the dialogue name plate are on the right, menus read right to left.
+7. SETTINGS › ACCESSIBILITY: text size 200 % (dialogue and backlog text double), high contrast (dark outline on text, black dialogue box), each color filter (the red UI and lantern shift hue; grayscale removes color), reduced motion ON (screens and covers appear without animation, letters stop waving).
+8. A gamepad (Xbox and PlayStation): navigate the title menu, the dialogue (A advances, the D-pad reaches AUTO/SKIP/LOG…), the choices, the backlog, SETTINGS › CONTROLS rebinding (press a pad button). Expected: every screen is usable without keyboard or mouse.
+9. VIDEO › FULL SCREEN toggles the browser's full screen and back.
+10. In dev, press F9 and point at menu items and the dialogue box. Expected: the inspector names the component (MenuList, DialogueBox), its props and state, and the focused element.
+
 ## Desktop app (phase 3c): Windows 10+, macOS 12+, Ubuntu 22.04+
 
 Build the fixture on each OS: `pnpm build && pnpm --dir e2e/fixtures/desktop exec blacklight build --target <win|mac|linux>`, install the package from `e2e/fixtures/desktop/release/<os>/`.

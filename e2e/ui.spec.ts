@@ -47,28 +47,28 @@ async function fakeGamepad(page: Page): Promise<void> {
 }
 
 /**
- * Presses a pad button for exactly the steps needed to read it, then releases it: holding it for
- * a fixed real time would trigger key repeat when the machine is busy and frames stall.
+ * Presses a pad button for exactly one game step, then releases it. Done inside the page: on a
+ * loaded machine a fixed wait between two evaluations can miss every poll (lost press) or span
+ * several slow frames (key repeat).
  */
 async function press(page: Page, button: number): Promise<void> {
   await page.evaluate(async (b) => {
     const pad = (window as unknown as { __pad: number[] }).__pad;
     const game = window.blacklight;
-    const before = game.time.step;
+    const step = game.time.step;
     pad[b] = 1;
-    // Wait for one step (the UI reads input on steps); a paused game reads it every frame.
-    const deadline = performance.now() + 2000;
-    while (game.time.step === before && !game.paused && performance.now() < deadline) {
-      await new Promise((r) => requestAnimationFrame(r));
-    }
-    if (game.paused) await new Promise((r) => requestAnimationFrame(r));
+    await new Promise<void>((resolve) => {
+      let frames = 0;
+      // Paused games poll on frames instead of steps: two frames are enough there.
+      const wait = () =>
+        game.time.step > step || (game.paused && ++frames > 2)
+          ? resolve()
+          : requestAnimationFrame(wait);
+      requestAnimationFrame(wait);
+    });
     pad[b] = 0;
-    const released = game.time.step;
-    while (game.time.step === released && !game.paused && performance.now() < deadline) {
-      await new Promise((r) => requestAnimationFrame(r));
-    }
   }, button);
-  await page.waitForTimeout(30);
+  await page.waitForTimeout(100);
 }
 
 const focused = (page: Page) =>

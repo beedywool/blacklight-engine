@@ -1,5 +1,6 @@
 import { animate } from 'motion';
 import type { Game } from '@blacklight/core';
+import { prefersReducedMotion } from './a11y';
 
 type Target = Element | Element[] | string | { value: Element | null | undefined };
 type Keyframes = Record<string, unknown>;
@@ -188,10 +189,7 @@ export class Timeline {
       while (pending.length > 0 && pending[0]!.time <= controls.time + 1e-6) pending.shift()!.run();
     };
     const finished = new Promise<void>((resolve) => (this.done = resolve));
-    if (
-      typeof matchMedia !== 'undefined' &&
-      matchMedia('(prefers-reduced-motion: reduce)').matches
-    ) {
+    if (prefersReducedMotion()) {
       // Reduced motion: show the end state at once, still running every cue in order.
       controls.complete();
       for (const cue of pending.splice(0)) if (!cue.sound) cue.run();

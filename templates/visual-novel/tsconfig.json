@@ -1,0 +1,32 @@
+{
+  "compilerOptions": {
+    "target": "ES2023",
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "strict": true,
+    "noEmit": true,
+    "isolatedModules": true,
+    "verbatimModuleSyntax": true,
+    "resolveJsonModule": true,
+    "skipLibCheck": true,
+    "useDefineForClassFields": true,
+    "jsx": "preserve",
+    "paths": {
+      "@objects/*": ["./objects/*"],
+      "@ui/*": ["./ui/*"],
+      "@modules/*": ["./modules/*"],
+      "@assets/*": ["./assets/*"],
+      "@stories/*": ["./stories/*"]
+    }
+  },
+  "include": [
+    "game.config.ts",
+    "env.d.ts",
+    "scenes",
+    "objects",
+    "ui",
+    "modules",
+    ".blacklight/types.d.ts"
+  ]
+}

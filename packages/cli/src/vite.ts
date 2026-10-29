@@ -12,6 +12,8 @@ import { searchForWorkspaceRoot, type InlineConfig, type Plugin, type ViteDevSer
 import { buildAtlases, pngSize } from './atlas';
 import { hardening } from './security';
 import { blacklightModules, gameModulesTypes } from './modules';
+import { fontSubsetting } from './fonts';
+import { ink } from './ink';
 import { loadGameConfig, scanAssets, typesFile } from './project';
 import { blacklightTooling } from './tooling';
 
@@ -90,7 +92,11 @@ try {
     Object.assign(window, { blacklight: game, blacklightCore: await import('@blacklight/core') });
     const debug = await import('@blacklight/core/debug');
     debug.installDebug(game);
-    debug.installHotReload(game);
+    debug.installHotReload(game);${
+      withUi
+        ? "\n    const { installInspector } = await import('@blacklight/ui/inspector');\n    installInspector(game);"
+        : ''
+    }
     if (import.meta.hot) {
       const channel = debug.installDebugChannel(game, import.meta.hot);${
         withUi
@@ -304,6 +310,8 @@ export function createViteConfig(gameRoot: string, options: ViteConfigOptions = 
       blacklightModules({ root }),
       blacklightTooling({ root, generated: GENERATED_DIR }),
       vue(),
+      ink(),
+      fontSubsetting({ root }),
       hardening({ root }),
     ],
     resolve: {

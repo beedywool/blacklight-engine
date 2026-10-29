@@ -92,14 +92,23 @@ export interface GameConfig {
   modules?: Partial<ModulesConfig>;
   /** Android and iOS options (`@blacklight/mobile`). */
   mobile?: MobileConfig;
+  /**
+   * Languages (`locales/<lang>.json`, `@blacklight/ui`). `default` is used when the player's
+   * language has no file; `fallback` fills keys missing from the current language.
+   * @defaultValue `{ default: 'en', fallback: 'en' }`
+   */
+  locales?: { default?: string; fallback?: string };
 }
 
 export interface ResolvedGameConfig
   extends
     Required<
-      Omit<GameConfig, 'resolution' | 'input' | 'seed' | 'ui' | 'modules' | 'mobile' | DesktopKeys>
+      Omit<
+        GameConfig,
+        'resolution' | 'input' | 'seed' | 'ui' | 'modules' | 'mobile' | 'locales' | DesktopKeys
+      >
     >,
-    Pick<GameConfig, 'input' | 'seed' | 'ui' | 'modules' | 'mobile' | DesktopKeys> {
+    Pick<GameConfig, 'input' | 'seed' | 'ui' | 'modules' | 'mobile' | 'locales' | DesktopKeys> {
   resolution: Required<ResolutionConfig>;
 }
 
@@ -207,6 +216,13 @@ export function resolveConfig(input: unknown): ResolvedGameConfig {
   ) {
     issues.push('`modules` must map module names to their options, e.g. `modules: { sqlite: {} }`');
   }
+  if (
+    input.locales !== undefined &&
+    (!isRecord(input.locales) ||
+      Object.values(input.locales).some((lang) => typeof lang !== 'string'))
+  ) {
+    issues.push('`locales` must be an object of language codes, e.g. `locales: { default: "en" }`');
+  }
   if (seed !== undefined && typeof seed !== 'string' && typeof seed !== 'number') {
     issues.push('`seed` must be a string or a number');
   }
@@ -267,5 +283,6 @@ export function resolveConfig(input: unknown): ResolvedGameConfig {
     discord: input.discord as DiscordConfig | undefined,
     modules: input.modules as GameConfig['modules'],
     mobile: input.mobile as MobileConfig | undefined,
+    locales: input.locales as GameConfig['locales'],
   };
 }
