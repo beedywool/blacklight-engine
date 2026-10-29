@@ -309,6 +309,54 @@ export class SaveManager {
     });
   }
 
+  // ModuleSaves (modules/define.ts): what modules such as cloud-save use. Bytes are the decoded
+  // save (data and metadata) as UTF-8 JSON, readable by any install; `importSlot` encrypts them
+  // again with this install's key.
+
+  /** Valid slots and when each was written (for modules; screens use {@link list}). */
+  async slots(): Promise<{ slot: string; updatedAt: number }[]> {
+    return (await this.list())
+      .filter((info) => info.status === 'ok' && info.meta)
+      .map((info) => ({ slot: info.slot, updatedAt: info.meta!.date }));
+  }
+
+  /** A slot as portable bytes, `undefined` when it is empty or unreadable. */
+  async exportSlot(slot: string): Promise<Uint8Array | undefined> {
+    const key = this.slotKey(slot);
+    const payload = await this.serial(() => this.readSlot(key, false)).catch(() => undefined);
+    return payload ? new TextEncoder().encode(JSON.stringify(payload)) : undefined;
+  }
+
+  /** Replaces a slot with bytes from {@link exportSlot} (another device, the cloud). */
+  importSlot(slot: string, data: Uint8Array): Promise<void> {
+    const key = this.slotKey(slot);
+    return this.serial(async () => {
+      let payload: SavePayload;
+      try {
+        payload = JSON.parse(new TextDecoder().decode(data)) as SavePayload;
+      } catch {
+        throw new SaveError('corrupted', 'The imported save is not valid JSON.', key);
+      }
+      if (
+        typeof payload?.version !== 'number' ||
+        typeof payload.meta !== 'object' ||
+        !payload.data
+      ) {
+        throw new SaveError(
+          'corrupted',
+          'The imported save does not have the expected fields.',
+          key,
+        );
+      }
+      await this.writeSlot(key, payload);
+    });
+  }
+
+  /** Calls `listener` after each successful write of a slot. */
+  onSaved(listener: (slot: string) => void): Unsubscribe {
+    return this.events.on('saved', ({ slot }) => listener(slot));
+  }
+
   /** Exports with {@link export} and hands the file to the player (browser download, save dialog on desktop). */
   async downloadExport(
     password: string,

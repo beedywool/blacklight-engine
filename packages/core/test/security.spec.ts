@@ -96,6 +96,8 @@ describe('security settings', () => {
     expect(csp).toContain("script-src 'self' 'wasm-unsafe-eval'");
     expect(csp).not.toMatch(/script-src[^;]*'unsafe-(eval|inline)'/);
     expect(csp).toContain("object-src 'none'");
+    // 3D decoders (Draco, KTX2) and Pixi's image loading run WebAssembly in blob: workers.
+    expect(csp).toContain("worker-src 'self' blob:");
     expect(csp).toContain('connect-src');
     expect(csp).toContain('wss://relay.example.com');
   });

@@ -269,3 +269,25 @@ describe('cloud saves hook (SV-06)', () => {
     expect(await a.load(1)).toEqual({ gold: 3 });
   });
 });
+
+describe('ModuleSaves for modules (cloud-save)', () => {
+  it('exports portable bytes, imports them on another install and reports saves', async () => {
+    const a = setup(true).manager;
+    const seen: string[] = [];
+    const off = a.onSaved((slot) => seen.push(slot));
+    a.data = { gold: 7 };
+    await a.save(2);
+    off();
+    expect(seen).toEqual(['2']);
+    expect((await a.slots()).map((s) => s.slot)).toEqual(['2']);
+    const bytes = (await a.exportSlot('2'))!;
+    expect(await a.exportSlot('3')).toBeUndefined();
+
+    const b = setup(true).manager;
+    await b.importSlot('2', bytes);
+    expect(await b.load(2)).toEqual({ gold: 7 });
+    await expect(b.importSlot('1', new TextEncoder().encode('nope'))).rejects.toMatchObject({
+      code: 'corrupted',
+    });
+  });
+});
