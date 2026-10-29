@@ -46,12 +46,29 @@ async function fakeGamepad(page: Page): Promise<void> {
   });
 }
 
-/** Presses and releases a pad button; held long enough for a step, short enough not to repeat. */
+/**
+ * Presses a pad button for exactly one game step, then releases it. Done inside the page: on a
+ * loaded machine a fixed wait between two evaluations can miss every poll (lost press) or span
+ * several slow frames (key repeat).
+ */
 async function press(page: Page, button: number): Promise<void> {
-  await page.evaluate((b) => ((window as unknown as { __pad: number[] }).__pad[b] = 1), button);
-  await page.waitForTimeout(90);
-  await page.evaluate((b) => ((window as unknown as { __pad: number[] }).__pad[b] = 0), button);
-  await page.waitForTimeout(120);
+  await page.evaluate(async (b) => {
+    const pad = (window as unknown as { __pad: number[] }).__pad;
+    const game = window.blacklight;
+    const step = game.time.step;
+    pad[b] = 1;
+    await new Promise<void>((resolve) => {
+      let frames = 0;
+      // Paused games poll on frames instead of steps: two frames are enough there.
+      const wait = () =>
+        game.time.step > step || (game.paused && ++frames > 2)
+          ? resolve()
+          : requestAnimationFrame(wait);
+      requestAnimationFrame(wait);
+    });
+    pad[b] = 0;
+  }, button);
+  await page.waitForTimeout(100);
 }
 
 const focused = (page: Page) =>

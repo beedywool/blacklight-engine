@@ -60,6 +60,33 @@ describe('UiRuntime', () => {
     await expect(menu.result).resolves.toBeUndefined();
   });
 
+  it('repeats a held direction by polls, not across a stalled frame', async () => {
+    const { runtime, game } = installUi();
+    runtime.global.push(Menu, {}, { enter: 'none', leave: 'none' });
+    await settle();
+    let now = 1000;
+    const clock = vi.spyOn(performance, 'now').mockImplementation(() => now);
+    game.input.keyDown('ArrowDown');
+    game.stepOnce();
+    expect(runtime.focus.current.value?.id).toBe('second');
+    game.input.keyUp('ArrowDown');
+    game.input.keyDown('ArrowUp');
+    game.stepOnce();
+    expect(runtime.focus.current.value?.id).toBe('first');
+    const moves = vi.spyOn(runtime.focus, 'move');
+    // A 600 ms stall while up is still held is one poll: no repeat.
+    now += 600;
+    game.stepOnce();
+    expect(moves).not.toHaveBeenCalled();
+    // Held over several polls past 380 ms: it repeats.
+    for (let i = 0; i < 5; i++) {
+      now += 90;
+      game.stepOnce();
+    }
+    expect(moves).toHaveBeenCalledWith('up');
+    clock.mockRestore();
+  });
+
   it('modals resolve with their result and confirm() returns booleans', async () => {
     const { runtime, game } = installUi();
     const answer = runtime.global.confirm({ message: 'Quit?' });

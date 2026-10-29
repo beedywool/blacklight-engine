@@ -47,11 +47,19 @@ const dialogueText = (page: Page) =>
 
 /** Finishes the typing line if needed, then shows the next one. */
 async function nextLine(page: Page): Promise<void> {
+  // One click either finishes the typing line or shows the next one; click until the line changes
+  // (a cover or a slow machine can make the typing state change between a check and a click).
   const box = page.locator('.bl-dialogue__box');
-  if ((await page.locator('.bl-dialogue[data-typing]').count()) > 0) await box.click();
   const before = await dialogueText(page);
-  await box.click();
-  await expect.poll(() => dialogueText(page)).not.toBe(before);
+  await expect
+    .poll(
+      async () => {
+        await box.click();
+        return dialogueText(page);
+      },
+      { intervals: [250], timeout: 15_000 },
+    )
+    .not.toBe(before);
 }
 
 /** Presses confirm until the dialogue offers choices (finishing each line first). */

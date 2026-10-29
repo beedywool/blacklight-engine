@@ -199,7 +199,9 @@ export class UiRuntime implements UiHost {
   /** Resolves once the starting language is loaded. */
   readonly ready: Promise<void>;
   private nextId = 1;
-  private repeat = { direction: undefined as Direction | undefined, next: 0 };
+  /** Key repeat of directions: `held` ms of the current direction, next move at `next` ms. */
+  private repeat = { direction: undefined as Direction | undefined, next: 0, held: 0 };
+  private lastPoll = 0;
 
   constructor(
     readonly game: Game,
@@ -527,10 +529,20 @@ export class UiRuntime implements UiHost {
       : (any((p) => p.held('right')) ? 1 : 0) - (any((p) => p.held('left')) ? 1 : 0);
     const y = (any((p) => p.held('down')) ? 1 : 0) - (any((p) => p.held('up')) ? 1 : 0);
     const direction = directionOf(x, y);
+    // Hold time counts polls, each worth at most 100 ms: a stalled frame (a chunk loading, a slow
+    // device) must not turn a tap into a repeat.
     const now = performance.now();
-    if (direction && (direction !== this.repeat.direction || now >= this.repeat.next)) {
+    const elapsed = Math.min(100, Math.max(0, now - this.lastPoll));
+    this.lastPoll = now;
+    if (direction === this.repeat.direction) this.repeat.held += elapsed;
+    if (
+      direction &&
+      (direction !== this.repeat.direction || this.repeat.held >= this.repeat.next)
+    ) {
       const first = direction !== this.repeat.direction;
-      this.repeat = { direction, next: now + (first ? 380 : 90) };
+      this.repeat = first
+        ? { direction, next: 380, held: 0 }
+        : { direction, next: this.repeat.next + 90, held: this.repeat.held };
       let moved = this.focus.move(direction);
       if (!moved && direction.length > 5) {
         // Nothing diagonally: try each axis.

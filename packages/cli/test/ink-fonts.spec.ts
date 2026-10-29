@@ -99,7 +99,7 @@ describe('font subsetting (UI-15)', () => {
     };
     const reports: string[] = [];
     const plugin = fontSubsetting({ root, onReport: (r) => reports.push(r.file) });
-    const generate = plugin.generateBundle as (
+    const generate = plugin.generateBundle as unknown as (
       this: unknown,
       o: unknown,
       b: typeof bundle,
