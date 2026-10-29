@@ -10,7 +10,7 @@ One line per `SPEC.md` requirement: `- [x] ID · where · test`. A requirement i
 - [ ] Phase 3a UI complete
 - [ ] Phase 3b Light 3D
 - [ ] Phase 3c Desktop
-- [ ] Phase 3d Mobile
+- [ ] Phase 3d Mobile — Android half passes: fixture + persona-menu template launch offline, real touch (adb input), back button, deep link, pause/resume, encrypted save read back after a restart, on an API 36 x86_64 emulator · e2e: `e2e/mobile-android.spec.ts` (local Linux); web build with phone emulation + fake native side · e2e: `e2e/mobile-web.spec.ts`; iOS Simulator half · e2e: `e2e/mobile-ios.spec.ts` in CI job `ios` (macOS), not run yet: no macOS here
 - [ ] Phase 3e Modules & services
 - [ ] Phase 3f Networking
 - [ ] Phase 3g Tooling
@@ -86,7 +86,7 @@ One line per `SPEC.md` requirement: `- [x] ID · where · test`. A requirement i
 - [ ] PF-01 Web/PWA
 - [ ] PF-02 Electron
 - [ ] PF-03 Builds
-- [ ] PF-04 Capacitor Android and iOS
+- [ ] PF-04 Capacitor Android and iOS — partial · packages/mobile, packages/cli/src/targets/mobile*.ts · test: mobile platform/plugin specs (packages/mobile/test), packages/cli/test/mobile.spec.ts, e2e/mobile-web.spec.ts, e2e/mobile-android.spec.ts (emulator, passes); iOS implemented (Xcode project generated and patched on Linux), Simulator run pending in CI
 - [ ] PF-05 Steam
 - [ ] PF-06 Everything works offline; online features fail gracefully…
 - [ ] PF-07 Signing and notarization in the CLI, optional, enabled by…

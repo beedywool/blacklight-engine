@@ -65,6 +65,10 @@ export default defineConfig({
         ],
       },
       {
+        text: 'Mobile',
+        items: [{ text: 'Android and iOS', link: '/guide/mobile' }],
+      },
+      {
         text: 'Reference',
         items: [{ text: 'Accepted limitations', link: '/guide/limitations' }],
       },
