@@ -79,9 +79,25 @@ export default defineConfig({
 | `slot`, `playTime`        | Last slot saved or loaded; play time in ms of game time (pauses excluded).                                                                                                                                                    |
 | `events`                  | `saved`, `loaded`, `deleted`, `rejected` (a slot could not be read), `synced`.                                                                                                                                                |
 
-Metadata (`meta`) holds `date` (ms since 1970), `playTime`, `scene`, `label` and `thumbnail`, enough for a save/load screen without loading the save.
+Metadata (`meta`) holds `date` (ms since 1970), `playTime`, `scene`, `label`, `summary` and `thumbnail`, enough for a save/load screen without loading the save.
 
 `SaveError.code` says what went wrong: `missing`, `tampered` (a byte changed, or the file is plain while the build requires protection, or another install wrote it), `corrupted` (not a save), `version`, `password` (export), `invalid-slot`. `error.hasBackup` is `true` when `load(slot, { backup: true })` can load the previous version.
+
+## Save/load screens
+
+The UI's ready-made `SaveLoadScreen` and `PauseScreen` take a `slots` object; `game.save.screenSlots()` gives them these saves:
+
+```ts
+import { SaveLoadScreen } from '@blacklight/ui';
+
+const slots = this.game.save.screenSlots({
+  collect: () => ({ dialogue: dialogue.state() }), // merged into save.data before each save
+  apply: (data) => this.game.goto('story', { dialogue: data.dialogue }), // after each load
+});
+this.ui.push(SaveLoadScreen, { slots, mode: 'load' });
+```
+
+The list shows valid slots, and modified ones that still have a backup; loading such a slot loads the backup. `label`, `summary` and the thumbnail the screen passes are stored in the save's metadata (play time is shown in seconds). `fileSlots()` from `@blacklight/ui` stays for prototypes: plain JSON, no encryption.
 
 ## Files, encryption and backups
 
