@@ -1,6 +1,6 @@
 import { resolve } from 'node:path';
 import type { CAC } from 'cac';
-import { createServer } from 'vite';
+import { createServer, type ViteDevServer } from 'vite';
 import { formatDoctor, runDoctor, systemEnv } from '../doctor';
 import { formatLint, lintProject } from '../lint';
 import { ALL_TARGETS } from '../targets/index';
@@ -12,6 +12,17 @@ const color = !!process.stdout.isTTY && !process.env.NO_COLOR;
 function checkTarget(target: string): void {
   if (!(ALL_TARGETS as readonly string[]).includes(target))
     throw new Error(`Unknown target "${target}". Use one of: ${ALL_TARGETS.join(', ')}.`);
+}
+
+/**
+ * `run --target web`: the dev server, with the browser opened on the game (set `BROWSER=none` to
+ * keep it closed, as Vite does).
+ */
+export async function runWeb(root: string, port: number): Promise<ViteDevServer> {
+  const server = await createServer(createViteConfig(root, { port, open: true }));
+  await server.listen();
+  server.printUrls();
+  return server;
 }
 
 /** doctor, lint, run. */
@@ -54,11 +65,7 @@ export function registerToolCommands(cli: CAC): void {
         checkTarget(options.target);
         const dir = resolve(root ?? '.');
         if (options.target === 'web') {
-          const server = await createServer(
-            createViteConfig(dir, { port: options.port, open: true }),
-          );
-          await server.listen();
-          server.printUrls();
+          const server = await runWeb(dir, Number(options.port));
           server.bindCLIShortcuts({ print: true });
           return;
         }

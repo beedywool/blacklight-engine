@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { cac } from 'cac';
 import { afterEach, describe, expect, it } from 'vitest';
-import { registerToolCommands } from '../src/commands/tools';
+import { registerToolCommands, runWeb } from '../src/commands/tools';
 import { formatDoctor, runDoctor, type DoctorEnv } from '../src/doctor';
 import { validate, type Schema } from '../src/json-schema';
 import { formatLint, lintProject } from '../src/lint';
@@ -226,6 +226,21 @@ describe('lint', () => {
 });
 
 describe('run', () => {
+  it('serves the game for the web target', async () => {
+    const previous = process.env.BROWSER;
+    process.env.BROWSER = 'none';
+    const server = await runWeb(resolve(import.meta.dirname, '../../../e2e/fixtures/tooling'), 5373);
+    try {
+      const page = await fetch('http://localhost:5373/');
+      expect(page.ok).toBe(true);
+      expect(await page.text()).toContain('<div id="game"></div>');
+    } finally {
+      await server.close();
+      process.env.BROWSER = previous;
+      if (previous === undefined) delete process.env.BROWSER;
+    }
+  });
+
   it('calls the runner a platform registered, and explains when none is', async () => {
     const cli = cac('blacklight');
     registerToolCommands(cli);
