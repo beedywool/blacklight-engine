@@ -53,7 +53,7 @@ Enable developer options and USB debugging, connect the phone, check `adb device
 6. Leave the phone untouched for longer than its screen timeout. Expected: the screen stays on while the app is in the foreground.
 7. Force-stop the app (Settings › Apps › Mobile Gate › Force stop) and reopen it. Expected: the disc has the same lightness as before (the encrypted save was read back).
 8. `pnpm --filter blacklight-template-persona-menu exec blacklight build --target android --run`. Expected: the menu opens; taps select rows; back closes submenus; the notch/camera cutout never covers menu text.
-9. Release build: create a keystore (`keytool -genkeypair -v -keystore upload.jks -alias upload -keyalg RSA -keysize 2048 -validity 10000`), export `BLACKLIGHT_ANDROID_KEYSTORE`, `BLACKLIGHT_ANDROID_KEYSTORE_PASSWORD`, `BLACKLIGHT_ANDROID_KEY_ALIAS`, run `blacklight build --target android --release --run` in the fixture. Expected: `apksigner verify --print-certs release/android/mobile-gate-1.2.3.apk` shows your certificate; in Chrome on the computer, `chrome://inspect` does not list the app's WebView.
+9. Release build: create a keystore (`keytool -genkeypair -v -keystore upload.jks -alias upload -keyalg RSA -keysize 2048 -validity 10000`), export `ANDROID_KEYSTORE`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, run `blacklight build --target android --release --run` in the fixture. Expected: `apksigner verify --print-certs release/android/mobile-gate-1.2.3.apk` shows your certificate; in Chrome on the computer, `chrome://inspect` does not list the app's WebView.
 10. `blacklight build --target android --aab`, upload the `.aab` to a Play Console internal testing track. Expected: accepted without signing or version errors.
 
 ## Google Play Games (real device, Play Console account)
@@ -72,7 +72,7 @@ Enable developer options and USB debugging, connect the phone, check `adb device
 5. Open `dev.blacklight.fixture.mobile://tap` in Safari. Expected: the app opens and the disc gets lighter once.
 6. Home, wait, reopen. Expected: the game resumes, no audio while in the background; the screen does not dim while playing.
 7. `persona-menu` template on the phone: menus fit inside the safe area (notch / Dynamic Island, home indicator).
-8. Release: `BLACKLIGHT_IOS_TEAM_ID=<team> blacklight build --target ios --release`. Expected: `release/ios/*.ipa`; uploading it with Transporter succeeds; Safari's Develop menu on the Mac does not list the app's web view.
+8. Release: `APPLE_TEAM_ID=<team> blacklight build --target ios --release`. Expected: `release/ios/*.ipa`; uploading it with Transporter succeeds; Safari's Develop menu on the Mac does not list the app's web view.
 
 ## Game Center (iPhone, App Store Connect account)
 

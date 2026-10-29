@@ -36,6 +36,7 @@ import {
   type MobileGame,
 } from './mobile-native';
 import { findAndroidSdk, findJava, runTool } from './mobile-tools';
+import { runners, type RunOptions } from './runners';
 
 export type MobileTarget = 'android' | 'ios';
 
@@ -316,10 +317,8 @@ export async function buildAndroid(options: TargetOptions): Promise<string | und
     return undefined;
   }
   writeFileSync(join(android, 'local.properties'), `sdk.dir=${sdk.replace(/\\/g, '\\\\')}\n`);
-  if (release && !process.env.BLACKLIGHT_ANDROID_KEYSTORE) {
-    log(
-      'BLACKLIGHT_ANDROID_KEYSTORE is not set: the release build is unsigned (stores refuse it).',
-    );
+  if (release && !process.env.ANDROID_KEYSTORE) {
+    log('ANDROID_KEYSTORE is not set: the release build is unsigned (stores refuse it).');
   }
   log(`gradle ${task}`);
   runTool(gradlew, [task, '--console=plain'], {
@@ -347,7 +346,11 @@ export async function buildAndroid(options: TargetOptions): Promise<string | und
       throw new Error('--run installs an APK; drop --aab to run the build on a device.');
     const adb = join(sdk, 'platform-tools', process.platform === 'win32' ? 'adb.exe' : 'adb');
     const device = flags.device ? ['-s', flags.device] : [];
-    runTool(adb, [...device, 'install', '-r', file], { cwd: root, what: 'Installing the APK' });
+    runTool(adb, [...device, 'install', '-r', file], {
+      cwd: root,
+      // The usual cause: the device has the app signed with another key (debug vs release).
+      what: `Installing the APK (if adb says INSTALL_FAILED_UPDATE_INCOMPATIBLE, the device has ${game.id} signed with another key: remove it with \`adb uninstall ${game.id}\`, which deletes its data)`,
+    });
     runTool(adb, [...device, 'shell', 'am', 'start', '-n', `${game.id}/.MainActivity`], {
       cwd: root,
       what: 'Starting the app',
@@ -358,7 +361,7 @@ export async function buildAndroid(options: TargetOptions): Promise<string | und
 
 /**
  * iOS: generate/sync, then Xcode. Debug builds target the iOS Simulator; release builds archive
- * and export an `.ipa` signed for `BLACKLIGHT_IOS_TEAM_ID`. Only macOS has Xcode.
+ * and export an `.ipa` signed for `APPLE_TEAM_ID`. Only macOS has Xcode.
  */
 export async function buildIos(options: TargetOptions): Promise<string | undefined> {
   const root = resolve(options.root);
@@ -392,7 +395,7 @@ export async function buildIos(options: TargetOptions): Promise<string | undefin
     '-archivePath',
     archive,
     'archive',
-    `DEVELOPMENT_TEAM=${process.env.BLACKLIGHT_IOS_TEAM_ID ?? ''}`,
+    `DEVELOPMENT_TEAM=${process.env.APPLE_TEAM_ID ?? ''}`,
   ];
   if (options.dryRun) {
     log(
@@ -427,9 +430,9 @@ export async function buildIos(options: TargetOptions): Promise<string | undefin
     }
     return app;
   }
-  if (!process.env.BLACKLIGHT_IOS_TEAM_ID) {
+  if (!process.env.APPLE_TEAM_ID) {
     throw new Error(
-      'iOS release builds are signed for an Apple developer team: set BLACKLIGHT_IOS_TEAM_ID to your team id (developer.apple.com → Membership), with its certificates in the keychain.',
+      'iOS release builds are signed for an Apple developer team: set APPLE_TEAM_ID to your team id (developer.apple.com → Membership), with its certificates in the keychain.',
     );
   }
   runTool('xcodebuild', archiveArgs, { cwd: dir, what: 'The iOS archive' });
@@ -440,7 +443,7 @@ export async function buildIos(options: TargetOptions): Promise<string | undefin
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0"><dict>
 <key>method</key><string>app-store-connect</string>
-<key>teamID</key><string>${process.env.BLACKLIGHT_IOS_TEAM_ID}</string>
+<key>teamID</key><string>${process.env.APPLE_TEAM_ID}</string>
 <key>signingStyle</key><string>automatic</string>
 </dict></plist>
 `,
@@ -472,14 +475,18 @@ export const mobileTargets: Record<MobileTarget, TargetBuilder> = {
 
 /**
  * Builds a debug version and starts it on a connected device or emulator (Android) or the booted
- * iOS Simulator: what `blacklight run --target android|ios` calls.
+ * iOS Simulator: `blacklight run --target android|ios` (registered in {@link runners}).
  *
  * @example
  * ```ts
- * await runMobile('android', { root: '.', flags: { device: 'emulator-5554' } });
+ * await runMobile('android', { root: '.', device: 'emulator-5554', flags: {} });
  * ```
  */
-export async function runMobile(target: MobileTarget, options: TargetOptions): Promise<void> {
-  const run = { ...options, flags: { ...options.flags, run: true } };
+export async function runMobile(target: MobileTarget, options: RunOptions): Promise<void> {
+  const device = options.device ?? (options.flags.device as string | undefined);
+  const run = { ...options, flags: { ...options.flags, run: true, device } };
   await (target === 'android' ? buildAndroid(run) : buildIos(run));
 }
+
+runners.android = (options) => runMobile('android', options);
+runners.ios = (options) => runMobile('ios', options);

@@ -25,7 +25,7 @@ export default class Play extends Scene {
     });
     this.game.platform.on('pause', () => this.report({ lifecycle: 'paused' }));
     this.game.platform.on('resume', () => this.report({ lifecycle: 'resumed' }));
-    const restored = await this.load();
+    const restored = await this.loadSave();
     this.taps = restored ?? 0;
     this.report({
       restored: restored === undefined ? 'none' : String(restored),
@@ -133,7 +133,7 @@ export default class Play extends Scene {
     return this.game.platform.saveKey();
   }
 
-  private async load(): Promise<number | undefined> {
+  private async loadSave(): Promise<number | undefined> {
     const data = await this.game.platform.files.read(SAVE);
     if (!data) return undefined;
     const plain = await crypto.subtle.decrypt(

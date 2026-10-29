@@ -34,6 +34,8 @@ The CLI finds the SDK through `ANDROID_HOME`, `ANDROID_SDK_ROOT`, then the defau
 
 ```sh
 blacklight build --target android --run --device emulator-5554
+blacklight run --target android --device emulator-5554   # same: debug build, install, start
+blacklight doctor --target android                        # JDK, SDK, keystore variables
 ```
 
 ## Configuration
@@ -149,18 +151,18 @@ Any other module name goes to a Capacitor plugin of that name in the app, called
 
 Android release builds are signed when these environment variables are set; nothing is written to disk.
 
-| Variable                               | Meaning                                           |
-| -------------------------------------- | ------------------------------------------------- |
-| `BLACKLIGHT_ANDROID_KEYSTORE`          | Path to the `.jks` / `.keystore` file.            |
-| `BLACKLIGHT_ANDROID_KEYSTORE_PASSWORD` | Keystore password.                                |
-| `BLACKLIGHT_ANDROID_KEY_ALIAS`         | Key alias.                                        |
-| `BLACKLIGHT_ANDROID_KEY_PASSWORD`      | Key password (defaults to the keystore password). |
+| Variable                    | Meaning                                           |
+| --------------------------- | ------------------------------------------------- |
+| `ANDROID_KEYSTORE`          | Path to the `.jks` / `.keystore` file.            |
+| `ANDROID_KEYSTORE_PASSWORD` | Keystore password.                                |
+| `ANDROID_KEY_ALIAS`         | Key alias.                                        |
+| `ANDROID_KEY_PASSWORD`      | Key password (defaults to the keystore password). |
 
 ```sh
 keytool -genkeypair -v -keystore upload.jks -alias upload -keyalg RSA -keysize 2048 -validity 10000
 ```
 
-Without them the release APK is unsigned (the CLI says so) and stores refuse it. Debug builds use the SDK's debug key. iOS release builds archive and export an `.ipa` for App Store Connect with automatic signing for the team in `BLACKLIGHT_IOS_TEAM_ID`; the certificates must be in the login keychain (Xcode → Settings → Accounts).
+Without them the release APK is unsigned (the CLI says so) and stores refuse it. Debug builds use the SDK's debug key. iOS release builds archive and export an `.ipa` for App Store Connect with automatic signing for the team in `APPLE_TEAM_ID`; the certificates must be in the login keychain (Xcode → Settings → Accounts).
 
 ## Release builds
 

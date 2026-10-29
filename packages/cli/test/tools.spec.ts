@@ -257,8 +257,9 @@ describe('run', () => {
     await cli.runMatchedCommand();
     expect(calls).toEqual([{ root: resolve('/game'), device: 'x' }]);
     delete runners.linux;
-    cli.parse(['node', 'blacklight', 'run', '/game', '--target', 'ios'], { run: false });
-    await expect(cli.runMatchedCommand()).rejects.toThrow(/No runner for the "ios" target/);
+    // The runner just removed: mobile and desktop register theirs for the other targets.
+    cli.parse(['node', 'blacklight', 'run', '/game', '--target', 'linux'], { run: false });
+    await expect(cli.runMatchedCommand()).rejects.toThrow(/No runner for the "linux" target/);
     cli.parse(['node', 'blacklight', 'run', '/game', '--target', 'ps5'], { run: false });
     await expect(cli.runMatchedCommand()).rejects.toThrow(/Unknown target "ps5"/);
   });

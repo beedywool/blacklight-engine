@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import { parse } from 'plist';
 import { afterEach, describe, expect, it } from 'vitest';
 import { ENGINE_PLUGINS, SQLITE_PLUGIN, pluginList } from '../src/targets/mobile';
+import { runners } from '../src/targets/runners';
 import {
   androidEngineValues,
   capacitorConfig,
@@ -143,7 +144,7 @@ describe('Android project', () => {
     const gradle = patchAppGradle('versionCode 1\n        versionName "1.0"\n', game);
     expect(gradle).toContain('versionCode 2003004');
     expect(gradle).toContain('versionName "2.3.4"');
-    expect(gradle).toContain("System.getenv('BLACKLIGHT_ANDROID_KEYSTORE')");
+    expect(gradle).toContain("System.getenv('ANDROID_KEYSTORE')");
     expect(patchAppGradle(gradle, game)).toBe(gradle);
     expect(
       patchGradleWrapper(
@@ -242,5 +243,12 @@ describe('toolchain', () => {
       /the java on your PATH is Java 27/,
     );
     expect(findJava({}, 'linux', '/h', (home) => (home ? undefined : 21))).toBeUndefined();
+  });
+});
+
+describe('run', () => {
+  it('registers the android and ios runners of `blacklight run`', () => {
+    expect(typeof runners.android).toBe('function');
+    expect(typeof runners.ios).toBe('function');
   });
 });

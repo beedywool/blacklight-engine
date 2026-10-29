@@ -7,25 +7,35 @@ import { join } from 'node:path';
 /** Java versions the Android build accepts: Capacitor 8 compiles for 21, Gradle 8.14 runs on ≤ 24. */
 export const JAVA_RANGE = { min: 21, max: 24 } as const;
 
-/**
- * Android SDK folder: `ANDROID_HOME`, `ANDROID_SDK_ROOT`, then Android Studio's default location.
- *
- * @throws Error explaining how to install the SDK and set `ANDROID_HOME`.
- */
-export function findAndroidSdk(
-  env: NodeJS.ProcessEnv = process.env,
+/** Folders that may hold the Android SDK, in order: `ANDROID_HOME`, `ANDROID_SDK_ROOT`, Android Studio's default. */
+export function androidSdkCandidates(
+  env: Record<string, string | undefined> = process.env,
   platform: NodeJS.Platform = process.platform,
   home = homedir(),
-): string {
+): string[] {
   const defaults =
     platform === 'darwin'
       ? [join(home, 'Library', 'Android', 'sdk')]
       : platform === 'win32'
         ? [join(env.LOCALAPPDATA ?? join(home, 'AppData', 'Local'), 'Android', 'Sdk')]
         : [join(home, 'Android', 'Sdk'), join(home, 'Android', 'sdk')];
-  const candidates = [env.ANDROID_HOME, env.ANDROID_SDK_ROOT, ...defaults].filter(
+  return [env.ANDROID_HOME, env.ANDROID_SDK_ROOT, ...defaults].filter(
     (dir): dir is string => !!dir,
   );
+}
+
+/**
+ * Android SDK folder, the first of {@link androidSdkCandidates} that has `platform-tools` or
+ * `platforms`.
+ *
+ * @throws Error explaining how to install the SDK and set `ANDROID_HOME`.
+ */
+export function findAndroidSdk(
+  env: Record<string, string | undefined> = process.env,
+  platform: NodeJS.Platform = process.platform,
+  home = homedir(),
+): string {
+  const candidates = androidSdkCandidates(env, platform, home);
   const sdk = candidates.find(
     (dir) => existsSync(join(dir, 'platform-tools')) || existsSync(join(dir, 'platforms')),
   );
@@ -87,7 +97,7 @@ function javaCandidates(platform: NodeJS.Platform, home: string): string[] {
  * @throws Error naming the Java found and how to install a suitable one.
  */
 export function findJava(
-  env: NodeJS.ProcessEnv = process.env,
+  env: Record<string, string | undefined> = process.env,
   platform: NodeJS.Platform = process.platform,
   home = homedir(),
   versionOf: (javaHome: string | undefined) => number | undefined = javaVersion,

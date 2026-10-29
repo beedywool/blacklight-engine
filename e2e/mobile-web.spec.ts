@@ -63,7 +63,7 @@ test('the generated Android project follows game.config.ts', () => {
   expect(gradle).toContain('applicationId "dev.blacklight.fixture.mobile"');
   expect(gradle).toContain('versionCode 1002003');
   expect(gradle).toContain('versionName "1.2.3"');
-  expect(gradle).toContain('BLACKLIGHT_ANDROID_KEYSTORE');
+  expect(gradle).toContain('ANDROID_KEYSTORE');
   const config = JSON.parse(
     readFileSync(join(android, 'src/main/assets/capacitor.config.json'), 'utf8'),
   ) as { android: { webContentsDebuggingEnabled: boolean }; plugins: { SystemBars: object } };

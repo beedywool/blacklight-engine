@@ -219,9 +219,9 @@ test('a signed release build runs with WebView inspection off (SEC-07)', async (
   expect(created.status).toBe(0);
   const env = {
     ...process.env,
-    BLACKLIGHT_ANDROID_KEYSTORE: keystore,
-    BLACKLIGHT_ANDROID_KEYSTORE_PASSWORD: 'e2e-pass',
-    BLACKLIGHT_ANDROID_KEY_ALIAS: 'upload',
+    ANDROID_KEYSTORE: keystore,
+    ANDROID_KEYSTORE_PASSWORD: 'e2e-pass',
+    ANDROID_KEY_ALIAS: 'upload',
   };
   const build = spawnSync(
     'pnpm',
