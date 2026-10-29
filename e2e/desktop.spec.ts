@@ -146,6 +146,12 @@ test('PF-02: app:// protocol, sandboxed window, minimal validated bridge', async
         .invoke('secure-storage', 'set', ['token', 'abc'])
         .then(() => bridge.invoke('secure-storage', 'get', ['token'])),
       csp: await fetch('index.html').then((r) => r.headers.get('content-security-policy')),
+      relay: [
+        await bridge.invoke('relay', 'start', [{ port: 5337 }]),
+        await bridge.invoke('relay', 'status', []),
+        await bridge.invoke('relay', 'stop', []).then(() => bridge.invoke('relay', 'status', [])),
+        await fail(bridge.invoke('relay', 'start', [{ port: 80 }])),
+      ],
       // eslint-disable-next-line no-eval
       evalBlocked: (() => {
         try {
@@ -165,6 +171,11 @@ test('PF-02: app:// protocol, sandboxed window, minimal validated bridge', async
   expect(page_.extraArgs).toMatch(/at most 0 arguments/);
   expect(page_.nativeArgs).toMatch(/"echo.shout" refused its arguments/);
   expect(page_.secret).toBe('abc');
+  // NET-01 LAN hosting from the desktop app.
+  expect(page_.relay[0]).toMatchObject({ port: 5337 });
+  expect(page_.relay[1]).toMatchObject({ running: true, port: 5337, rooms: 0 });
+  expect(page_.relay[2]).toMatchObject({ running: false });
+  expect(page_.relay[3]).toMatch(/from 1024 to 65535/);
   expect(page_.csp).toContain("script-src 'self' 'wasm-unsafe-eval'");
   expect(page_.csp).toContain("worker-src 'self' blob:");
   expect(page_.evalBlocked).toBe('EvalError'); // SEC-08: CSP header, no eval

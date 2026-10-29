@@ -29,8 +29,9 @@ export default defineConfig([
     sourcemap: true,
     target: 'node24',
     platform: 'node',
-    external: nodeExternal,
-    noExternal: [/^@blacklight\/core/],
+    // ws's optional accelerators are loaded in try/catch: leave them out.
+    external: [...nodeExternal, 'bufferutil', 'utf-8-validate'],
+    noExternal: [/^@blacklight\/core/, 'ws'],
     outExtension: () => ({ js: '.cjs' }),
   },
   {

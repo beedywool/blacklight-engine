@@ -23,6 +23,9 @@ import {
 import { GAME_CONTROLLER_DB } from '../../../core/src/input/gamecontrollerdb';
 import { CHANNELS, type InvokeResult, type NativeInfo } from '../bridge';
 import type { NativeModule } from '../define-native';
+// Bundled from source (like the controller database): the relay is a server package, not built
+// with the engine packages.
+import { relayNativeModule } from '../../../../servers/relay/src/native';
 import { startDiscord } from './discord';
 import {
   DeepLinks,
@@ -161,6 +164,7 @@ export function startApp(options: StartOptions = {}): void {
     if (manifest.discord) startDiscord(manifest.discord.appId, emitToGame);
     startSdl();
     startSecureStorage(join(app.getPath('userData'), 'secure-storage.bin'), safeStorage);
+    startLanRelay();
     const context = { gameId: manifest.id, dataDir, dev: !manifest.release };
     const ready = startNativeModules(loadNatives(), context).then((dispose) => {
       app.once('will-quit', () => void dispose());
@@ -272,6 +276,20 @@ export function startApp(options: StartOptions = {}): void {
         setImmediate(() => app.quit());
       }),
     });
+  }
+
+  /** `relay`: hosts a LAN room from the desktop app (NET-01), the same server as the Docker image. */
+  function startLanRelay(): void {
+    const relay = relayNativeModule();
+    registerNative('relay', {
+      start: method(
+        [v.optional(v.object({ port: v.optional(v.integer({ min: 1024, max: 65535 })) }))],
+        (options) => relay.start(options),
+      ),
+      stop: method([], () => relay.stop()),
+      status: method([], () => relay.status()),
+    });
+    app.once('will-quit', () => void relay.stop());
   }
 
   function startSdl(): void {

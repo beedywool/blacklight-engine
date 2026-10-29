@@ -13,6 +13,7 @@ import {
   type DesktopOs,
 } from '../targets/desktop';
 import { bundleNatives, copyAddon } from '../targets/natives';
+import { runners } from '../targets/runners';
 
 const OSES: DesktopOs[] = ['win', 'mac', 'linux'];
 
@@ -143,6 +144,22 @@ export async function runDesktop(
       electron.kill();
       await server.close();
     },
+  };
+}
+
+/**
+ * `blacklight run --target win|mac|linux|steam`: the game in the desktop app with hot reload, on
+ * this machine (a desktop app runs on the OS it is built for).
+ */
+for (const target of ['win', 'mac', 'linux', 'steam'] as const) {
+  runners[target] = async ({ root, port }) => {
+    if (target !== 'steam' && target !== hostOs()) {
+      throw new Error(
+        `The ${target} app runs on ${target === 'win' ? 'Windows' : target === 'mac' ? 'macOS' : 'Linux'} only; on this machine use \`blacklight run --target ${hostOs()}\`.`,
+      );
+    }
+    const app = await runDesktop(root, { port: port || undefined });
+    process.exitCode = (await app.exited) ?? 0;
   };
 }
 
