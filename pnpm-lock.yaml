@@ -181,6 +181,9 @@ importers:
       eslint:
         specifier: 10.13.0
         version: 10.13.0
+      eslint-plugin-blacklight:
+        specifier: workspace:*
+        version: link:packages/eslint-plugin
       eslint-plugin-vue:
         specifier: 10.12.0
         version: 10.12.0(@typescript-eslint/parser@8.72.1(eslint@10.13.0)(typescript@6.0.3))(eslint@10.13.0)(vue-eslint-parser@10.4.1(eslint@10.13.0))
@@ -286,6 +289,24 @@ importers:
       typescript:
         specifier: 6.0.3
         version: 6.0.3
+
+  packages/eslint-plugin:
+    devDependencies:
+      '@types/estree':
+        specifier: 1.0.9
+        version: 1.0.9
+      eslint:
+        specifier: 10.13.0
+        version: 10.13.0
+      tsup:
+        specifier: 9.0.0
+        version: 9.0.0(postcss@8.5.32)(typescript@6.0.3)
+      typescript:
+        specifier: 6.0.3
+        version: 6.0.3
+      typescript-eslint:
+        specifier: 8.72.1
+        version: 8.72.1(eslint@10.13.0)(typescript@6.0.3)
 
   packages/physics:
     dependencies:
