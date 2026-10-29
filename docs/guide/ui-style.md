@@ -232,7 +232,7 @@ The scale applies to `Anchor` content (unless `scaled` is `false`). Other screen
 
 ## Screen transitions
 
-A screen enters and leaves with named transitions, set in the [screen options](./ui#screen-options) or with `useScreen({ enter, leave })`. Defaults: `fade` in and out, `zoom` in for modals.
+A screen enters and leaves with named transitions, set in the [screen options](./ui#screen-options) or with `useScreen({ enter, leave })`. Defaults: `fade` in and out, `zoom` in for modals. The table lists the original set; the [transition library](./ui-transitions) adds `iris`, `ink`, `slices` and `shatter`, and every effect also works between scenes.
 
 | Name          | Enter                                                                  | Leave                                          |
 | ------------- | ---------------------------------------------------------------------- | ---------------------------------------------- |
@@ -268,9 +268,9 @@ defineTransition('drop', {
 });
 ```
 
-Call it at module level in a screen file or a scene, before a screen uses the name. `transitionNames()` lists the registered names. Screen transitions are separate from [scene transitions](./scenes#transitions), which draw on the canvas.
+Call it at module level in a screen file or a scene, before a screen uses the name. `transitionNames()` lists the registered names. A transition written this way works for screens only; write it as an [effect](./ui-transitions#your-own-effects) (one `frame` function of progress) to use it between scenes too.
 
-With `prefers-reduced-motion: reduce`, built-in transitions skip the animation and only set the final opacity, and CSS transitions and animations inside the UI are turned off. Custom transitions check the media query themselves.
+When motion is reduced (the player's [option](./ui-accessibility), else `prefers-reduced-motion: reduce`), built-in transitions skip the animation, and CSS transitions and animations inside the UI are turned off. Promise-based custom transitions check `prefersReducedMotion()` themselves; effects skip automatically.
 
 ## Timelines
 
@@ -341,7 +341,7 @@ With `prefers-reduced-motion: reduce`, `play` shows the end state at once, runs 
 
 - The CLI's generated entry has no way to pass `themes` to `ui()`: with it, a custom theme saved by the player or named in `ui.theme` draws as `blacklight` after a restart.
 - The UI scale applies to `Anchor` content only; screens scale through `--bl-ui-scale` in their own CSS.
-- Custom transitions must handle reduced motion themselves.
+- Promise-based custom transitions must handle reduced motion themselves (effects do not).
 - Timeline selectors search the whole document.
 - Timelines animate DOM elements, not Pixi objects; scene objects use [tweens](./time-and-events).
 - `wipe`, `slash`, `Mask` and `Slant` use `clip-path`, which also clips focus outlines and shadows drawn outside the box; put shadows on a wrapper (as `Slant` does).
