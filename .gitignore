@@ -9,3 +9,4 @@ playwright-report/
 *.tsbuildinfo
 .DS_Store
 packages/create/templates/
+e2e/fixtures/*/dist/

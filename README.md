@@ -20,14 +20,15 @@ Until the packages are published on npm, create games from a checkout with `node
 
 ## Repository
 
-| Folder            | Content                                                                                                           |
-| ----------------- | ----------------------------------------------------------------------------------------------------------------- |
-| `packages/core`   | `@blacklight/core`: fixed-step loop, scenes, virtual resolution                                                   |
-| `packages/cli`    | `@blacklight/cli`: `blacklight create / dev / build / preview`                                                    |
-| `packages/create` | `create-blacklight`: the scaffolder behind `pnpm create blacklight`                                               |
-| `templates/`      | `empty` today; `party-game`, `visual-novel`, `persona-menu`, `platformer` and `2d-with-3d` come with their phases |
-| `docs/`           | VitePress site in the BlackLight style                                                                            |
-| `e2e/`            | Playwright tests, including the phase gates                                                                       |
+| Folder             | Content                                                                                                           |
+| ------------------ | ----------------------------------------------------------------------------------------------------------------- |
+| `packages/core`    | `@blacklight/core`: loop, scenes, objects, behaviors, animations, collisions, input, audio, camera, tweens        |
+| `packages/physics` | `@blacklight/physics`: Rapier 2D rigid bodies                                                                     |
+| `packages/cli`     | `@blacklight/cli`: `blacklight create / dev / build / preview / types`, asset manifest, atlases                   |
+| `packages/create`  | `create-blacklight`: the scaffolder behind `pnpm create blacklight`                                               |
+| `templates/`       | `empty` today; `party-game`, `visual-novel`, `persona-menu`, `platformer` and `2d-with-3d` come with their phases |
+| `docs/`            | VitePress site in the BlackLight style                                                                            |
+| `e2e/`             | Playwright tests (phase gates) and `fixtures/runtime`, a small test game                                          |
 
 ```sh
 pnpm install && pnpm build
@@ -44,7 +45,8 @@ CI (`.github/workflows/ci.yml`) runs lint, type checks, unit tests, the builds a
 ## Current limits
 
 - Only the `web` build target exists; desktop (Electron), mobile (Capacitor) and Steam targets come with phases 3c and 3d.
-- Display objects are PixiJS classes re-exported by core until the engine's own objects, behaviors, input and audio land in phase 1.
+- The runtime (phase 1) is in: scenes, objects, 19 behaviors, sprite sheets and atlases, collisions, Rapier physics, input for 8 local players, audio, camera, tweens, snapshots, debug overlay. The UI layer (Vue), 3D, desktop, mobile, networking and tooling come next.
 - No hot module replacement yet: saving a file reloads the page.
+- Gamepads in Electron go through SDL only from phase 3c; until then every target uses the browser Gamepad API.
 - The npm packages are not published and the `@blacklight` npm scope is not yet claimed (`DECISIONS.md`).
 - The accepted limitations of 1.0 (shaders and HTML UI, float differences on iOS, Steam overlay in Electron, client-side protection) are in `docs/guide/limitations.md`.

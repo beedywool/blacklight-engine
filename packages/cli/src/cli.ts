@@ -5,7 +5,7 @@ import { dirname, join, resolve } from 'node:path';
 import { cac } from 'cac';
 import { build, createServer, preview } from 'vite';
 import pkg from '../package.json' with { type: 'json' };
-import { createViteConfig } from './vite';
+import { createViteConfig, generateTypes, prepareProject } from './vite';
 
 const TARGETS = ['web', 'win', 'mac', 'linux', 'android', 'ios', 'steam'] as const;
 type Target = (typeof TARGETS)[number];
@@ -67,6 +67,17 @@ cli
   .action(async (root: string | undefined, options: ServeOptions) => {
     const server = await preview(createViteConfig(resolve(root ?? '.'), options));
     server.printUrls();
+  });
+
+cli
+  .command(
+    'types [root]',
+    'Check game.config.ts and write .blacklight/types.d.ts (scene, object, action, asset names)',
+  )
+  .action(async (root: string | undefined) => {
+    const dir = resolve(root ?? '.');
+    prepareProject(dir);
+    await generateTypes(dir);
   });
 
 cli.help();

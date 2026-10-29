@@ -1,0 +1,144 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Blacklight animation file",
+  "description": "Animations of one game object: frame source, frame rates, loops, events and per-frame hitboxes.",
+  "type": "object",
+  "required": ["animations"],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": { "type": "string" },
+    "source": {
+      "type": "string",
+      "description": "Frames, relative to the object folder: an Aseprite JSON (player.aseprite.json), a grid image named with its frame size (player@32x32.png, player@32x32+2.png with 2 px spacing) or a single image."
+    },
+    "fps": {
+      "type": "number",
+      "exclusiveMinimum": 0,
+      "default": 10,
+      "description": "Default frame rate."
+    },
+    "default": {
+      "type": "string",
+      "description": "Animation played on spawn; the first one when omitted."
+    },
+    "pivot": {
+      "$ref": "#/$defs/point",
+      "description": "Point of the frame placed at the object's position, in frame pixels. Defaults to the frame center."
+    },
+    "hitbox": { "$ref": "#/$defs/hitbox" },
+    "animations": {
+      "type": "object",
+      "description": "Animations by name. Directional animations end with -right, -downright, -down, -downleft, -left, -upleft, -up or -upright; missing ones fall back to a near or mirrored direction.",
+      "additionalProperties": { "$ref": "#/$defs/animation" }
+    }
+  },
+  "$defs": {
+    "point": {
+      "type": "object",
+      "required": ["x", "y"],
+      "additionalProperties": false,
+      "properties": { "x": { "type": "number" }, "y": { "type": "number" } }
+    },
+    "hitbox": {
+      "description": "Collision shape in local space (0, 0 is the object's position).",
+      "oneOf": [
+        { "enum": ["auto", "none", "pixel"] },
+        {
+          "type": "object",
+          "required": ["type", "width", "height"],
+          "additionalProperties": false,
+          "properties": {
+            "type": { "const": "box" },
+            "x": { "type": "number" },
+            "y": { "type": "number" },
+            "width": { "type": "number", "minimum": 0 },
+            "height": { "type": "number", "minimum": 0 }
+          }
+        },
+        {
+          "type": "object",
+          "required": ["type", "radius"],
+          "additionalProperties": false,
+          "properties": {
+            "type": { "const": "circle" },
+            "x": { "type": "number" },
+            "y": { "type": "number" },
+            "radius": { "type": "number", "minimum": 0 }
+          }
+        },
+        {
+          "type": "object",
+          "required": ["type", "points"],
+          "additionalProperties": false,
+          "properties": {
+            "type": { "const": "polygon" },
+            "points": {
+              "type": "array",
+              "minItems": 3,
+              "items": {
+                "type": "array",
+                "prefixItems": [{ "type": "number" }, { "type": "number" }],
+                "minItems": 2,
+                "maxItems": 2
+              }
+            }
+          }
+        }
+      ]
+    },
+    "frameOverride": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": { "hitbox": { "$ref": "#/$defs/hitbox" }, "pivot": { "$ref": "#/$defs/point" } }
+    },
+    "animation": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "frames": {
+          "description": "An Aseprite tag name, a list of frame indices, or an inclusive range. Omitted: the tag with the animation's name, or every frame.",
+          "oneOf": [
+            { "type": "string" },
+            { "type": "array", "items": { "type": "integer", "minimum": 0 } },
+            {
+              "type": "object",
+              "required": ["from", "to"],
+              "additionalProperties": false,
+              "properties": {
+                "from": { "type": "integer", "minimum": 0 },
+                "to": { "type": "integer", "minimum": 0 }
+              }
+            }
+          ]
+        },
+        "fps": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "description": "Omitted: Aseprite frame durations, else the file's fps."
+        },
+        "loop": { "type": "boolean", "default": true },
+        "pingPong": { "type": "boolean", "description": "Plays forward then backward." },
+        "reverse": { "type": "boolean" },
+        "next": {
+          "type": "string",
+          "description": "Animation started when this one ends (implies loop: false)."
+        },
+        "events": {
+          "type": "object",
+          "description": "Frame index within this animation → event name(s), received with sprite.onFrame(name, ...).",
+          "propertyNames": { "pattern": "^[0-9]+$" },
+          "additionalProperties": {
+            "oneOf": [{ "type": "string" }, { "type": "array", "items": { "type": "string" } }]
+          }
+        },
+        "hitbox": { "$ref": "#/$defs/hitbox" },
+        "pivot": { "$ref": "#/$defs/point" },
+        "frameOverrides": {
+          "type": "object",
+          "propertyNames": { "pattern": "^[0-9]+$" },
+          "additionalProperties": { "$ref": "#/$defs/frameOverride" }
+        }
+      }
+    }
+  }
+}

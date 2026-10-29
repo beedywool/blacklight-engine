@@ -1,0 +1,33 @@
+{
+  "name": "@blacklight/physics",
+  "version": "0.0.0",
+  "description": "Rigid-body physics for Blacklight Engine (Rapier 2D).",
+  "license": "MIT",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "typecheck": "tsc --noEmit"
+  },
+  "peerDependencies": {
+    "@blacklight/core": "workspace:*"
+  },
+  "dependencies": {
+    "@dimforge/rapier2d-compat": "0.21.0"
+  },
+  "devDependencies": {
+    "@blacklight/core": "workspace:*",
+    "tsup": "9.0.0",
+    "typescript": "6.0.3"
+  }
+}

@@ -5,7 +5,7 @@ One line per `SPEC.md` requirement: `- [x] ID · where · test`. A requirement i
 ## Phase gates
 
 - [x] Phase 0 Foundations · `pnpm create blacklight` → empty project runs in the browser · e2e: `e2e/create-empty.spec.ts` (passes locally on Linux; CI matrix configured in `.github/workflows/ci.yml`, not yet run: no remote)
-- [ ] Phase 1 Runtime
+- [x] Phase 1 Runtime · animated character (`.anim.json`) moved by a behavior, collides, plays audio; screenshot matches; release build packs atlases and strips debug · e2e: `e2e/runtime.spec.ts` (local Linux)
 - [ ] Phase 2 UI core
 - [ ] Phase 3a UI complete
 - [ ] Phase 3b Light 3D
@@ -19,26 +19,26 @@ One line per `SPEC.md` requirement: `- [x] ID · where · test`. A requirement i
 
 ## Runtime (RT)
 
-- [ ] RT-01 Loop — partial · fixed step, capped catch-up, interpolation factor, pause on blur done (packages/core/src/loop.ts, test: loop.spec.ts); configurable rate done
-- [ ] RT-02 Scenes — partial · Scene create/update/render/destroy and goto done (packages/core/src/scene.ts, game.ts); transitions, overlay and hosted scenes to do
-- [ ] RT-03 Loading — partial · one chunk per scene via import.meta.glob (packages/cli/src/vite.ts); asset preload, loading screen, preload(name) to do
-- [ ] RT-04 Registry
-- [ ] RT-05 Objects
-- [ ] RT-06 Behaviors
-- [ ] RT-07 Animations
-- [ ] RT-08 Sprite sheets
-- [ ] RT-09 Collisions
-- [ ] RT-10 Physics
-- [ ] RT-11 Input
-- [ ] RT-12 Gamepads
-- [ ] RT-13 Audio
-- [ ] RT-14 Tweens
-- [ ] RT-15 Events
-- [ ] RT-16 Time and randomness
-- [ ] RT-17 Camera
-- [ ] RT-18 Resolution — partial · virtual resolution, extend/letterbox, pixel-art integer scale (packages/core/src/viewport.ts, test: viewport.spec.ts); safe areas to do
-- [ ] RT-19 Serializable state
-- [ ] RT-20 Debug
+- [x] RT-01 Loop · packages/core/src/loop.ts, game.ts · test: loop.spec.ts, e2e runtime.spec.ts
+- [x] RT-02 Scenes · scene.ts, game.ts (goto + transitions, overlays, hostScene) · test: scene.spec.ts, e2e runtime.spec.ts "scenes host scenes…"
+- [x] RT-03 Loading · scenes chunked by import.meta.glob (cli/src/vite.ts), `static assets` + scene assets/ preloaded, `game.loadingScreen`, `game.preload` · test: e2e runtime.spec.ts
+- [x] RT-04 Registry · registry.ts, game.objectClass (local shadows global, suggestions) · test: systems.spec.ts, scene.spec.ts
+- [ ] RT-05 Objects — partial · GameObject, Sprite/AnimatedSprite, Text (web + .fnt bitmap), Container, Graphics, Particles, TilemapLayer (+ Tiled import), Video done (objects/*) · test: scene.spec.ts, e2e "every object type"; Model3D arrives with phase 3b
+- [ ] RT-06 Behaviors — partial · all 19 behaviors in behaviors/* · test: scene.spec.ts, behaviors.spec.ts (all 19 exercised); a docs page with a live example per behavior needs the phase 4 playground
+- [x] RT-07 Animations · anim/animator.ts, schema/anim.schema.json · test: animator.spec.ts, e2e runtime.spec.ts (frame events)
+- [x] RT-08 Sprite sheets · anim/sheets.ts, sheet-cache.ts, cli/src/atlas.ts · test: animator.spec.ts, cli project.spec.ts, e2e release build (atlas)
+- [x] RT-09 Collisions · collision/* · test: collision.spec.ts, scene.spec.ts
+- [x] RT-10 Physics · packages/physics (Rapier 2D) · test: physics.spec.ts
+- [x] RT-11 Input · input/input.ts, bindings.ts (actions, rebinding saved in settings, last device, 8 players, join) · test: input.spec.ts, e2e runtime.spec.ts
+- [ ] RT-12 Gamepads — partial · web/mobile: Gamepad API + SDL_GameControllerDB (input/gamepad.ts) · test: input.spec.ts; desktop SDL in Electron arrives with phase 3c
+- [x] RT-13 Audio · audio.ts (buses, fades, crossfade, loop points, positional, unlock, format choice) · test: e2e runtime.spec.ts; audible output in MANUAL_TESTS.md
+- [x] RT-14 Tweens · tween.ts (Motion easings and springs on the game clock) · test: systems.spec.ts
+- [x] RT-15 Events · events.ts, listen() on scenes/objects · test: systems.spec.ts
+- [x] RT-16 Time and randomness · random.ts, timers.ts, game.time · test: systems.spec.ts, scene.spec.ts
+- [x] RT-17 Camera · camera.ts, scene split screen · test: camera.spec.ts, e2e "split screen"
+- [x] RT-18 Resolution · viewport.ts, game.safeArea · test: viewport.spec.ts, e2e
+- [x] RT-19 Serializable state · scene.snapshot/restore, serialize.ts · test: scene.spec.ts
+- [x] RT-20 Debug · debug/index.ts (F3–F8), dev-only import · test: e2e runtime.spec.ts (overlay shown in dev, absent from release)
 
 ## Light 3D (3D)
 
@@ -134,7 +134,7 @@ One line per `SPEC.md` requirement: `- [x] ID · where · test`. A requirement i
 
 ## Tooling (TL)
 
-- [ ] TL-01 CLI `blacklight` — partial · create, dev, build --target web, preview (packages/cli); other targets, run, doctor, add/search/publish, lint, sign to do
+- [ ] TL-01 CLI — partial · create, dev, build --target web, preview, types (packages/cli); other targets, run, doctor, add/search/publish, lint, sign to do
 - [ ] TL-02 Hot reload
 - [ ] TL-03 VS Code extension (Marketplace + Open VSX), complete in…
 
@@ -154,7 +154,7 @@ One line per `SPEC.md` requirement: `- [x] ID · where · test`. A requirement i
 - [ ] NF-01 Stable 60 fps on a Samsung Galaxy A54 and an iPhone 12…
 - [ ] NF-02 Cold start under 3 s on desktop; first interactive screen…
 - [ ] NF-03 Under 300 MB memory on mobile for the party-game…
-- [ ] NF-04 `@blacklight/core` without Pixi, Vue and Three
+- [ ] NF-04 core size — measured 57 KB gzip without Pixi (dist/*.js, gamepad DB excluded: lazy chunk); to report in docs/benchmarks.md
 - [ ] NF-05 Support
 - [ ] NF-06 Fully typed, documented public API; semver from 1.0.
-- [ ] NF-07 Tests
+- [ ] NF-07 Tests — unit coverage of core 50 % (browser-only code is covered by e2e only); needs browser-mode unit tests to reach 80 %

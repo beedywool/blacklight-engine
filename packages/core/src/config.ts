@@ -1,3 +1,6 @@
+import { parseBinding } from './input/bindings';
+import type { InputConfig } from './input/input';
+
 /**
  * How the virtual resolution fits the screen.
  *
@@ -46,9 +49,24 @@ export interface GameConfig {
   tickRate?: number;
   /** Pause the loop while the window is hidden or unfocused. @defaultValue `true` */
   pauseOnBlur?: boolean;
+  /**
+   * Input actions and their bindings, merged over the defaults (left, right, up, down, confirm,
+   * back, pause, jump, action).
+   *
+   * @example
+   * ```ts
+   * input: { actions: { fire: ['KeyJ', 'Mouse:Left', 'Pad:RT'] } }
+   * ```
+   */
+  input?: InputConfig;
+  /** Seed of `game.random` and of every scene's generator. Omitted: a new seed each run. */
+  seed?: string | number;
 }
 
-export interface ResolvedGameConfig extends Required<Omit<GameConfig, 'resolution'>> {
+export interface ResolvedGameConfig
+  extends
+    Required<Omit<GameConfig, 'resolution' | 'input' | 'seed'>>,
+    Pick<GameConfig, 'input' | 'seed'> {
   resolution: Required<ResolutionConfig>;
 }
 
@@ -92,7 +110,8 @@ export function resolveConfig(input: unknown): ResolvedGameConfig {
       'the default export must be an object: `export default defineConfig({ ... })`',
     ]);
   }
-  const { name, id, version, entry, resolution, tickRate = 60, pauseOnBlur = true } = input;
+  const { name, id, version, entry, resolution, tickRate = 60, pauseOnBlur = true, seed } = input;
+  const inputConfig = input.input;
 
   if (typeof name !== 'string' || name.trim() === '') {
     issues.push('`name` must be a non-empty string, e.g. `name: "My Game"`');
@@ -144,6 +163,39 @@ export function resolveConfig(input: unknown): ResolvedGameConfig {
   if (typeof pauseOnBlur !== 'boolean') {
     issues.push('`pauseOnBlur` must be a boolean');
   }
+  if (seed !== undefined && typeof seed !== 'string' && typeof seed !== 'number') {
+    issues.push('`seed` must be a string or a number');
+  }
+  if (inputConfig !== undefined) {
+    if (!isRecord(inputConfig))
+      issues.push('`input` must be an object, e.g. `input: { actions: { fire: ["KeyJ"] } }`');
+    else {
+      const { actions, deadzone } = inputConfig;
+      if (actions !== undefined && !isRecord(actions))
+        issues.push('`input.actions` must map action names to binding lists');
+      for (const [action, list] of Object.entries(isRecord(actions) ? actions : {})) {
+        if (!Array.isArray(list)) {
+          issues.push(
+            `\`input.actions.${action}\` must be a list of bindings, e.g. ["Space", "Pad:A"]`,
+          );
+          continue;
+        }
+        for (const binding of list) {
+          try {
+            parseBinding(String(binding));
+          } catch (error) {
+            issues.push(`\`input.actions.${action}\`: ${(error as Error).message}`);
+          }
+        }
+      }
+      if (
+        deadzone !== undefined &&
+        (typeof deadzone !== 'number' || deadzone < 0 || deadzone >= 1)
+      ) {
+        issues.push('`input.deadzone` must be a number from 0 to 1 (excluded)');
+      }
+    }
+  }
 
   if (issues.length > 0) throw new ConfigError(issues);
   return {
@@ -154,5 +206,7 @@ export function resolveConfig(input: unknown): ResolvedGameConfig {
     resolution: { width, height, mode, pixelArt },
     tickRate: tickRate as number,
     pauseOnBlur: pauseOnBlur as boolean,
+    input: inputConfig as InputConfig | undefined,
+    seed: seed as string | number | undefined,
   };
 }

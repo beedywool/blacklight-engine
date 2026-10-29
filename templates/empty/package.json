@@ -7,7 +7,7 @@
     "dev": "blacklight dev",
     "build": "blacklight build --target web",
     "preview": "blacklight preview",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "blacklight types && tsc --noEmit"
   },
   "dependencies": {
     "@blacklight/core": "workspace:*"

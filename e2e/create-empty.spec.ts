@@ -1,20 +1,14 @@
 // Phase 0 gate: `pnpm create blacklight` → the empty project runs in the browser.
-import { spawn, spawnSync, type ChildProcess } from 'node:child_process';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { expect, test } from '@playwright/test';
+import { run, serve } from './server';
 
 const repo = resolve(import.meta.dirname, '..');
 const port = 5199;
-const shell = process.platform === 'win32';
 let work: string;
-let server: ChildProcess | undefined;
-
-function run(command: string, args: string[], cwd: string): void {
-  const result = spawnSync(command, args, { cwd, stdio: 'inherit', shell });
-  if (result.status !== 0) throw new Error(`${command} ${args.join(' ')} failed in ${cwd}`);
-}
+let stop: (() => void) | undefined;
 
 test.beforeAll(async () => {
   work = mkdtempSync(join(tmpdir(), 'blacklight-e2e-'));
@@ -25,34 +19,11 @@ test.beforeAll(async () => {
   );
   const game = join(work, 'my-game');
   run('pnpm', ['install'], game);
-
-  // Own process group on POSIX so teardown stops pnpm and the Vite process it starts.
-  server = spawn('pnpm', ['dev', '--port', String(port), '--strict-port'], {
-    cwd: game,
-    shell,
-    detached: !shell,
-    stdio: 'inherit',
-  });
-  let exited: number | null | undefined;
-  server.on('exit', (code) => (exited = code));
-  const deadline = Date.now() + 60_000;
-  for (;;) {
-    if (exited !== undefined) throw new Error(`dev server exited with ${exited}`);
-    if (Date.now() > deadline) throw new Error('dev server did not answer in 60 s');
-    try {
-      if ((await fetch(`http://localhost:${port}/`)).ok) break;
-    } catch {
-      // not listening yet
-    }
-    await new Promise((wait) => setTimeout(wait, 250));
-  }
+  stop = await serve(game, 'dev', port);
 });
 
 test.afterAll(() => {
-  if (server?.pid) {
-    if (shell) spawnSync('taskkill', ['/pid', String(server.pid), '/T', '/F']);
-    else process.kill(-server.pid, 'SIGTERM');
-  }
+  stop?.();
   rmSync(work, { recursive: true, force: true });
 });
 

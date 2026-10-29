@@ -13,6 +13,7 @@ pnpm test           # unit tests (Vitest)
 pnpm lint           # ESLint + Prettier check
 pnpm typecheck
 pnpm e2e            # browser tests (Playwright; first run: pnpm exec playwright install chromium)
+pnpm e2e --update-snapshots   # after an intended visual change, then review the new images
 pnpm docs:dev       # documentation on http://localhost:5173
 ```
 
@@ -27,14 +28,15 @@ cd ../my-game && pnpm install && pnpm dev
 
 ## Layout
 
-| Folder            | Content                                                                |
-| ----------------- | ---------------------------------------------------------------------- |
-| `packages/core`   | `@blacklight/core`: loop, scenes, resolution, objects                  |
-| `packages/cli`    | `@blacklight/cli`: the `blacklight` command and its Vite configuration |
-| `packages/create` | `create-blacklight`: the project scaffolder                            |
-| `templates/`      | project templates, copied by `create-blacklight`                       |
-| `docs/`           | VitePress documentation site                                           |
-| `e2e/`            | Playwright tests, including the phase gates                            |
+| Folder             | Content                                                                                                                                                  |
+| ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `packages/core`    | `@blacklight/core`: the runtime                                                                                                                          |
+| `packages/physics` | `@blacklight/physics`: Rapier rigid bodies                                                                                                               |
+| `packages/cli`     | `@blacklight/cli`: the `blacklight` command and its Vite configuration                                                                                   |
+| `packages/create`  | `create-blacklight`: the project scaffolder                                                                                                              |
+| `templates/`       | project templates, copied by `create-blacklight`                                                                                                         |
+| `docs/`            | VitePress documentation site                                                                                                                             |
+| `e2e/`             | Playwright tests, including the phase gates; `e2e/fixtures/runtime` is a test game (`node e2e/fixtures/generate-runtime-assets.mjs` regenerates its art) |
 
 ## Rules
 

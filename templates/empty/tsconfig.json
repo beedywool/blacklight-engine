@@ -20,5 +20,5 @@
       "@stories/*": ["./stories/*"]
     }
   },
-  "include": ["game.config.ts", "scenes", "objects", "ui", "modules"]
+  "include": ["game.config.ts", "scenes", "objects", "ui", "modules", ".blacklight/types.d.ts"]
 }

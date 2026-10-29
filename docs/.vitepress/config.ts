@@ -32,6 +32,27 @@ export default defineConfig({
           { text: 'Project layout', link: '/guide/project-layout' },
           { text: 'Configuration', link: '/guide/configuration' },
           { text: 'Scenes', link: '/guide/scenes' },
+          { text: 'Objects', link: '/guide/objects' },
+          { text: 'Sprites and animations', link: '/guide/sprites-and-animations' },
+          { text: 'Assets', link: '/guide/assets' },
+        ],
+      },
+      {
+        text: 'Gameplay',
+        items: [
+          { text: 'Behaviors', link: '/guide/behaviors' },
+          { text: 'Collisions and physics', link: '/guide/collisions' },
+          { text: 'Input', link: '/guide/input' },
+          { text: 'Audio', link: '/guide/audio' },
+          { text: 'Camera', link: '/guide/camera' },
+          { text: 'Time and events', link: '/guide/time-and-events' },
+        ],
+      },
+      {
+        text: 'Tools',
+        items: [
+          { text: 'Snapshots', link: '/guide/snapshots' },
+          { text: 'Debugging', link: '/guide/debugging' },
         ],
       },
       {

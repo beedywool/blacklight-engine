@@ -2,7 +2,13 @@ packages:
   - packages/*
   - templates/*
   - docs
+  - e2e/fixtures/*
 
 # Dependencies allowed to run install scripts (pnpm blocks the others).
 allowBuilds:
   esbuild: true
+
+minimumReleaseAgeExclude:
+  - framer-motion@14.8.0
+  - motion-dom@14.8.0
+  - motion@14.8.0
