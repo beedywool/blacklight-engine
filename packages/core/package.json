@@ -21,7 +21,9 @@
       "import": "./dist/debug.js",
       "default": "./dist/debug.js"
     },
-    "./schema/anim.schema.json": "./schema/anim.schema.json"
+    "./schema/anim.schema.json": "./schema/anim.schema.json",
+    "./schema/layout.schema.json": "./schema/layout.schema.json",
+    "./schema/timeline.schema.json": "./schema/timeline.schema.json"
   },
   "files": [
     "dist",

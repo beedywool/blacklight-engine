@@ -17,7 +17,7 @@ import { Random } from './random';
 import type { SceneName } from './register';
 import { nameOf, stamp, type ObjectRegistry } from './registry';
 import { Scene } from './scene';
-import type { SceneLoader } from './scenes';
+import type { SceneClass, SceneLoader } from './scenes';
 import { WebPlatform, type Platform } from './platform';
 import { Settings } from './settings';
 import { didYouMean } from './suggest';
@@ -505,6 +505,29 @@ export class Game {
         `${path}/${name}.object.ts must default-export a class: \`export default class ... extends Sprite\`.`,
       );
     }
+  }
+
+  /** @internal Hot reload: later loads of scene `name` use `type`. */
+  replaceScene(name: string, type: typeof Scene): void {
+    this.scenes[name] = async () => ({ default: type as unknown as SceneClass });
+  }
+
+  /**
+   * @internal Hot reload: the object registered as `name` (in `sceneName` when scene-local)
+   * becomes `type`. Returns the class it replaces.
+   */
+  replaceObject(
+    name: string,
+    type: typeof GameObject,
+    sceneName?: string,
+  ): typeof GameObject | undefined {
+    const map = sceneName ? this.sceneClasses.get(sceneName) : this.classes;
+    const previous = map?.get(name);
+    map?.set(name, type);
+    // The module loader would return the first version from the browser's module cache.
+    const entry = sceneName ? this.registry.scenes[sceneName]?.[name] : this.registry.global[name];
+    if (entry) entry.load = async () => ({ default: type as GameObjectClass });
+    return previous;
   }
 
   /** @internal Remembers classes spawned directly, so snapshots can re-create them by name. */

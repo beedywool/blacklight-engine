@@ -6,6 +6,26 @@ import type { GameObject } from '../objects/game-object';
 import type { WorldShape } from '../collision/shapes';
 import type { Point } from '../math';
 
+export {
+  hotReplaceObject,
+  hotReplaceScene,
+  installHotReload,
+  patchClass,
+  type HotResult,
+  type HotUpdate,
+} from './hot';
+export {
+  DEBUG_EVENT,
+  installDebugChannel,
+  type DebugEvent,
+  type DebugMessage,
+  type DebugMethod,
+  type DebugObjectSummary,
+  type DebugRequest,
+  type DebugResponse,
+  type HotChannel,
+} from './channel';
+
 const HELP = 'F3 overlay · F4 hitboxes · F6 pause · F7 step · F8 slow motion';
 
 /**
