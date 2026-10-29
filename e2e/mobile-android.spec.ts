@@ -66,7 +66,8 @@ async function tap(page: Page, cssX: number, cssY: number): Promise<void> {
 }
 
 test.beforeAll(async () => {
-  run('pnpm', ['exec', 'blacklight', 'build', '--target', 'android'], fixture);
+  // --sqlite: native SQLite in the fixture, which drives the raw `sqlite` protocol.
+  run('pnpm', ['exec', 'blacklight', 'build', '--target', 'android', '--sqlite'], fixture);
   run('pnpm', ['exec', 'blacklight', 'build', '--target', 'android'], template);
   [device] = await _android.devices({ omitDriverInstall: true });
   if (!device) throw new Error('No Android device: start an emulator first (adb devices).');
@@ -143,6 +144,10 @@ test('touch, back button and an encrypted save that survives a restart', async (
   }
   await expect(mount).toHaveAttribute('data-device', 'touch');
   await expect(mount).toHaveAttribute('data-saved', '3');
+  // Capacitor SQLite behind platform.invoke('sqlite', …): rows, a blob and a boolean.
+  await expect(mount).toHaveAttribute('data-sql', '3');
+  await expect(mount).toHaveAttribute('data-insert', '1:true');
+  await expect(mount).toHaveAttribute('data-blob', 'ok');
 
   // A deep link with the game id as scheme reaches the running game.
   adb('shell', 'am', 'start', '-a', 'android.intent.action.VIEW', '-d', `${FIXTURE_ID}://tap`);
@@ -161,12 +166,14 @@ test('touch, back button and an encrypted save that survives a restart', async (
   await expect(mount).toHaveAttribute('data-lifecycle', 'paused');
   adb('shell', 'am', 'start', '-W', '-n', `${FIXTURE_ID}/.MainActivity`);
   await expect(mount).toHaveAttribute('data-lifecycle', 'resumed');
+  await expect.poll(() => page.evaluate(() => document.hasFocus()), { timeout: 20_000 }).toBe(true);
   await tap(page, size[0]! / 2, size[1]! / 2);
   await expect(mount).toHaveAttribute('data-taps', '5');
   await expect(mount).toHaveAttribute('data-saved', '5');
 
   page = await launch(FIXTURE_ID);
   await expect(page.locator('#game')).toHaveAttribute('data-restored', '5');
+  await expect(page.locator('#game')).toHaveAttribute('data-sql', '5');
   // The file on disk is ciphertext: 12-byte IV, one encrypted digit, 16-byte GCM tag.
   const bytes = adb(
     'shell',

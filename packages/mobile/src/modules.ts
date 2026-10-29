@@ -20,15 +20,18 @@ function number(value: unknown, what: string): number {
   return value;
 }
 
-function params(value: unknown): unknown[] {
+function params(value: unknown, platform: 'android' | 'ios'): unknown[] {
   if (value === undefined) return [];
   if (!Array.isArray(value)) {
     throw new TypeError('SQL parameters must be an array, e.g. ["alice", 3] for "VALUES (?, ?)".');
   }
   return value.map((item: unknown) => {
-    // SQLite has no booleans; the bridge carries blobs as arrays of bytes.
+    // SQLite has no booleans. Blobs: Capacitor SQLite binds a `{ type: 'Buffer', data }` object
+    // on Android and a plain byte array on iOS.
     if (typeof item === 'boolean') return item ? 1 : 0;
-    if (item instanceof Uint8Array) return Array.from(item);
+    if (item instanceof Uint8Array) {
+      return platform === 'android' ? { type: 'Buffer', data: Array.from(item) } : Array.from(item);
+    }
     if (
       item === null ||
       typeof item === 'string' ||
@@ -110,7 +113,7 @@ export interface SqliteChanges {
  * The protocol of `@blacklight/module-sqlite`; parameters are strings, numbers, booleans (1 / 0),
  * `null` or `Uint8Array`.
  */
-export function sqliteModule(plugins: Pick<MobilePlugins, 'sqlite'>): NativeModule {
+export function sqliteModule(plugins: Pick<MobilePlugins, 'sqlite' | 'platform'>): NativeModule {
   const db = plugins.sqlite;
   const open = new Map<string, boolean>();
   let cleaned = false;
@@ -158,7 +161,7 @@ export function sqliteModule(plugins: Pick<MobilePlugins, 'sqlite'>): NativeModu
     async execute(value, sql, values) {
       const { database, readonly } = opened(value);
       const statement = text(sql, 'The SQL', '"CREATE TABLE scores (name TEXT, points INTEGER)"');
-      const list = params(values);
+      const list = params(values, plugins.platform);
       if (list.length === 0) {
         return changes(
           await db.execute({ database, statements: statement, transaction: false, readonly }),
@@ -174,7 +177,7 @@ export function sqliteModule(plugins: Pick<MobilePlugins, 'sqlite'>): NativeModu
       const { values: rows = [] } = await db.query({
         database,
         statement,
-        values: params(values),
+        values: params(values, plugins.platform),
         readonly,
       });
       // iOS puts the column names in a first row.

@@ -37,6 +37,55 @@ export default class Play extends Scene {
     this.game.platform.on('deeplink', (link) => {
       if ((link as { url: string }).url.endsWith('://tap')) this.tap('link');
     });
+    await this.openDatabase();
+  }
+
+  /**
+   * The `sqlite` native protocol, raw (what `@blacklight/module-sqlite` calls): one row per tap,
+   * with a blob and a boolean, counted back into `data-sql`. Builds without native SQLite report
+   * `unavailable`.
+   */
+  private sql = false;
+
+  private async openDatabase() {
+    const { platform } = this.game;
+    try {
+      await platform.invoke('sqlite', 'open', 'fixture.db');
+      await platform.invoke(
+        'sqlite',
+        'execute',
+        'fixture.db',
+        'CREATE TABLE IF NOT EXISTS taps (n INTEGER, flag INTEGER, data BLOB); CREATE INDEX IF NOT EXISTS taps_n ON taps (n)',
+      );
+      this.sql = true;
+      await this.countRows();
+    } catch (error) {
+      this.report({ sql: `unavailable: ${(error as Error).message}` });
+    }
+  }
+
+  private async countRows() {
+    const rows = await this.game.platform.invoke<Record<string, unknown>[]>(
+      'sqlite',
+      'query',
+      'fixture.db',
+      'SELECT COUNT(*) AS c, MAX(n) AS last FROM taps',
+    );
+    const blob = await this.game.platform.invoke<Record<string, unknown>[]>(
+      'sqlite',
+      'query',
+      'fixture.db',
+      'SELECT data, flag FROM taps WHERE n = ?',
+      [rows[0]?.last ?? 0],
+    );
+    const data = blob[0]?.data;
+    this.report({
+      sql: String(rows[0]?.c),
+      blob:
+        data instanceof Uint8Array && data.join(',') === '7,0,255' && blob[0]?.flag === 1
+          ? 'ok'
+          : 'none',
+    });
   }
 
   private tap(device: string) {
@@ -44,6 +93,25 @@ export default class Play extends Scene {
     this.report({ taps: String(this.taps), device });
     this.drawPad();
     this.save(this.taps);
+    if (this.sql) {
+      const n = this.taps;
+      this.saving = this.saving
+        .then(async () => {
+          const result = await this.game.platform.invoke<{ changes: number; lastInsertId: number }>(
+            'sqlite',
+            'execute',
+            'fixture.db',
+            'INSERT INTO taps VALUES (?, ?, ?)',
+            [n, true, new Uint8Array([7, 0, 255])],
+          );
+          this.report({ insert: `${result.changes}:${result.lastInsertId > 0}` });
+          await this.countRows();
+        })
+        .catch((error: unknown) => {
+          // Keep the save chain going; the test reads the error.
+          this.report({ insert: `error: ${(error as Error).message}` });
+        });
+    }
   }
 
   private report(values: Record<string, string>) {

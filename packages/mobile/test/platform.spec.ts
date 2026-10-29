@@ -109,7 +109,18 @@ describe('MobilePlatform native modules', () => {
       'sqlite.close',
       'sqlite.closeConnection',
     ]);
+    // iOS binds byte arrays; Android wants Capacitor's Buffer object (checked on the emulator).
     expect(sqlite[6]![1]).toMatchObject({ values: ['x', 1, [1, 2]] });
+  });
+
+  it('binds blobs the way Capacitor SQLite expects on Android', async () => {
+    const { device, mobile } = await started('android');
+    await mobile.invoke('sqlite', 'open', 'game.db');
+    await mobile.invoke('sqlite', 'execute', 'game.db', 'INSERT INTO t VALUES (?)', [
+      new Uint8Array([7, 0, 255]),
+    ]);
+    const run = device.calls.find(([name]) => name === 'sqlite.run');
+    expect(run![1]).toMatchObject({ values: [{ type: 'Buffer', data: [7, 0, 255] }] });
   });
 
   it('plays haptics and drives the app', async () => {

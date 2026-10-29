@@ -124,6 +124,8 @@ test('touch, back button and a save that survives a restart', async ({ page }) =
   }
   await expect(mount).toHaveAttribute('data-device', 'touch');
   await expect(mount).toHaveAttribute('data-saved', '2');
+  // This build has no native SQLite: the protocol says so instead of failing the game.
+  await expect(mount).toHaveAttribute('data-sql', /^unavailable: .*CapacitorSQLite/);
 
   const fire = (plugin: string, event: string) =>
     page.evaluate(
