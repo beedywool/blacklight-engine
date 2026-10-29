@@ -7,7 +7,7 @@ One line per `SPEC.md` requirement: `- [x] ID · where · test`. A requirement i
 - [x] Phase 0 Foundations · `pnpm create blacklight` → empty project runs in the browser · e2e: `e2e/create-empty.spec.ts` (passes locally on Linux; CI matrix configured in `.github/workflows/ci.yml`, not yet run: no remote)
 - [x] Phase 1 Runtime · animated character (`.anim.json`) moved by a behavior, collides, plays audio; screenshot matches; release build packs atlases and strips debug · e2e: `e2e/runtime.spec.ts` (local Linux)
 - [x] Phase 2 UI core · Persona-style pause menu (templates/persona-menu) fully navigable by a simulated gamepad; screenshots at 1920×1080 and phone; release build loads screens and Kenney glyphs · e2e: `e2e/ui.spec.ts` (local Linux)
-- [ ] Phase 3a UI complete
+- [x] Phase 3a UI complete · templates/visual-novel: Ink dialogue with choices, variables, portraits, backlog and saves; scene, screen and in-scene transitions (iris, ink, shatter, slices… with screenshots); FX layer on the game and on a DOM logo (PixiRender); Japanese and Arabic (hot switch, CJK line breaking, RTL layout, IME); WebM VP9 alpha cutscene with subtitles, skipped by holding confirm; release build plays compiled Ink · e2e: `e2e/visual-novel.spec.ts` (local Linux)
 - [ ] Phase 3b Light 3D
 - [ ] Phase 3c Desktop
 - [ ] Phase 3d Mobile
@@ -59,18 +59,18 @@ One line per `SPEC.md` requirement: `- [x] ID · where · test`. A requirement i
 - [x] UI-05 Layout · Anchor.vue (9 points, safe area, UI scale saved in settings) · test: runtime.spec.ts (scale), e2e ui.spec.ts (HUD anchored)
 - [x] UI-06 Shapes · Skew, Slant, Mask, NineSlice, outlines, offset shadows (components/*, styles.css) · test: e2e ui.spec.ts screenshots
 - [x] UI-07 Timelines · timeline.ts, useTimeline (labels, sound cues, interruption, ui or game clock, reduced motion) · test: runtime.spec.ts, widgets.spec.ts
-- [ ] UI-08 Transitions
-- [ ] UI-09 Rich text
-- [ ] UI-10 Dialogue
-- [ ] UI-11 FX layer
+- [x] UI-08 Transitions · packages/ui/src/transitions.ts (effects usable as screen transitions, scene transitions via `game.transitions`, and `ui.cover()`), core `game.transitions` · test: transitions.spec.ts, core transitions.spec.ts, e2e visual-novel.spec.ts (iris on goto, ink cover, screenshots of every effect)
+- [x] UI-09 Rich text · richtext.ts, components/RichText.vue (color, size, b/i/u, shake, wave, icon, input glyph, speed, pause; per-character spans; typewriter) · test: text.spec.ts, e2e visual-novel.spec.ts (typewriter, wave/shake lines)
+- [x] UI-10 Dialogue · dialogue.ts (inkjs), components/DialogueBox.vue, screens/Backlog.vue, cli/src/ink.ts (.ink compiled at build) · test: dialogue.spec.ts, cli ink-fonts.spec.ts, e2e visual-novel.spec.ts
+- [x] UI-11 FX layer · fx/filters.ts (glitch, halftone, blur, chromatic, distort), fx/fx-layer.ts (world and overlay targets, useFx, pulse, distort transition), components/PixiRender.vue (SVG foreignObject → texture) · test: fx-world-video.spec.ts, e2e visual-novel.spec.ts (halftone on the game, glitch on the rendered logo, pixels read back, `# fx` pulse)
 - [x] UI-12 Themes · theme.ts (tokens → CSS variables, blacklight and persona, live switch saved in settings) · test: runtime.spec.ts, e2e ui.spec.ts (theme switch)
 - [x] UI-13 Widgets · widgets/* (button, menu list, tabs, gauge with trail, counter, virtualized scroll list, inventory grid, slider, toggle, select, text input with IME + virtual keyboard, tooltip, toast, confirm dialog, radial menu) · test: widgets.spec.ts, e2e ui.spec.ts
-- [ ] UI-14 World-anchored UI
-- [ ] UI-15 Localization
-- [ ] UI-16 Accessibility
-- [ ] UI-17 Ready-made screens
-- [ ] UI-18 Dev UI inspector
-- [ ] UI-19 Video
+- [x] UI-14 World-anchored UI · world.ts, components/WorldAnchor.vue, FloatingTextHost.vue (floatText, damageNumber) · test: fx-world-video.spec.ts, e2e visual-novel.spec.ts (tag follows the lantern, +1 on click)
+- [x] UI-15 Localization · i18n.ts (locales/*.json, Intl.PluralRules, interpolation, hot switch, RTL, Intl.Segmenter line breaks), cli/src/fonts.ts (font subsetting in release builds), TextInput IME · test: text.spec.ts, cli ink-fonts.spec.ts, e2e visual-novel.spec.ts (ja + ar, IME composition)
+- [x] UI-16 Accessibility · a11y.ts (text size, high contrast, daltonization filters, reduced motion, subtitles, text speed; saved as a11y.*) · test: screens.spec.ts, text.spec.ts, transitions.spec.ts
+- [x] UI-17 Ready-made screens · screens/SettingsScreen.vue (audio, video, controls with rebinding, language, accessibility), PauseScreen.vue, SaveLoadScreen.vue over the `SaveSlots` interface (slots.ts, `fileSlots`) · test: screens.spec.ts, e2e visual-novel.spec.ts (save/load mid-dialogue, language tab)
+- [x] UI-18 Dev UI inspector · inspector.ts (`@blacklight/ui/inspector`, F9, installed by the CLI in dev only) · test: screens.spec.ts, e2e visual-novel.spec.ts (dev shows it, release build does not contain it)
+- [x] UI-19 Video · video.ts (sources WebM first / MP4 on Apple WebKit, WebVTT), components/VideoPlayer.vue, screens/Cutscene.vue, playCutscene, subtitle() · test: fx-world-video.spec.ts, e2e visual-novel.spec.ts (WebM VP9 alpha plays, subtitles, hold to skip); MP4 on Safari/iOS in MANUAL_TESTS.md
 
 ## Modules (MOD)
 
