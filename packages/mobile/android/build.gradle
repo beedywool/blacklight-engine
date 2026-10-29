@@ -1,0 +1,66 @@
+// Android side of @blacklight/mobile: the BlacklightGames plugin (Google Play Games Services v2).
+// Included by `cap sync` like any Capacitor plugin; versions follow the app's variables.gradle.
+// Google's SDK is proprietary: it is compiled in only when the app sets the Gradle property
+// blacklightPlayGames=true (the CLI does when game.config.ts has mobile.playGamesAppId).
+def playGames = (rootProject.findProperty('blacklightPlayGames') ?: 'false').toString().toBoolean()
+ext {
+    androidxAppCompatVersion = project.hasProperty('androidxAppCompatVersion') ? rootProject.ext.androidxAppCompatVersion : '1.7.1'
+    playGamesVersion = project.hasProperty('playGamesVersion') ? rootProject.ext.playGamesVersion : '22.1.0'
+}
+
+buildscript {
+    ext.kotlin_version = project.hasProperty('kotlin_version') ? rootProject.ext.kotlin_version : '2.2.20'
+    repositories {
+        google()
+        mavenCentral()
+    }
+    dependencies {
+        classpath 'com.android.tools.build:gradle:8.13.0'
+        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
+    }
+}
+
+apply plugin: 'com.android.library'
+
+// Build outputs go to the app's build folder, not into the package (node_modules or the engine
+// checkout), so several games can build at once.
+layout.buildDirectory = rootProject.layout.buildDirectory.dir('blacklight-mobile')
+if (project.extensions.findByName('kotlin') == null) {
+    apply plugin: 'kotlin-android'
+}
+
+android {
+    namespace = 'dev.blacklight.mobile'
+    compileSdk = project.hasProperty('compileSdkVersion') ? rootProject.ext.compileSdkVersion : 36
+    defaultConfig {
+        minSdkVersion project.hasProperty('minSdkVersion') ? rootProject.ext.minSdkVersion : 24
+        targetSdkVersion project.hasProperty('targetSdkVersion') ? rootProject.ext.targetSdkVersion : 36
+    }
+    lintOptions {
+        abortOnError = false
+    }
+    sourceSets {
+        main.java.srcDirs += playGames ? 'src/playgames/java' : 'src/noplaygames/java'
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_21
+        targetCompatibility JavaVersion.VERSION_21
+    }
+}
+
+kotlin {
+    jvmToolchain(21)
+}
+
+repositories {
+    google()
+    mavenCentral()
+}
+
+dependencies {
+    implementation project(':capacitor-android')
+    implementation "androidx.appcompat:appcompat:$androidxAppCompatVersion"
+    if (playGames) {
+        implementation "com.google.android.gms:play-services-games-v2:$playGamesVersion"
+    }
+}

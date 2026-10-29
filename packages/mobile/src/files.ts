@@ -72,7 +72,8 @@ export class CapacitorFiles implements PlatformFiles {
   async init(): Promise<void> {
     try {
       const { uri } = await this.fs.getUri({ path: FILES_ROOT, directory: this.dir });
-      this.uri = uri;
+      // Android reports folders with a trailing slash, iOS without.
+      this.uri = uri.replace(/\/+$/, '');
     } catch {
       // Only used for display; files work without it.
     }

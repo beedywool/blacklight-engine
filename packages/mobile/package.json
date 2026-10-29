@@ -20,6 +20,14 @@
     "Package.swift",
     "BlacklightMobile.podspec"
   ],
+  "capacitor": {
+    "android": {
+      "src": "android"
+    },
+    "ios": {
+      "src": "ios"
+    }
+  },
   "scripts": {
     "build": "tsup",
     "typecheck": "tsc --noEmit"
@@ -28,16 +36,16 @@
     "@blacklight/core": "workspace:*"
   },
   "dependencies": {
+    "@capacitor-community/keep-awake": "8.0.1",
+    "@capacitor-community/sqlite": "8.1.1",
     "@capacitor/android": "8.6.0",
     "@capacitor/app": "8.1.2",
+    "@capacitor/browser": "8.0.5",
     "@capacitor/core": "8.6.0",
     "@capacitor/filesystem": "8.1.5",
     "@capacitor/haptics": "8.0.2",
     "@capacitor/ios": "8.6.0",
     "@capacitor/screen-orientation": "8.0.2",
-    "@capacitor/browser": "8.0.5",
-    "@capacitor-community/keep-awake": "8.0.1",
-    "@capacitor-community/sqlite": "8.1.1",
     "capacitor-secure-storage-plugin": "0.13.0"
   },
   "devDependencies": {
