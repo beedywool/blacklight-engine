@@ -7,3 +7,4 @@ SPEC.md
 CLAUDE.md
 packages/ui/src/prompt-urls.*
 packages/core/src/input/gamecontrollerdb.ts
+.claude/

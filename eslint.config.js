@@ -7,6 +7,7 @@ export default tseslint.config(
   {
     ignores: [
       '**/dist/**',
+      '.claude/**',
       '**/coverage/**',
       '**/.blacklight/**',
       'docs/.vitepress/cache/**',
