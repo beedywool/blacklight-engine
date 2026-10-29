@@ -123,6 +123,9 @@ export { Timers } from './timers';
 export { Tween, Tweens, type EaseName, type SpringOptions, type TweenOptions } from './tween';
 export { computeViewport, type Viewport } from './viewport';
 
+// Modules
+export * from './modules/index';
+
 // Utilities
 export {
   DEG,

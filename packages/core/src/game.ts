@@ -20,6 +20,7 @@ import { Scene } from './scene';
 import type { SceneLoader } from './scenes';
 import { WebPlatform, type Platform } from './platform';
 import { Settings } from './settings';
+import { ModuleHost, type GameModules, type ModuleList } from './modules/index';
 import { didYouMean } from './suggest';
 import type { Rect } from './math';
 import { computeViewport, type Viewport } from './viewport';
@@ -35,6 +36,8 @@ export interface CreateGameOptions {
   mount: HTMLElement;
   /** Set up before the first scene starts (`@blacklight/ui` installs its layer this way). */
   plugins?: ((game: Game) => void | Promise<void>)[];
+  /** Modules from `game.config.ts`, set up after the plugins (the CLI generates the list). */
+  modules?: ModuleList;
 }
 
 /**
@@ -201,6 +204,10 @@ export class Game {
   platform: Platform;
   /** UI layer, installed by `@blacklight/ui`. */
   ui: UiHost | undefined;
+  /** APIs of the modules listed in `game.config.ts`, by name (`game.modules.sqlite`). */
+  get modules(): GameModules {
+    return (this.moduleHost?.apis ?? {}) as GameModules;
+  }
   /** Drawn while scenes load; replace it to show your own art. */
   loadingScreen: LoadingScreen = BAR_LOADING_SCREEN;
   /**
@@ -216,6 +223,8 @@ export class Game {
   /** Element the game fills; UI layers add themselves to it. */
   readonly mount: HTMLElement;
   private readonly plugins: ((game: Game) => void | Promise<void>)[];
+  private readonly moduleList: ModuleList | undefined;
+  private moduleHost: ModuleHost | undefined;
   private readonly steps: FixedStep;
   private blurred = false;
   private switching: Promise<void> = Promise.resolve();
@@ -230,6 +239,7 @@ export class Game {
     this.registry = options.objects ?? { global: {}, scenes: {} };
     this.mount = options.mount;
     this.plugins = options.plugins ?? [];
+    this.moduleList = options.modules;
     this.platform = new WebPlatform(config.id);
     this.steps = new FixedStep(config.tickRate);
     this.settings = new Settings(`blacklight:${config.id}:settings`);
@@ -296,6 +306,9 @@ export class Game {
     });
 
     for (const plugin of this.plugins) await plugin(this);
+    // After the plugins, which may replace `platform`; before the first scene, which may use modules.
+    this.moduleHost = new ModuleHost(this);
+    await this.moduleHost.install(this.moduleList ?? { definitions: [] });
     this.mount.dataset.blacklightState = 'loading';
     await this.goto(this.config.entry as SceneName);
     this.mount.dataset.blacklightState = 'running';
@@ -323,6 +336,12 @@ export class Game {
   private draw(alpha: number): void {
     this.scene?.draw(alpha);
     for (const { scene } of this.overlays) scene.draw(alpha);
+  }
+
+  /** Stops the game: disposes the modules (last set up first), then the renderer. */
+  async destroy(): Promise<void> {
+    await this.moduleHost?.dispose();
+    this.app.destroy(true, { children: true });
   }
 
   /** Pauses the game logic (the display keeps updating). */
