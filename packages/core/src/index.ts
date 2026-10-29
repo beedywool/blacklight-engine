@@ -85,6 +85,7 @@ export {
 export {
   CollisionWorld,
   type CollisionSpec,
+  type CollisionState,
   type Contact,
   type MoveResult,
   type RaycastHit,
@@ -136,4 +137,5 @@ export {
   type Point,
   type Rect,
 } from './math';
+export { DMath } from './dmath';
 export { didYouMean, suggest } from './suggest';

@@ -1,3 +1,4 @@
+import { DMath } from '../dmath';
 import type { GameObject } from '../objects/game-object';
 import { shapeBounds } from '../collision/shapes';
 import { angleDelta, approach, DEG, Vector2, type Point, type Rect } from '../math';
@@ -20,7 +21,7 @@ const FACINGS: Facing[] = [
 
 /** Closest of the 8 facings for a direction. */
 export function facingOf(x: number, y: number): Facing {
-  const index = Math.round(Math.atan2(y, x) / (Math.PI / 4));
+  const index = Math.round(DMath.atan2(y, x) / (Math.PI / 4));
   return FACINGS[(index + 8) % 8]!;
 }
 
@@ -106,7 +107,7 @@ export class TankRotation extends Behavior<TankOptions> {
     object.rotation +=
       input.axis(a.left ?? 'left', a.right ?? 'right') * this.options.turnSpeed * DEG * dt;
     const drive = input.axis(a.backward ?? 'down', a.forward ?? 'up') * this.options.speed;
-    object.velocity.set(Math.cos(object.rotation) * drive, Math.sin(object.rotation) * drive);
+    object.velocity.set(DMath.cos(object.rotation) * drive, DMath.sin(object.rotation) * drive);
     object.move(object.velocity.x * dt, object.velocity.y * dt);
   }
 }
@@ -134,7 +135,10 @@ export class Bullet extends Behavior<BulletOptions> {
   override attach(object: GameObject): void {
     super.attach(object);
     const angle = this.options.angle !== undefined ? this.options.angle * DEG : object.rotation;
-    object.velocity.set(Math.cos(angle) * this.options.speed, Math.sin(angle) * this.options.speed);
+    object.velocity.set(
+      DMath.cos(angle) * this.options.speed,
+      DMath.sin(angle) * this.options.speed,
+    );
   }
 
   override update(object: GameObject, dt: number): void {
@@ -168,7 +172,10 @@ export class Bounce extends Behavior<BounceOptions> {
   override attach(object: GameObject): void {
     super.attach(object);
     const angle = (this.options.angle ?? 45) * DEG;
-    object.velocity.set(Math.cos(angle) * this.options.speed, Math.sin(angle) * this.options.speed);
+    object.velocity.set(
+      DMath.cos(angle) * this.options.speed,
+      DMath.sin(angle) * this.options.speed,
+    );
   }
 
   override update(object: GameObject, dt: number): void {
@@ -215,7 +222,7 @@ export class FollowTarget extends Behavior<FollowTargetOptions> {
     }
     const dx = point.x - object.x;
     const dy = point.y - object.y;
-    const distance = Math.hypot(dx, dy);
+    const distance = DMath.hypot(dx, dy);
     const stop = this.options.stopDistance ?? 0;
     if (distance <= stop) {
       object.velocity.set(0, 0);
@@ -223,7 +230,7 @@ export class FollowTarget extends Behavior<FollowTargetOptions> {
     }
     const step = Math.min(this.options.speed * dt, distance - stop);
     object.velocity.set((dx / distance) * this.options.speed, (dy / distance) * this.options.speed);
-    if (this.options.rotate) object.rotation = Math.atan2(dy, dx);
+    if (this.options.rotate) object.rotation = DMath.atan2(dy, dx);
     object.move((dx / distance) * step, (dy / distance) * step);
   }
 }
@@ -258,8 +265,8 @@ export class PathFollow extends Behavior<PathOptions> {
       const p = points[this.target]!;
       const dx = p.x - object.x;
       const dy = p.y - object.y;
-      const distance = Math.hypot(dx, dy);
-      if (distance > 0 && this.options.rotate) object.rotation = Math.atan2(dy, dx);
+      const distance = DMath.hypot(dx, dy);
+      if (distance > 0 && this.options.rotate) object.rotation = DMath.atan2(dy, dx);
       if (distance > budget) {
         object.x += (dx / distance) * budget;
         object.y += (dy / distance) * budget;
@@ -351,7 +358,7 @@ export class SineWave extends Behavior<SineOptions> {
   override update(object: GameObject, dt: number): void {
     this.time += dt;
     const { amplitude, period = 1, phase = 0, property = 'y' } = this.options;
-    const value = amplitude * Math.sin((this.time / period + phase) * Math.PI * 2);
+    const value = amplitude * DMath.sin((this.time / period + phase) * Math.PI * 2);
     const delta = value - this.applied;
     this.applied = value;
     switch (property) {

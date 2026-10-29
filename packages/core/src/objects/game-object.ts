@@ -8,6 +8,7 @@ import {
   type Transform,
   type WorldShape,
 } from '../collision/shapes';
+import { DMath } from '../dmath';
 import { Disposables, type EventBus, type Unsubscribe } from '../events';
 import type { Game } from '../game';
 import type { PlayerInput } from '../input/input';
@@ -278,8 +279,8 @@ export class GameObject extends PixiContainer {
     let t: Transform = { x: 0, y: 0, rotation: 0, scaleX: 1, scaleY: 1 };
     for (let i = chain.length - 1; i >= 0; i--) {
       const node = chain[i]!;
-      const cos = Math.cos(t.rotation);
-      const sin = Math.sin(t.rotation);
+      const cos = DMath.cos(t.rotation);
+      const sin = DMath.sin(t.rotation);
       const px = node.x * t.scaleX;
       const py = node.y * t.scaleY;
       t = {

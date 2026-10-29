@@ -1,3 +1,4 @@
+import { DMath } from '../dmath';
 import type { GameObject } from '../objects/game-object';
 import type { ActionName } from '../register';
 import { Behavior } from './behavior';
@@ -164,7 +165,7 @@ export class GridMovement extends Behavior<GridOptions> {
     const speed = (this.options.speed ?? 6) * size;
     const dx = this.target.x - object.x;
     const dy = this.target.y - object.y;
-    const distance = Math.hypot(dx, dy);
+    const distance = DMath.hypot(dx, dy);
     const step = speed * dt;
     if (distance <= step) {
       object.x = this.target.x;

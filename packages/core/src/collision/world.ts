@@ -1,3 +1,4 @@
+import { DMath } from '../dmath';
 import type { GameObject } from '../objects/game-object';
 import type { Point, Rect } from '../math';
 import {
@@ -55,6 +56,12 @@ export interface MoveResult {
 }
 
 export type Side = 'left' | 'right' | 'top' | 'bottom';
+
+/** Contacts and outside states by object id, from {@link CollisionWorld.capture}. */
+export interface CollisionState {
+  readonly contacts: readonly (readonly [number, number, Penetration])[];
+  readonly outside: readonly (readonly [number, Side])[];
+}
 
 /** Collision detection for one scene. */
 export class CollisionWorld {
@@ -172,6 +179,35 @@ export class CollisionWorld {
   /** Objects currently overlapping `object` (as of the last step). */
   contactsOf(object: GameObject): ReadonlyMap<GameObject, Penetration> {
     return this.contacts.get(object) ?? new Map();
+  }
+
+  /**
+   * Current contacts by object id. Rollback restores them with the objects: otherwise a replayed
+   * step would not report `onCollide` for a contact that began in a step that was undone.
+   */
+  capture(): CollisionState {
+    const contacts: [number, number, Penetration][] = [];
+    for (const [a, map] of this.contacts)
+      for (const [b, p] of map) contacts.push([a.id, b.id, { ...p }]);
+    return { contacts, outside: [...this.outside].map(([o, side]) => [o.id, side] as const) };
+  }
+
+  /** Returns to a state from {@link capture}; `lookup` finds objects by id. */
+  restore(state: CollisionState, lookup: (id: number) => GameObject | undefined): void {
+    this.contacts.clear();
+    this.outside.clear();
+    for (const [aId, bId, p] of state.contacts) {
+      const a = lookup(aId);
+      const b = lookup(bId);
+      if (!a || !b) continue;
+      let map = this.contacts.get(a);
+      if (!map) this.contacts.set(a, (map = new Map()));
+      map.set(b, { ...p });
+    }
+    for (const [id, side] of state.outside) {
+      const object = lookup(id);
+      if (object) this.outside.set(object, side);
+    }
   }
 
   /** Forgets an object (destroyed). */
@@ -352,7 +388,7 @@ export class CollisionWorld {
     to: Point,
     filter?: (object: GameObject) => boolean,
   ): RaycastHit | undefined {
-    const length = Math.hypot(to.x - from.x, to.y - from.y);
+    const length = DMath.hypot(to.x - from.x, to.y - from.y);
     if (length === 0) return undefined;
     const dx = (to.x - from.x) / length;
     const dy = (to.y - from.y) / length;
