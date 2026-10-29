@@ -21,7 +21,7 @@ this.restore(before);
 | Data fields  | Every field the game's class declares (`hp = 3`, `coins = 0`, `target = null`), or only those listed in `static serialize`.                                                                       |
 | Behaviors    | `enabled` and every data field of each behavior (`facing`, `onGround`, `direction`, timers in ms…).                                                                                               |
 | Animation    | For sprites: animation name, frame index, time in the frame, `finished`, mirrored fallback, speed.                                                                                                |
-| Timers       | Scene and object timers, in memory only (see below).                                                                                                                                              |
+| Timers       | Scene and object timers, and current collision contacts, in memory only (see below).                                                                                                              |
 
 Data fields are the fields a class adds on top of the engine's: the engine records which fields exist after its own constructor, and the rest belong to the game. To save only some of them:
 
@@ -102,7 +102,7 @@ A snapshot restored without `memory` leaves the scene's current timers as they a
 
 ## Uses
 
-- **Rollback**: snapshot every step, and when a late input arrives, restore the step it belongs to and run the steps again with `game.step(n)`. Snapshots, the fixed step and the seeded random generator are what make the replay identical.
+- **Rollback**: snapshot every step, and when a late input arrives, restore the step it belongs to and run the steps again. `@blacklight/net` does this for online games ([Networking](./networking)). Snapshots, the fixed step and the seeded random generator are what make the replay identical; a restore also puts objects back in their update order and gives objects spawned afterwards the same ids as the first time.
 - **Saves and checkpoints**: write the JSON part, restore it when the player continues.
 - **Tests**: run a scene, snapshot, run again from the snapshot, compare.
 

@@ -1,3 +1,4 @@
+import { DMath } from '../dmath';
 import type { Point, Rect } from '../math';
 
 /**
@@ -51,8 +52,8 @@ export function applyTransform(t: Transform, px: number, py: number): Point {
   const sx = px * t.scaleX;
   const sy = py * t.scaleY;
   if (t.rotation === 0) return { x: t.x + sx, y: t.y + sy };
-  const cos = Math.cos(t.rotation);
-  const sin = Math.sin(t.rotation);
+  const cos = DMath.cos(t.rotation);
+  const sin = DMath.sin(t.rotation);
   return { x: t.x + sx * cos - sy * sin, y: t.y + sx * sin + sy * cos };
 }
 
@@ -199,7 +200,7 @@ function polygonPolygon(a: Point[], b: Point[]): Penetration | undefined {
       const q = poly[(i + 1) % poly.length]!;
       let nx = -(q.y - p.y);
       let ny = q.x - p.x;
-      const length = Math.hypot(nx, ny);
+      const length = DMath.hypot(nx, ny);
       if (length === 0) continue;
       nx /= length;
       ny /= length;
@@ -226,7 +227,7 @@ function circleCircle(
 ): Penetration | undefined {
   const dx = a.x - b.x;
   const dy = a.y - b.y;
-  const dist = Math.hypot(dx, dy);
+  const dist = DMath.hypot(dx, dy);
   const depth = a.radius + b.radius - dist;
   if (depth <= 0) return undefined;
   return dist === 0 ? { nx: 0, ny: -1, depth } : { nx: dx / dist, ny: dy / dist, depth };
@@ -240,7 +241,7 @@ function circlePolygon(
   let closest = poly[0]!;
   let closestDist = Infinity;
   for (const p of poly) {
-    const d = (p.x - c.x) ** 2 + (p.y - c.y) ** 2;
+    const d = (p.x - c.x) * (p.x - c.x) + (p.y - c.y) * (p.y - c.y);
     if (d < closestDist) {
       closestDist = d;
       closest = p;
@@ -255,7 +256,7 @@ function circlePolygon(
   axes.push([c.x - closest.x, c.y - closest.y]);
   let best: Penetration | undefined;
   for (const [ax, ay] of axes) {
-    const length = Math.hypot(ax, ay);
+    const length = DMath.hypot(ax, ay);
     if (length === 0) continue;
     const nx = ax / length;
     const ny = ay / length;
@@ -294,7 +295,9 @@ function pointInShape(shape: WorldShape, x: number, y: number): boolean {
         y < shape.rect.y + shape.rect.height
       );
     case 'circle':
-      return (x - shape.x) ** 2 + (y - shape.y) ** 2 <= shape.radius ** 2;
+      return (
+        (x - shape.x) * (x - shape.x) + (y - shape.y) * (y - shape.y) <= shape.radius * shape.radius
+      );
     case 'pixel':
       return maskAt(shape, x, y);
     case 'polygon': {
@@ -372,7 +375,7 @@ export function rayShape(
     const fx = ox - shape.x;
     const fy = oy - shape.y;
     const b = fx * dx + fy * dy;
-    const c = fx * fx + fy * fy - shape.radius ** 2;
+    const c = fx * fx + fy * fy - shape.radius * shape.radius;
     if (c <= 0) return 0;
     const disc = b * b - c;
     if (disc < 0) return undefined;

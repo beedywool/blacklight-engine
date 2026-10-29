@@ -8,11 +8,12 @@ import { resolveProjectPath } from './assets';
 import type { PlayOptions, SoundHandle } from './audio';
 import type { Behavior } from './behaviors/behavior';
 import { Camera, type FollowOptions } from './camera';
-import { CollisionWorld, type RaycastHit } from './collision/world';
+import { CollisionWorld, type CollisionState, type RaycastHit } from './collision/world';
 import type { WorldShape } from './collision/shapes';
 import { Disposables, EventBus, type EventMap, type Unsubscribe } from './events';
 import type { Game, GotoOptions, SceneUi } from './game';
 import type { InputManager } from './input/input';
+import { loadLayout, type SceneLayout } from './layout';
 import type { Point, Rect } from './math';
 import { Text } from './objects/basic';
 import { GameObject, type GameObjectClass, type SpawnProps } from './objects/game-object';
@@ -90,7 +91,11 @@ export interface SceneSnapshot {
     followOptions: FollowOptions;
   }[];
   objects: ObjectSnapshot[];
-  memory?: { timers: TimersState; objectTimers: Map<number, TimersState> };
+  memory?: {
+    timers: TimersState;
+    objectTimers: Map<number, TimersState>;
+    collisions?: CollisionState;
+  };
 }
 
 /** Audio bound to a scene: keys are looked up in the scene's folder first. */
@@ -281,6 +286,23 @@ export abstract class Scene<P = void> {
     const { layer, parent, ...rest } = props as { layer?: string; parent?: GameObject };
     this.applyProps(object, rest);
     return this.add(object, { layer, parent });
+  }
+
+  /**
+   * Spawns the objects placed in a layout file (`<name>.layout.json`, saved by the VS Code scene
+   * editor), in order. Returns them.
+   *
+   * @example
+   * ```ts
+   * import layout from './level.layout.json';
+   * create() {
+   *   this.load(layout);
+   *   this.player = this.find('Player')!;
+   * }
+   * ```
+   */
+  load(layout: SceneLayout): GameObject[] {
+    return loadLayout(this as Scene<never>, layout);
   }
 
   /** Spawns `count` objects; `props` receives the index. */
@@ -530,7 +552,11 @@ export abstract class Scene<P = void> {
         followOptions: JSON.parse(JSON.stringify(c.followSettings)) as FollowOptions,
       })),
       objects,
-      memory: { timers: this.timers.capture(), objectTimers },
+      memory: {
+        timers: this.timers.capture(),
+        objectTimers,
+        collisions: this.collisions.capture(),
+      },
     };
   }
 
@@ -609,8 +635,12 @@ export abstract class Scene<P = void> {
       const timers = snapshot.memory?.objectTimers.get(saved.id);
       if (timers) o.timers.restore(timers);
     }
+    // Same update order and ids as when the snapshot was taken: re-created objects were appended,
+    // and objects spawned after a rollback must get the ids they had the first time.
+    const order = new Map(snapshot.objects.map((o, i) => [o.id, i]));
+    this.objectList.sort((a, b) => (order.get(a.id) ?? 0) - (order.get(b.id) ?? 0));
     this.steps = snapshot.steps;
-    this.nextId = Math.max(this.nextId, snapshot.nextId);
+    this.nextId = snapshot.nextId;
     this.random.state = [...snapshot.random];
     snapshot.cameras.forEach((saved, i) => {
       const camera = this.cameras[i] ?? this.addCamera(saved.viewport);
@@ -623,6 +653,7 @@ export abstract class Scene<P = void> {
     });
     while (this.cameras.length > snapshot.cameras.length) this.removeCamera(this.cameras.at(-1)!);
     if (snapshot.memory) this.timers.restore(snapshot.memory.timers);
+    if (snapshot.memory?.collisions) this.collisions.restore(snapshot.memory.collisions, lookup);
   }
 
   // Engine side.
@@ -669,8 +700,12 @@ export abstract class Scene<P = void> {
     return layers.includes('main') ? 'main' : (layers[0] ?? 'main');
   }
 
+  /** @internal Parameters given to `create()`; hot reload creates the new version with them. */
+  params: unknown;
+
   /** @internal Runs `create()`. */
   async start(params: unknown): Promise<void> {
+    this.params = params;
     await this.create(params as P);
   }
 

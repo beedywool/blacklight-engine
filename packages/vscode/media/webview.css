@@ -1,0 +1,339 @@
+/* BlackLight look (docs/.vitepress/theme/style.css): black surface, grey containers, white focus. */
+:root {
+  --bl-surface: #080808;
+  --bl-surface-container: #181818;
+  --bl-surface-high: #222222;
+  --bl-surface-highest: #2c2c2c;
+  --bl-on-surface: #ededed;
+  --bl-on-surface-variant: #c2c2c2;
+  --bl-outline: #8e8e8e;
+  --bl-outline-variant: #3a3a3a;
+  --bl-error: #f2b8b5;
+  --bl-ease: cubic-bezier(0.2, 0, 0, 1);
+  --bl-radius: 12px;
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  min-height: 100%;
+  background: var(--bl-surface);
+  color: var(--bl-on-surface);
+  font:
+    13px/1.45 'Google Sans Flex',
+    'Google Sans',
+    system-ui,
+    sans-serif;
+}
+
+body {
+  padding: 16px;
+}
+
+h1,
+h2,
+h3 {
+  margin: 0 0 8px;
+  font-weight: 600;
+}
+h1 {
+  font-size: 18px;
+}
+h2 {
+  font-size: 14px;
+  color: var(--bl-on-surface-variant);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+a {
+  color: #fff;
+  font-weight: 700;
+}
+
+code,
+pre,
+textarea {
+  font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+}
+
+.layout {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: minmax(240px, 320px) 1fr;
+  align-items: start;
+}
+.layout--three {
+  grid-template-columns: 200px 1fr 260px;
+}
+
+.card {
+  background: var(--bl-surface-container);
+  border: 1px solid var(--bl-outline-variant);
+  border-radius: var(--bl-radius);
+  padding: 12px;
+}
+.card + .card {
+  margin-top: 12px;
+}
+
+.row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.muted {
+  color: var(--bl-outline);
+}
+.grow {
+  flex: 1;
+}
+
+button {
+  font: inherit;
+  font-weight: 600;
+  padding: 6px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--bl-outline-variant);
+  background: var(--bl-surface-highest);
+  color: var(--bl-on-surface);
+  cursor: pointer;
+  transition: background 0.15s var(--bl-ease);
+}
+button:hover {
+  background: #3a3a3a;
+}
+button.primary {
+  background: #fff;
+  color: #080808;
+  border-color: #fff;
+}
+button.primary:hover {
+  background: #e6e6e6;
+}
+button.danger {
+  color: var(--bl-error);
+}
+button.small {
+  padding: 2px 10px;
+  font-size: 12px;
+}
+button.selected,
+.selected {
+  outline: 2px solid #fff;
+  outline-offset: 1px;
+}
+
+input,
+select,
+textarea {
+  font: inherit;
+  color: var(--bl-on-surface);
+  background: var(--bl-surface);
+  border: 1px solid var(--bl-outline-variant);
+  border-radius: 8px;
+  padding: 5px 8px;
+  min-width: 0;
+}
+input[type='number'] {
+  width: 90px;
+}
+input[type='checkbox'] {
+  width: 16px;
+  height: 16px;
+  accent-color: #fff;
+}
+textarea {
+  width: 100%;
+  min-height: 60px;
+}
+
+:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+}
+
+.field {
+  display: grid;
+  grid-template-columns: 140px 1fr;
+  gap: 4px 10px;
+  align-items: center;
+  margin: 6px 0;
+}
+.field__hint {
+  grid-column: 2;
+  color: var(--bl-outline);
+  font-size: 12px;
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.list__item {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding: 6px 8px;
+  border-radius: 8px;
+  cursor: pointer;
+  background: var(--bl-surface-high);
+}
+.list__item:hover {
+  background: var(--bl-surface-highest);
+}
+
+.checker {
+  background-color: #111;
+  background-image:
+    linear-gradient(45deg, #1d1d1d 25%, transparent 25%),
+    linear-gradient(-45deg, #1d1d1d 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #1d1d1d 75%),
+    linear-gradient(-45deg, transparent 75%, #1d1d1d 75%);
+  background-size: 16px 16px;
+  background-position:
+    0 0,
+    0 8px,
+    8px -8px,
+    -8px 0;
+}
+
+canvas {
+  image-rendering: pixelated;
+  display: block;
+}
+
+.badge {
+  display: inline-block;
+  padding: 0 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  background: var(--bl-surface-highest);
+  color: var(--bl-on-surface-variant);
+}
+.badge--warn {
+  background: #3a2a1a;
+  color: #ffcf9e;
+}
+
+.error,
+.error-toast {
+  color: var(--bl-error);
+}
+.error-toast {
+  position: fixed;
+  left: 16px;
+  right: 16px;
+  bottom: 16px;
+  padding: 10px 14px;
+  border-radius: var(--bl-radius);
+  background: #2a1414;
+  border: 1px solid #5a2a2a;
+}
+
+.thumbs {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 10px;
+}
+.thumb {
+  background: var(--bl-surface-container);
+  border: 1px solid var(--bl-outline-variant);
+  border-radius: var(--bl-radius);
+  padding: 8px;
+  cursor: pointer;
+  overflow: hidden;
+}
+.thumb__image {
+  height: 80px;
+  display: grid;
+  place-items: center;
+  border-radius: 8px;
+  overflow: hidden;
+}
+.thumb__image img {
+  max-width: 100%;
+  max-height: 80px;
+  image-rendering: pixelated;
+}
+.thumb__name {
+  margin-top: 6px;
+  font-size: 12px;
+  word-break: break-all;
+}
+
+.bar {
+  height: 8px;
+  border-radius: 4px;
+  background: #fff;
+}
+
+.tabs {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.timeline-ruler {
+  position: relative;
+  height: 22px;
+  border-bottom: 1px solid var(--bl-outline-variant);
+  color: var(--bl-outline);
+  font-size: 11px;
+}
+.timeline-row {
+  display: grid;
+  grid-template-columns: 260px 1fr;
+  gap: 8px;
+  align-items: center;
+  padding: 4px 0;
+  border-bottom: 1px solid #141414;
+}
+.timeline-track {
+  position: relative;
+  height: 22px;
+}
+.timeline-bar {
+  position: absolute;
+  top: 3px;
+  height: 16px;
+  border-radius: 8px;
+  background: #fff;
+  cursor: grab;
+}
+.timeline-bar--marker {
+  width: 3px !important;
+  background: var(--bl-outline);
+}
+.timeline-bar.selected {
+  outline: 2px solid #fff;
+  background: #c2c2c2;
+}
+
+iframe {
+  border: 1px solid var(--bl-outline-variant);
+  border-radius: var(--bl-radius);
+  background: #000;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+}
+
+/* Narrow columns and toolbars: label and control side by side, compact. */
+.layout--three > .card .field {
+  grid-template-columns: 56px 1fr;
+}
+.row > .field {
+  display: inline-grid;
+  grid-template-columns: auto auto;
+  margin: 0;
+}
+.row > .field .field__hint {
+  grid-column: 1 / -1;
+}

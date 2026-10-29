@@ -102,3 +102,39 @@ Automated with mocks: `e2e/modules.spec.ts` (registry, `blacklight add`, sql.js,
 1. Create a project in a self-hosted Sentry or GlitchTip, copy its DSN to `telemetry: { dsn }`, build the web game, accept the consent dialog, throw an error from a scene.
 2. Expected: the issue appears with the stack trace (`app:///assets/...` file names), release `<id>@<version>`, tag `platform`; no user, no IP address, no device name in the event JSON.
 3. Refuse consent (or `setConsent(false)`), throw again. Expected: nothing reaches the backend.
+
+## Online play (packages/net, servers/relay)
+
+Run `pnpm build`, then `pnpm --filter @blacklight/relay start` on one machine (prints its LAN addresses), and `pnpm --filter blacklight-fixture-net dev --host` (Push-Push online fixture).
+
+1. Open the fixture without parameters. Expected: four wrestlers in a ring; you steer the white one with the arrows and shove with X; the three bots play over a simulated 150 ms, 2 % loss network in the page. Movement of your wrestler is immediate; the others correct themselves now and then (rollback) without jumping across the ring.
+2. On machine A open the fixture's network URL followed by `?relay=ws://<relay-address>:5360&players=2`, read the room code with `window.netState.room` in the console; on machine B (another OS or browser) open the same URL with `?relay=ws://<relay-address>:5360&room=<CODE>`. Expected: both start the match; each controls one wrestler; positions match on both screens; `window.netState.desyncs` stays empty after several rounds.
+3. Repeat step 2 with an iPhone (Safari) against a Windows or Linux PC (Chrome). Expected: no desync after five minutes (`window.netState.desyncs` empty on both): JavaScriptCore against V8 on real devices.
+4. On a Linux machine with the WebKit dependencies (`sudo pnpm exec playwright install-deps webkit`), run `pnpm e2e e2e/net.spec.ts`. Expected: the WebKit test runs instead of being skipped and passes (it is skipped on hosts without WebKit's system libraries; CI installs them).
+5. Docker: `pnpm --filter @blacklight/relay build && docker build -t blacklight-relay servers/relay && docker run --rm -p 5360:5360 blacklight-relay`, then `curl localhost:5360/health`. Expected: `{"ok":true,…}`; step 2 works against this container; the image is about 240 MB (node:24-alpine).
+6. Desktop LAN hosting (once `@blacklight/native` registers the `relay` module): in the desktop build call `hostLan(game)`, then join from a second machine on the same network with the address it returns. Expected: the OS firewall asks once; the match plays as in step 2.
+
+## Tooling: CLI, hot reload, VS Code extension (any desktop, VS Code with Chrome installed)
+
+Build first: `pnpm build`, then install the extension: `pnpm --filter blacklight-vscode package && code --install-extension packages/vscode/dist/blacklight.vsix`. Open `e2e/fixtures/tooling` (or a new game) in VS Code and run `pnpm dev` in its terminal.
+
+1. `pnpm blacklight doctor` on Windows (with and without `WIN_CSC_LINK`), macOS (with Xcode and a Developer ID identity, then without) and Linux with an Android SDK and JDK 21. Expected: each target is `ready` or lists exactly what is missing with a fix; signing shows as a warning when absent.
+2. `pnpm blacklight run --target web`. Expected: the default browser opens on the game. Then `--target android` / `win` once the platform packages are installed. Expected: the game starts on the emulator / in its window (or a message naming `blacklight build` when the runner is missing).
+3. With the game open in Chrome, move the hero, then change `rate()` in `scenes/arena/arena.scene.ts` and save; change `greeting()` in `objects/hero/hero.object.ts` and save; change the title in `ui/Menu.vue` (open it with F) and save. Expected: no page reload, the hero stays where it was, the menu stays open with the new title.
+4. Run **Blacklight: Debug Game in Browser**, set a breakpoint in `update()` of `objects/hero/hero.object.ts`. Expected: Chrome opens on the game and stops on the breakpoint at the right line; variables show `this.hp`, stepping works. Repeat with `"browser": "msedge"` on Windows.
+5. Open the **Live Objects** view. Expected: scene `arena` with Hero and two Coins, positions updating while the hero moves; clicking `hp` and typing `9` changes it in the game; pause and step buttons work.
+6. Right-click `objects/hero/hero@16x16.png` > **Slice Sprite Sheet**: change the frame size, click frames, Shift-click a range, add two animations, Save. Expected: the grid overlay matches the frames, the preview animates, the file is renamed and the `.anim.json` written.
+7. Open `objects/hero/hero.anim.json` > **Open Animation Editor**: change FPS, frames (`0-3`), loop. Expected: the preview changes at once and the JSON beside it updates; typing in the JSON updates the preview.
+8. Open `scenes/arena/arena.layout.json`: drag the hero, place a coin (pick, click), nudge with arrows, delete with Delete, undo with Ctrl+Z. Expected: the canvas shows the sprites, the JSON stays one object per line, undo works; reload the game: objects are where placed.
+9. Open `ui/Menu.vue` > **Preview UI Component**. Expected: the game appears in the panel with the menu open; clicking each focus state moves the white focus outline in the frame; **Cycle states** steps through them; saving the `.vue` updates the frame without losing the menu.
+10. Open `animations/menu-intro.timeline.json`: drag bars, resize a bar, change easing; with the menu open in the game, **Play in game**. Expected: the bars follow the edits, the JSON stays readable, the menu animates in the game.
+11. Open `game.config.ts` > **Edit Game Configuration**: change the name, width, add an action. Expected: only those values change in the file (comments kept), the game reloads with them.
+12. **Blacklight: Open Asset Browser**. Expected: thumbnails of every image, `assets/unused.png` marked unused, **Weight per scene** lists the arena's files with sizes.
+13. Check every panel in the default dark theme and a light theme. Expected: panels keep the BlackLight look (black surface, white focus), text stays readable.
+
+## Publishing the VS Code extension (owner accounts)
+
+1. `pnpm --filter blacklight-vscode publish:dry-run`. Expected: `dist/blacklight.vsix` is built, its file list printed, and the local stand-in registry accepts it.
+2. Set the version in `packages/vscode/package.json` (it is `0.0.0` while unreleased) and the `publisher` to the Marketplace publisher id of BlackLight.
+3. Marketplace: `pnpm --filter blacklight-vscode exec vsce publish --no-dependencies -p <Azure DevOps PAT with Marketplace (Manage) scope>`. Expected: the extension page shows the README, icon and categories; installing it in a clean VS Code works offline.
+4. Open VSX: `pnpm --filter blacklight-vscode exec ovsx create-namespace <publisher> -p <token>` once, then `pnpm --filter blacklight-vscode exec ovsx publish dist/blacklight.vsix -p <token>`. Expected: the extension appears on open-vsx.org; VSCodium and Cursor install it.

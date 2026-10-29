@@ -1,3 +1,5 @@
+import { DMath } from './dmath';
+
 /** A mutable 2D vector. Speeds in the engine are in virtual pixels per second. */
 export class Vector2 {
   constructor(
@@ -7,12 +9,12 @@ export class Vector2 {
 
   /** Euclidean length. */
   get length(): number {
-    return Math.hypot(this.x, this.y);
+    return DMath.hypot(this.x, this.y);
   }
 
   /** Angle in radians, 0 pointing right, growing clockwise (screen coordinates). */
   get angle(): number {
-    return Math.atan2(this.y, this.x);
+    return DMath.atan2(this.y, this.x);
   }
 
   set(x: number, y: number): this {
@@ -84,7 +86,7 @@ export function approach(from: number, to: number, step: number): number {
 }
 
 export function distance(a: Point, b: Point): number {
-  return Math.hypot(b.x - a.x, b.y - a.y);
+  return DMath.hypot(b.x - a.x, b.y - a.y);
 }
 
 export function rectsOverlap(a: Rect, b: Rect): boolean {

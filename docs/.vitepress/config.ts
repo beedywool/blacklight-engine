@@ -81,6 +81,18 @@ export default defineConfig({
         items: [
           { text: 'Snapshots', link: '/guide/snapshots' },
           { text: 'Debugging', link: '/guide/debugging' },
+          { text: 'Command line tools', link: '/guide/tooling' },
+          { text: 'Hot reload', link: '/guide/hot-reload' },
+          { text: 'VS Code extension', link: '/guide/vscode' },
+        ],
+      },
+      {
+        text: 'Online',
+        items: [
+          { text: 'Networking', link: '/guide/networking' },
+          { text: 'Determinism', link: '/guide/networking-determinism' },
+          { text: 'Testing online play', link: '/guide/networking-testing' },
+          { text: 'Relay server', link: '/guide/networking-relay' },
         ],
       },
       {

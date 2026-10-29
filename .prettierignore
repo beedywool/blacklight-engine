@@ -8,3 +8,7 @@ CLAUDE.md
 packages/ui/src/prompt-urls.*
 packages/core/src/input/gamecontrollerdb.ts
 .claude/
+packages/vscode/dist-webview/
+packages/vscode/dist-test/
+packages/vscode/schema/
+packages/vscode/.vscode-test/

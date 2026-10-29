@@ -14,6 +14,8 @@ allowBuilds:
   '@kmamal/sdl': true
   # Squirrel.Windows installer pulled by electron-builder; the NSIS target does not need it.
   electron-winstaller: false
+  # Downloads a native binary to sign extensions on publish; packaging does not need it.
+  '@vscode/vsce-sign': false
 
 minimumReleaseAgeExclude:
   - framer-motion@14.8.0

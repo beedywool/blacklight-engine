@@ -8,7 +8,7 @@ Menus are HTML (Vue components) drawn over the canvas, and a WebGL shader cannot
 
 ## Floating point differs between browsers
 
-Chrome, Electron and Android run V8; iOS and Safari run JavaScriptCore. `Math.sin` and friends can return different last digits, which is enough to desynchronize an online game with rollback. Online simulation code must use the engine's deterministic math and seeded random numbers; a lint rule refuses `Math.random`, `Math.sin`, `Date.now` and similar in simulation files.
+Chrome, Electron and Android run V8; iOS and Safari run JavaScriptCore. `Math.sin` and friends can return different last digits, which is enough to desynchronize an online game with rollback. Online simulation code must use the engine's deterministic math and seeded random numbers; a lint rule refuses `Math.random`, `Math.sin`, `Date.now` and similar in simulation files. See [Determinism](./networking-determinism).
 
 ## The Steam overlay may not show in Electron
 

@@ -28,6 +28,7 @@ export {
   type ScenePointer,
   type SceneSnapshot,
 } from './scene';
+export { loadLayout, type LayoutObject, type SceneLayout } from './layout';
 export { scenesFromGlob, type SceneClass, type SceneLoader } from './scenes';
 export { objectsFromGlob, pascalCase, type ObjectLoader, type ObjectRegistry } from './registry';
 export type {
@@ -85,6 +86,7 @@ export {
 export {
   CollisionWorld,
   type CollisionSpec,
+  type CollisionState,
   type Contact,
   type MoveResult,
   type RaycastHit,
@@ -199,4 +201,5 @@ export {
   type Point,
   type Rect,
 } from './math';
+export { DMath } from './dmath';
 export { didYouMean, suggest } from './suggest';

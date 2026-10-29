@@ -1,3 +1,4 @@
+import { DMath } from '../dmath';
 import { Graphics as PixiGraphics } from 'pixi.js';
 import { collide } from '../collision/shapes';
 import type { GameObject } from '../objects/game-object';
@@ -33,8 +34,8 @@ export function hitTest(object: GameObject, point: Point): boolean {
       ) !== undefined
     );
   const t = object.sceneTransform();
-  const cos = Math.cos(-t.rotation);
-  const sin = Math.sin(-t.rotation);
+  const cos = DMath.cos(-t.rotation);
+  const sin = DMath.sin(-t.rotation);
   const dx = point.x - t.x;
   const dy = point.y - t.y;
   const local = { x: (dx * cos - dy * sin) / t.scaleX, y: (dx * sin + dy * cos) / t.scaleY };
@@ -140,7 +141,7 @@ export class DragAndDrop extends PointerBehavior {
       let best: Point | undefined;
       let bestDistance = snapRadius;
       for (const point of snap) {
-        const d = Math.hypot(point.x - object.x, point.y - object.y);
+        const d = DMath.hypot(point.x - object.x, point.y - object.y);
         if (d <= bestDistance) [best, bestDistance] = [point, d];
       }
       if (best) {
@@ -241,7 +242,7 @@ export class VirtualJoystick extends Behavior<JoystickOptions> {
     const radius = this.options.radius ?? 90;
     let dx = (point.x - this.origin.x) / radius;
     let dy = (point.y - this.origin.y) / radius;
-    const length = Math.hypot(dx, dy);
+    const length = DMath.hypot(dx, dy);
     if (length > 1) {
       dx /= length;
       dy /= length;

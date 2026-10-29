@@ -1,5 +1,6 @@
 import js from '@eslint/js';
 import globals from 'globals';
+import { blacklight } from 'eslint-plugin-blacklight';
 import pluginVue from 'eslint-plugin-vue';
 import tseslint from 'typescript-eslint';
 
@@ -10,6 +11,7 @@ export default tseslint.config(
       '.claude/**',
       '**/coverage/**',
       '**/.blacklight/**',
+      'packages/vscode/{dist-webview,dist-test,schema,.vscode-test}/**',
       'docs/.vitepress/cache/**',
       'docs/.vitepress/dist/**',
     ],
@@ -17,6 +19,8 @@ export default tseslint.config(
   js.configs.recommended,
   ...tseslint.configs.recommended,
   ...pluginVue.configs['flat/essential'],
+  // Online simulation code must be deterministic (NET-03): *-online/ and sim/ folders, marked classes.
+  ...blacklight.configs.recommended,
   {
     files: ['**/*.vue'],
     languageOptions: { parserOptions: { parser: tseslint.parser, extraFileExtensions: ['.vue'] } },
