@@ -84,9 +84,10 @@ export class UiPreviewController extends Controller<UiPreviewState> {
       await client.request('ui.open', { screen: this.screen }, { target: this.clientId });
       // Let the screen mount and its enter transition start before reading the focus targets.
       await new Promise((resolve) => setTimeout(resolve, 300));
+      await this.refreshFocus();
       this.ready = true;
       this.error = undefined;
-      await this.refreshFocus();
+      await this.push();
     } catch (error) {
       this.error = (error as Error).message;
       await this.push();

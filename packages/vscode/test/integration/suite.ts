@@ -87,15 +87,18 @@ test('New Scene and New Object create files from the conventions', async () => {
 test('Snippets are contributed for TypeScript', async () => {
   const extension = vscode.extensions.getExtension('blacklight.blacklight-vscode')!;
   const snippets = JSON.parse(
-    readFileSync(join(extension.extensionPath, 'snippets', 'blacklight.code-snippets'), 'utf8'),
+    readFileSync(
+      join(extension.extensionPath, 'snippets', 'blacklight.code-snippets'),
+      'utf8',
+    ).replace(/,(\s*[\]}])/g, '$1'),
   ) as Record<string, { prefix: string }>;
   const prefixes = Object.values(snippets).map((s) => s.prefix);
   for (const prefix of ['bl-scene', 'bl-object', 'bl-spawn', 'bl-pressed'])
     assert(prefixes.includes(prefix), `snippet ${prefix}`);
-  const labels = await completions('scenes/arena/probe-snippet.ts', 'bl-sc|');
-  assert(
-    labels.includes('bl-scene'),
-    `bl-scene offered in completion (got ${labels.slice(0, 20).join(', ')})`,
+  // VS Code loads contributed snippets lazily: the first completion may come before them.
+  await waitFor(
+    async () => (await completions('scenes/arena/probe-snippet.ts', 'bl-sc|')).includes('bl-scene'),
+    'bl-scene offered in completion',
   );
 });
 
