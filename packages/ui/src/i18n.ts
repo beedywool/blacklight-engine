@@ -208,9 +208,10 @@ export class I18n {
   }
 
   /**
-   * The message `key` (dotted path) in the current language, with `{name}` placeholders filled,
-   * the plural form chosen from `values.count`, and CJK line-break opportunities added. Missing
-   * keys fall back to the fallback language, then to `fallbackText`, then to the key itself.
+   * The message `key` (dotted path) in the current language, with `{name}` placeholders filled and
+   * the plural form chosen from `values.count`. Missing keys fall back to the fallback language,
+   * then to `fallbackText`, then to the key itself. The text comes back as written (it may be a
+   * file name or an id); `<RichText>` adds CJK line-break opportunities when it displays text.
    */
   t(key: string, values: MessageValues = {}, fallbackText?: string): string {
     void this.version.value;
@@ -229,7 +230,7 @@ export class I18n {
     } else {
       message = this.pluralForm(found as PluralForms, values.count);
     }
-    return lineBreaks(this.format(message, values), this.locale.value);
+    return this.format(message, values);
   }
 
   /** Formats a number for the current language. */

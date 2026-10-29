@@ -134,8 +134,7 @@ describe('localization (UI-15)', () => {
     expect(i18n.t('menu.start')).toBe('New game');
     expect(i18n.t('hello', { name: 'Aoi' })).toBe('Hello Aoi');
     await i18n.setLocale('ja');
-    // Japanese gets zero-width spaces between words (line breaking).
-    expect(i18n.t('menu.start').replaceAll('\u200b', '')).toBe('はじめから');
+    expect(i18n.t('menu.start')).toBe('はじめから');
     expect(i18n.t('only_en')).toBe('English only');
     expect(game.settings.get('ui.locale')).toBe('ja');
     await settle();

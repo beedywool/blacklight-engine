@@ -21,11 +21,15 @@
   pointer-events: auto;
 }
 
-/* Localization: Japanese and Chinese break between words (zero-width spaces from Intl.Segmenter). */
+/* Localization: Japanese and Chinese follow strict line-start rules everywhere; rich text breaks
+   between words only (zero-width spaces from Intl.Segmenter), and still breaks anywhere rather
+   than overflow. */
 .bl-ui--cjk {
+  line-break: strict;
+}
+.bl-ui--cjk .bl-rich-text {
   word-break: keep-all;
   overflow-wrap: anywhere;
-  line-break: strict;
 }
 
 /* Accessibility: high contrast */

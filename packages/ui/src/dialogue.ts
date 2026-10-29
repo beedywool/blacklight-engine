@@ -141,7 +141,8 @@ export class Dialogue {
   };
   private readonly stories: Record<string, InkStory>;
   private locale: string | undefined;
-  private voice: SoundHandle | undefined;
+  private voice: Promise<SoundHandle | undefined> = Promise.resolve(undefined);
+  private voiceHandle: SoundHandle | undefined;
   private readonly read: Set<string>;
   private readonly bindings = new Map<string, (...args: unknown[]) => unknown>();
 
@@ -264,8 +265,7 @@ export class Dialogue {
    */
   next(): boolean {
     if (this.view.choices.length > 0) return false;
-    this.voice?.stop();
-    this.voice = undefined;
+    this.stopVoice();
     while (this.story.canContinue) {
       const raw = this.story.Continue() ?? '';
       const tags = (this.story.currentTags ?? []).map(parseTag);
@@ -380,21 +380,16 @@ export class Dialogue {
         this.view.portraits.splice(0);
         break;
       case 'voice':
-        if (game && tag.value) this.voice = safePlay(game, tag.value, 'voice');
+        if (game && tag.value) this.startVoice(game, tag.value);
         break;
       case 'sfx':
-        if (game && tag.value) safePlay(game, tag.value, 'sfx');
+        if (game && tag.value)
+          void playSound(game, tag.value, () => game.audio.play(tag.value, { bus: 'sfx' }));
         break;
       case 'music':
         if (!game) break;
         if (tag.value === 'stop' || !tag.value) game.audio.stopMusic({ fade: 600 });
-        else {
-          try {
-            game.audio.music(tag.value, { fade: 600 });
-          } catch (error) {
-            console.warn(`[blacklight] Ink tag "music: ${tag.value}":`, error);
-          }
-        }
+        else void playSound(game, tag.value, () => game.audio.music(tag.value, { fade: 600 }));
         break;
     }
     this.events.emit('tag', { tag, line });
@@ -416,14 +411,44 @@ export class Dialogue {
   /** Replays the voice of a backlog entry. */
   replayVoice(entry: BacklogEntry): void {
     if (!entry.voice || !this.options.game) return;
-    this.voice?.stop();
-    this.voice = safePlay(this.options.game, entry.voice, 'voice');
+    this.stopVoice();
+    this.startVoice(this.options.game, entry.voice);
   }
 
   /** The voice line playing, if any. */
   get playingVoice(): SoundHandle | undefined {
-    return this.voice;
+    return this.voiceHandle;
   }
+
+  /** Resolves when the current voice line ends (at once without one): auto mode waits for it. */
+  async voiceEnded(): Promise<void> {
+    const handle = await this.voice;
+    await handle?.ended;
+  }
+
+  private startVoice(game: Game, key: string): void {
+    const token = ++this.voiceToken;
+    this.voice = playSound(game, key, () => game.audio.play(key, { bus: 'voice' })).then(
+      (handle) => {
+        // A voice that finished loading after the player moved on stays silent.
+        if (token !== this.voiceToken) {
+          handle?.stop();
+          return undefined;
+        }
+        this.voiceHandle = handle;
+        return handle;
+      },
+    );
+  }
+
+  private stopVoice(): void {
+    this.voiceToken++;
+    this.voiceHandle?.stop();
+    this.voiceHandle = undefined;
+    this.voice = Promise.resolve(undefined);
+  }
+
+  private voiceToken = 0;
 
   /** JSON state for saves (Ink variables and position, the shown line, backlog, portraits). */
   state(): DialogueState {
@@ -507,12 +532,25 @@ function wrapByTags(text: string, tags: DialogueTag[]): string {
   return out;
 }
 
-function safePlay(game: Game, key: string, bus: 'voice' | 'sfx'): SoundHandle | undefined {
+/**
+ * Plays a sound, loading it first when no scene preloaded it: voice lines and story sounds load on
+ * demand, so a long story does not preload every file.
+ */
+async function playSound(
+  game: Game,
+  key: string,
+  play: () => SoundHandle,
+): Promise<SoundHandle | undefined> {
   try {
-    return game.audio.play(key, { bus });
-  } catch (error) {
-    console.warn(`[blacklight] Ink tag "${bus === 'voice' ? 'voice' : 'sfx'}: ${key}":`, error);
-    return undefined;
+    return play();
+  } catch {
+    try {
+      await game.assets.load(game.audio.resolve(key));
+      return play();
+    } catch (error) {
+      console.warn(`[blacklight] Ink sound "${key}":`, error);
+      return undefined;
+    }
   }
 }
 

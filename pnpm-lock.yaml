@@ -381,6 +381,28 @@ importers:
         specifier: 3.3.14
         version: 3.3.14(typescript@6.0.3)
 
+  templates/visual-novel:
+    dependencies:
+      '@blacklight/core':
+        specifier: workspace:*
+        version: link:../../packages/core
+      '@blacklight/ui':
+        specifier: workspace:*
+        version: link:../../packages/ui
+      vue:
+        specifier: 3.5.44
+        version: 3.5.44(typescript@6.0.3)
+    devDependencies:
+      '@blacklight/cli':
+        specifier: workspace:*
+        version: link:../../packages/cli
+      typescript:
+        specifier: 6.0.3
+        version: 6.0.3
+      vue-tsc:
+        specifier: 3.3.14
+        version: 3.3.14(typescript@6.0.3)
+
 packages:
 
   '@algolia/abtesting@1.26.0':

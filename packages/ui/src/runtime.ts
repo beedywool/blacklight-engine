@@ -194,6 +194,8 @@ export class UiRuntime implements UiHost {
   readonly i18n: I18n;
   /** WebGL effects synchronized with the screens (UI-11). */
   readonly fx: FxLayer;
+  /** The player's accessibility options (the same object as the `accessibility` export). */
+  readonly accessibility = accessibility;
   /** Resolves once the starting language is loaded. */
   readonly ready: Promise<void>;
   private nextId = 1;

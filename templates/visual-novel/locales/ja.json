@@ -1,0 +1,122 @@
+{
+  "title": {
+    "name": "ネオン・レイン",
+    "subtitle": "Blacklight Engine ビジュアルノベル",
+    "new": "はじめから",
+    "continue": "つづきから",
+    "gallery": "ギャラリー",
+    "settings": "設定",
+    "lantern": "ランタン",
+    "lanternHint": "ランタンをクリック"
+  },
+  "name": {
+    "title": "名前を入力",
+    "label": "名前",
+    "start": "はじめる",
+    "default": "葵"
+  },
+  "gallery": {
+    "title": "ギャラリー",
+    "locked": "未開放",
+    "unlocked": "{total}枚中{count}枚を開放",
+    "street": "古い街区",
+    "rooftop": "屋上の光",
+    "night": "雨のあと"
+  },
+  "story": {
+    "end": "おわり",
+    "chapter": "第1章"
+  },
+  "speakers": {
+    "mira": "ミラ",
+    "ren": "レン"
+  },
+  "subtitles": {
+    "file": "intro-ja"
+  },
+  "actions": {
+    "confirm": "決定",
+    "back": "戻る",
+    "pause": "メニュー",
+    "jump": "ジャンプ",
+    "action": "アクション"
+  },
+  "bl": {
+    "common": {
+      "back": "戻る",
+      "select": "決定",
+      "yes": "はい",
+      "no": "いいえ",
+      "on": "オン",
+      "off": "オフ"
+    },
+    "settings": {
+      "title": "設定",
+      "audio": "サウンド",
+      "video": "画面",
+      "controls": "操作",
+      "language": "言語",
+      "accessibility": "アクセシビリティ",
+      "master": "全体音量",
+      "music": "音楽",
+      "sfx": "効果音",
+      "voice": "ボイス",
+      "ui": "システム音",
+      "fullscreen": "フルスクリーン",
+      "uiScale": "UIの大きさ",
+      "theme": "テーマ",
+      "press": "キーまたはボタンを押してください…",
+      "resetControls": "操作を初期化",
+      "textSize": "文字の大きさ",
+      "textSpeed": "文字の速さ",
+      "instant": "瞬時",
+      "contrast": "ハイコントラスト",
+      "colorFilter": "色覚フィルター",
+      "reducedMotion": "動きを減らす",
+      "system": "システム設定",
+      "subtitles": "字幕",
+      "subtitleSize": "字幕の大きさ",
+      "subtitleBackground": "字幕の背景",
+      "filters": {
+        "none": "なし",
+        "protanopia": "1型（P型）",
+        "deuteranopia": "2型（D型）",
+        "tritanopia": "3型（T型）",
+        "grayscale": "グレースケール"
+      }
+    },
+    "pause": {
+      "title": "ポーズ",
+      "resume": "再開",
+      "settings": "設定",
+      "save": "セーブ",
+      "load": "ロード",
+      "title_screen": "タイトルへ",
+      "quit": "ゲーム終了",
+      "confirmTitle": "タイトル画面に戻りますか？セーブしていない進行は失われます。",
+      "confirmQuit": "ゲームを終了しますか？セーブしていない進行は失われます。"
+    },
+    "slots": {
+      "save": "セーブ",
+      "load": "ロード",
+      "empty": "空き",
+      "slot": "スロット{n}",
+      "overwrite": "このデータに上書きしますか？",
+      "confirmLoad": "このデータをロードしますか？セーブしていない進行は失われます。",
+      "delete": "このデータを削除しますか？",
+      "saved": "セーブしました",
+      "deleteHint": "削除",
+      "failed": "完了できませんでした：{error}"
+    },
+    "dialogue": {
+      "auto": "オート",
+      "skip": "スキップ",
+      "log": "ログ",
+      "save": "セーブ",
+      "load": "ロード",
+      "menu": "メニュー"
+    },
+    "backlog": { "title": "ログ" },
+    "cutscene": { "hold": "長押しでスキップ", "skip": "スキップ" }
+  }
+}

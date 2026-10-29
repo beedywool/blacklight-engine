@@ -15,7 +15,7 @@ const HEADER = `
 in vec2 vTextureCoord;
 out vec4 finalColor;
 uniform sampler2D uTexture;
-uniform vec4 uInputSize;
+uniform highp vec4 uInputSize;
 uniform vec4 uInputClamp;
 uniform float uStrength;
 uniform float uTime;
@@ -46,7 +46,8 @@ void main() {
   mat2 rot = mat2(0.7071, -0.7071, 0.7071, 0.7071);
   vec2 q = rot * px;
   vec2 cell = (floor(q / size) + 0.5) * size;
-  vec2 center = transpose(rot) * cell;
+  // WebGL 1 (GLSL ES 1.0) has no transpose(): the inverse rotation is written out.
+  vec2 center = mat2(0.7071, 0.7071, -0.7071, 0.7071) * cell;
   vec4 c = sampleAt(center * uInputSize.zw);
   vec4 original = sampleAt(vTextureCoord);
   float lum = dot(c.rgb, vec3(0.299, 0.587, 0.114));

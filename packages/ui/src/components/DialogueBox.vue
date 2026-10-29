@@ -116,8 +116,7 @@ function scheduleAuto() {
   clearTimer();
   const line = view.line;
   if (!line || view.choices.length > 0) return;
-  const voice = props.dialogue.playingVoice?.ended ?? Promise.resolve();
-  void voice.then(() => {
+  void props.dialogue.voiceEnded().then(() => {
     if (mode.value !== 'auto' || view.line !== line) return;
     timer = setTimeout(
       () => {
