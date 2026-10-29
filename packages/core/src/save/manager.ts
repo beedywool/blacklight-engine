@@ -23,6 +23,7 @@ import {
   type SaveMeta,
   type SavePayload,
 } from './format';
+import { screenSlots, type ScreenSlots, type ScreenSlotsOptions } from './ui-slots';
 
 /** A slot: `1`…`slots`, `'auto'`, or a name such as `'quick'` (letters, digits, `-`, `_`). */
 export type SaveSlot = number | string;
@@ -45,6 +46,8 @@ export interface SaveOptions {
   thumbnail?: boolean | string;
   /** Free text shown in slot lists (chapter, place). */
   label?: string;
+  /** One line of detail shown in slot lists. */
+  summary?: string;
 }
 
 /** Events of `game.save.events`. */
@@ -150,6 +153,7 @@ export class SaveManager {
         playTime: Math.round(this.playTime),
         ...(this.host.scene?.name ? { scene: this.host.scene.name } : {}),
         ...(options.label ? { label: options.label } : {}),
+        ...(options.summary ? { summary: options.summary } : {}),
       };
       const thumbnail =
         typeof options.thumbnail === 'string'
@@ -312,6 +316,18 @@ export class SaveManager {
   // ModuleSaves (modules/define.ts): what modules such as cloud-save use. Bytes are the decoded
   // save (data and metadata) as UTF-8 JSON, readable by any install; `importSlot` encrypts them
   // again with this install's key.
+
+  /**
+   * The `SaveSlots` of `@blacklight/ui`'s save/load and pause screens, over these saves.
+   *
+   * @example
+   * ```ts
+   * this.ui.push(SaveLoadScreen, { slots: this.game.save.screenSlots(), mode: 'load' });
+   * ```
+   */
+  screenSlots(options?: ScreenSlotsOptions): ScreenSlots {
+    return screenSlots(this, options);
+  }
 
   /** Valid slots and when each was written (for modules; screens use {@link list}). */
   async slots(): Promise<{ slot: string; updatedAt: number }[]> {

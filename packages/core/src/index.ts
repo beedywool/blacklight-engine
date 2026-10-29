@@ -136,6 +136,7 @@ export {
   encodeExport,
   encodeSave,
   resolveSaveConfig,
+  screenSlots,
   validateSaveConfig,
   type CloudOptions,
   type CloudSaveEntry,
@@ -157,6 +158,10 @@ export {
   type SavePayload,
   type SaveSlot,
   type SaveSlotInfo,
+  type ScreenSlotInfo,
+  type ScreenSlotMeta,
+  type ScreenSlots,
+  type ScreenSlotsOptions,
   type SyncReport,
 } from './save/index';
 export {

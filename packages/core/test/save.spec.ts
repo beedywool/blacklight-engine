@@ -291,3 +291,28 @@ describe('ModuleSaves for modules (cloud-save)', () => {
     });
   });
 });
+
+describe('UI save/load screens adapter', () => {
+  it('lists, saves with collected state, loads (backup when modified) and deletes', async () => {
+    const { manager, platform } = setup(true);
+    const applied: unknown[] = [];
+    const slots = manager.screenSlots({
+      collect: () => ({ dialogue: { line: 3 } }),
+      apply: (data, info) => void applied.push([data, info.id]),
+    });
+    manager.data = { gold: 1 };
+    await slots.save('1', { label: 'Chapter 1', summary: 'At the gate', thumbnail: 'data:x' });
+    manager.data.gold = 2;
+    await slots.save('1', { label: 'Chapter 2' });
+    const [info] = await slots.list();
+    expect(info).toMatchObject({ id: '1', label: 'Chapter 2', playTime: 0 });
+    expect(info!.savedAt).toBeTypeOf('number');
+    const file = (await platform.files.read('saves/1.sav'))!;
+    file[file.length - 1] = file[file.length - 1]! ^ 1;
+    await platform.files.write('saves/1.sav', file);
+    await slots.load('1');
+    expect(applied).toEqual([[{ gold: 1, dialogue: { line: 3 } }, '1']]);
+    await slots.delete('1');
+    expect(await slots.list()).toEqual([]);
+  });
+});

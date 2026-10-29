@@ -27,6 +27,13 @@ export {
   type SaveSlot,
   type SaveSlotInfo,
 } from './manager';
+export {
+  screenSlots,
+  type ScreenSlotInfo,
+  type ScreenSlotMeta,
+  type ScreenSlots,
+  type ScreenSlotsOptions,
+} from './ui-slots';
 export type {
   CloudOptions,
   CloudSaveEntry,

@@ -33,6 +33,8 @@ export interface SaveMeta {
   scene?: string;
   /** Free text (chapter, place). */
   label?: string;
+  /** One line of detail (last line of dialogue, party level). */
+  summary?: string;
   /** Small image of the game (data URL). */
   thumbnail?: string;
 }
