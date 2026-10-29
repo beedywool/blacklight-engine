@@ -1,0 +1,44 @@
+# Template for the module index repository: copy this folder's content to its root.
+# Pull requests: validate every entry against npm. main (and daily, to pick up new versions):
+# build the static API and deploy it to GitHub Pages (or replace the deploy job by your host).
+name: Index
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  schedule:
+    - cron: '17 4 * * *'
+  workflow_dispatch:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+      - run: npx --yes -p @blacklight/registry@1 blacklight-registry validate .
+
+  deploy:
+    if: github.event_name != 'pull_request'
+    needs: validate
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+      - run: npx --yes -p @blacklight/registry@1 blacklight-registry build . --out public
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: public
+      - id: deployment
+        uses: actions/deploy-pages@v4

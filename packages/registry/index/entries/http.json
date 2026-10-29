@@ -1,0 +1,5 @@
+{
+  "name": "http",
+  "package": "@blacklight/module-http",
+  "official": true
+}

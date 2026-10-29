@@ -1,0 +1,5 @@
+{
+  "name": "achievements",
+  "package": "@blacklight/module-achievements",
+  "official": true
+}
