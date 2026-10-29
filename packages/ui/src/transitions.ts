@@ -347,7 +347,7 @@ const INK_BLOBS = (() => {
     delay: random() * 0.45,
   }));
   // One late, large blob guarantees full coverage at t = 1.
-  blobs.push({ x: 50, y: 50, size: 1.15, delay: 0.3 });
+  blobs.push({ x: 50, y: 50, size: 1.15, delay: 0.55 });
   return blobs;
 })();
 
@@ -359,7 +359,7 @@ defineTransition('ink', {
     const layers = INK_BLOBS.map((blob) => {
       const grow = clamp01((t - blob.delay) / (1 - blob.delay));
       const r = Math.max(0, grow * blob.size * extent);
-      return `radial-gradient(circle at ${blob.x}% ${blob.y}%, #000 ${r.toFixed(1)}px, transparent ${(r * 1.06 + 0.5).toFixed(1)}px)`;
+      return `radial-gradient(circle at ${blob.x}% ${blob.y}%, #000 ${r.toFixed(1)}px, transparent ${(r + 1.5).toFixed(1)}px)`;
     });
     setMask(el, layers.join(', '));
   },

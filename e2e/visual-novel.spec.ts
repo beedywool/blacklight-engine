@@ -279,6 +279,38 @@ test('Japanese and Arabic: hot language switch, CJK line breaking, right-to-left
   expect(errors).toEqual([]);
 });
 
+test('transition library: every effect drawn part-way as a scene cover (screenshots)', async ({
+  page,
+}) => {
+  const errors: string[] = [];
+  await open(page, errors);
+  // Black covers on a white page, nothing else: the same picture on every OS.
+  await page.evaluate(() => {
+    const game = window.blacklight;
+    game.app.canvas.style.visibility = 'hidden';
+    (game.mount.querySelector('.bl-ui') as HTMLElement).style.visibility = 'hidden';
+    game.mount.style.background = '#fff';
+  });
+  for (const name of ['wipe', 'iris', 'ink', 'slices', 'shatter', 'zoom', 'slash']) {
+    await page.evaluate((effect) => {
+      const transition = window.blacklight.transitions.get(effect)!;
+      const size = { width: 1920, height: 1080 };
+      transition.draw(undefined as never, 0.15, size);
+    }, name);
+    await expect(page.locator('#game')).toHaveScreenshot(`transition-${name}.png`, {
+      maxDiffPixelRatio: 0.01,
+    });
+    await page.evaluate((effect) => {
+      const transition = window.blacklight.transitions.get(effect)!;
+      const size = { width: 1920, height: 1080 };
+      transition.draw(undefined as never, 0.25, size);
+      transition.draw(undefined as never, 0, size);
+    }, name);
+    await expect(page.locator('.bl-cover')).toHaveCount(0);
+  }
+  expect(errors).toEqual([]);
+});
+
 test.describe('release build', () => {
   let stopPreview: (() => void) | undefined;
   test.beforeAll(async () => {
