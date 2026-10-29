@@ -19,6 +19,8 @@ export interface InputEvents {
   device: Device;
   gamepadconnected: { index: number; id: string };
   gamepaddisconnected: { index: number; id: string };
+  /** Bindings changed (rebinding or reset). */
+  bindings: { action: string | undefined };
   /** A new local player joined (see `input.join`). */
   join: { player: number; device: Device; pad?: number };
 }
@@ -117,7 +119,16 @@ export class PlayerInput {
 
   private state(action: ActionName): ActionState {
     if (!this.manager.hasAction(action)) this.manager.unknownAction(action);
-    return this.states.get(action) ?? IDLE;
+    if (this.manager.blocked && !this.ui) return IDLE;
+    return this.source().stateMap.get(action) ?? IDLE;
+  }
+
+  /** Reads through the block of modal UI screens (the UI layer's own input). */
+  protected readonly ui: boolean = false;
+
+  /** Where states come from (UI views share the game player's states). */
+  protected source(): PlayerInput {
+    return this;
   }
 
   /** @internal */
@@ -126,8 +137,29 @@ export class PlayerInput {
   }
 
   /** @internal */
+  get stateMap(): Map<string, ActionState> {
+    return this.states;
+  }
+
+  /** @internal */
   previous(action: string): ActionState {
     return this.states.get(action) ?? IDLE;
+  }
+}
+
+/** A player's input as the UI layer sees it: not blocked by modal screens. */
+class UiPlayerInput extends PlayerInput {
+  protected override readonly ui = true;
+
+  constructor(
+    private readonly player: PlayerInput,
+    manager: InputManager,
+  ) {
+    super(player.number, manager);
+  }
+
+  protected override source(): PlayerInput {
+    return this.player;
   }
 }
 
@@ -159,6 +191,12 @@ export class InputManager {
   readonly touches = new Map<number, Point>();
   lastDevice: Device = 'keyboard';
   deadzone: number;
+  /**
+   * While `true` (a modal UI screen is open), game code reads every action as idle; the UI reads
+   * through `uiPlayer()`.
+   */
+  blocked = false;
+  private readonly uiPlayers = new Map<number, PlayerInput>();
 
   private bindings: Record<string, Binding[]>;
   private parsed = new Map<string, ParsedBinding[]>();
@@ -206,6 +244,13 @@ export class InputManager {
     const player = this.players[n - 1];
     if (!player) throw new RangeError(`Player ${n} does not exist: local players go from 1 to 8.`);
     return player;
+  }
+
+  /** Input of player `n` for the UI layer: the same actions, never blocked. */
+  uiPlayer(n = 1): PlayerInput {
+    let view = this.uiPlayers.get(n);
+    if (!view) this.uiPlayers.set(n, (view = new UiPlayerInput(this.player(n), this)));
+    return view;
   }
 
   /** Players that have joined, player 1 first. */
@@ -262,6 +307,7 @@ export class InputManager {
     this.bindings[action] = [...bindings];
     this.reparse();
     this.saveBindings();
+    this.events.emit('bindings', { action });
   }
 
   /** Restores the configured bindings of one action, or of all. */
@@ -270,6 +316,7 @@ export class InputManager {
     else this.bindings = { ...this.defaults };
     this.reparse();
     this.saveBindings();
+    this.events.emit('bindings', { action });
   }
 
   private saveBindings(): void {
@@ -425,6 +472,11 @@ export class InputManager {
     if (type === 'touch' && this.touches.has(id)) this.touches.set(id, { ...at });
   }
 
+  /** Records that a device was used (the UI layer reports clicks and taps on its screens). */
+  noteDevice(device: Device, player = this.players[0]!): void {
+    this.setDevice(device, player);
+  }
+
   private setDevice(device: Device, player = this.players[0]!): void {
     player.lastDevice = device;
     if (device !== this.lastDevice) {
@@ -571,7 +623,12 @@ export class InputManager {
       );
     };
     const onKeyDown = (event: KeyboardEvent) => {
-      if (typing(event)) return;
+      // In a text field, letters stay text; named keys (arrows, Escape, Enter, Tab) still feed
+      // actions so menus can leave the field. The field keeps the key's default behavior.
+      if (typing(event)) {
+        if (event.key.length > 1) this.keyDown(event.code, event.repeat);
+        return;
+      }
       if (bound().has(event.code)) event.preventDefault();
       this.keyDown(event.code, event.repeat);
     };

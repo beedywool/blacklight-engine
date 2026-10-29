@@ -93,7 +93,7 @@ Put several formats of one sound next to each other with the same name (`coin.og
 
 Browsers keep audio silent until the player interacts with the page. The engine resumes the audio context on the first pointer down, key press or touch end; `game.audio.unlocked` is `true` afterwards. Sounds played before that wait in the suspended context and start together when it unlocks: music started by the title scene begins at the first gesture. A title screen that waits for "press start" unlocks audio before anything else plays.
 
-When the game pauses (window hidden or unfocused with `pauseOnBlur`, or `game.pause()`), all audio is suspended and resumes with the game.
+When the window is hidden or unfocused (with `pauseOnBlur`), all audio is suspended and resumes with the game. `game.pause()` instead fades the `music`, `sfx` and `voice` buses to silence (in about 150 ms) and keeps the `ui` bus playing, so a pause menu's sounds are heard; `game.resume()` fades them back to their volumes. The silenced sounds keep running while muted: music does not hold its position.
 
 ## Loading
 
@@ -121,4 +121,4 @@ A path without extension loads every format of that sound. Files directly in the
 - A sound with no format the browser can decode throws when played, naming the file.
 - Positional sound is stereo panning and distance volume, not 3D audio: no Doppler, no occlusion.
 - Sound effects played before the first user gesture are not dropped: they all start at the moment audio unlocks. Avoid playing effects on a screen the player has not touched yet.
-- `game.pause()` suspends all sound, including a pause menu's music; an overlay opened with `game.overlay` does not suspend anything.
+- `game.pause()` mutes the `music`, `sfx` and `voice` buses without pausing their sounds: music keeps advancing silently, and music started for a pause menu with `music()` is muted too. An overlay opened with `game.overlay` does not mute anything.

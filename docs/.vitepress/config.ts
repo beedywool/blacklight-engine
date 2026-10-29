@@ -49,6 +49,15 @@ export default defineConfig({
         ],
       },
       {
+        text: 'Interface',
+        items: [
+          { text: 'UI layer', link: '/guide/ui' },
+          { text: 'Focus and input prompts', link: '/guide/ui-focus' },
+          { text: 'Style, layout and motion', link: '/guide/ui-style' },
+          { text: 'Widgets', link: '/guide/ui-widgets' },
+        ],
+      },
+      {
         text: 'Tools',
         items: [
           { text: 'Snapshots', link: '/guide/snapshots' },

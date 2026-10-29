@@ -15,6 +15,9 @@ export {
   type GameTime,
   type GotoOptions,
   type LoadingScreen,
+  type SceneUi,
+  type UiScreenHandle,
+  type UiHost,
   BAR_LOADING_SCREEN,
   type Transition,
 } from './game';

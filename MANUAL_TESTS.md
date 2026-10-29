@@ -29,4 +29,14 @@ On a phone (Android Chrome, iPhone Safari), open the fixture with `pnpm dev --ho
 1. Touch the left half and drag. Expected (when the scene has a `virtualJoystick` object): the joystick appears under the finger and the character moves.
 2. Expected: the first tap unlocks sound; coins beep afterwards.
 
+## UI (templates/persona-menu)
+
+Run `pnpm --filter blacklight-template-persona-menu dev`.
+
+1. With an Xbox, a PlayStation and a Switch Pro pad in turn: the prompts at the bottom show that pad's buttons (A / Cross / B at the bottom position); the keyboard shows Enter / Esc after a key press.
+2. In CONFIG › DISPLAY › NAME, confirm with a pad. Expected: the on-screen keyboard opens; typing and Done update the name.
+3. With a Japanese IME (keyboard), type in the NAME field. Expected: the candidate window works; the name changes only once a candidate is committed.
+4. CONFIG › CONTROLS: confirm an action, press another key or pad button. Expected: the prompt for that action changes everywhere at once.
+5. On a phone (landscape), tap menu rows. Expected: one tap focuses and selects; nothing scrolls the page.
+
 Device-specific sections (gamepads per OS, Android, iPhone, Steam client, Discord, store signing) are added by the phases that implement them.

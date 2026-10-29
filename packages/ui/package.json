@@ -1,0 +1,43 @@
+{
+  "name": "@blacklight/ui",
+  "version": "0.0.0",
+  "description": "Blacklight Engine UI layer: Vue 3 screens, gamepad focus, Persona-style shapes, timelines, widgets.",
+  "license": "MIT",
+  "type": "module",
+  "sideEffects": [
+    "*.css"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/types/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    },
+    "./style.css": "./dist/ui.css"
+  },
+  "files": [
+    "dist",
+    "prompts"
+  ],
+  "scripts": {
+    "build": "node scripts/prompt-urls.mjs && vite build && cp src/prompt-urls.js src/prompt-urls.d.ts dist/ && vue-tsc -p tsconfig.build.json",
+    "typecheck": "vue-tsc --noEmit"
+  },
+  "peerDependencies": {
+    "@blacklight/core": "workspace:*",
+    "vue": "^3.5.0"
+  },
+  "dependencies": {
+    "motion": "14.8.0"
+  },
+  "devDependencies": {
+    "@blacklight/core": "workspace:*",
+    "@vitejs/plugin-vue": "6.0.10",
+    "@vue/test-utils": "2.5.1",
+    "happy-dom": "21.0.4",
+    "typescript": "6.0.3",
+    "vite": "8.3.5",
+    "vue": "3.5.44",
+    "vue-tsc": "3.3.14"
+  }
+}

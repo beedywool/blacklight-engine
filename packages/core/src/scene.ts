@@ -11,7 +11,7 @@ import { Camera, type FollowOptions } from './camera';
 import { CollisionWorld, type RaycastHit } from './collision/world';
 import type { WorldShape } from './collision/shapes';
 import { Disposables, EventBus, type EventMap, type Unsubscribe } from './events';
-import type { Game, GotoOptions } from './game';
+import type { Game, GotoOptions, SceneUi } from './game';
 import type { InputManager } from './input/input';
 import type { Point, Rect } from './math';
 import { Text } from './objects/basic';
@@ -210,6 +210,19 @@ export abstract class Scene<P = void> {
 
   get input(): InputManager {
     return this.game.input;
+  }
+
+  /**
+   * Screens of this scene (`@blacklight/ui`): `this.ui.open(Hud)`, `this.ui.push('PauseMenu')`.
+   * They close when the scene ends.
+   */
+  get ui(): SceneUi {
+    if (!this.game.ui) {
+      throw new Error(
+        'No UI layer: add @blacklight/ui to the game (`pnpm add @blacklight/ui vue`).',
+      );
+    }
+    return this.game.ui.forScene(this as Scene<never>);
   }
 
   /** Sound and music; keys are looked up in this scene's folder first. */
@@ -755,6 +768,7 @@ export abstract class Scene<P = void> {
 
   /** @internal Stops the scene: user `destroy()`, objects, listeners, display. */
   dispose(): void {
+    this.game.ui?.sceneEnded(this as Scene<never>);
     for (const scene of [...this.hosted]) this.closeHosted(scene);
     this.destroy();
     for (const object of [...this.objectList]) object.destroy();

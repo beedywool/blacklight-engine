@@ -10,5 +10,7 @@ export default defineConfig({
   // One reference per screenshot for every OS: scenes in gate tests avoid text, whose rendering differs.
   snapshotPathTemplate: '{testDir}/__screenshots__/{testFileName}/{arg}{ext}',
   expect: { toHaveScreenshot: { maxDiffPixelRatio: 0.01 } },
+  // Missing references (a new OS in CI) are written and the test passes; CI uploads them.
+  updateSnapshots: 'missing',
   projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
 });

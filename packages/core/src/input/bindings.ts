@@ -78,4 +78,6 @@ export const DEFAULT_ACTIONS: Record<string, Binding[]> = {
   pause: ['Escape', 'Pad:Start'],
   jump: ['Space', 'KeyZ', 'Pad:A'],
   action: ['KeyX', 'ShiftLeft', 'Pad:X'],
+  tabLeft: ['KeyQ', 'PageUp', 'Pad:LB'],
+  tabRight: ['KeyE', 'PageDown', 'Pad:RB'],
 };

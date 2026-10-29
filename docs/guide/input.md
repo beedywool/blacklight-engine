@@ -36,17 +36,19 @@ export default defineConfig({
 
 Default actions, available in every game:
 
-| Action    | Bindings                                                |
-| --------- | ------------------------------------------------------- |
-| `left`    | `ArrowLeft`, `KeyA`, `Pad:Left`, `Pad:LeftStickLeft`    |
-| `right`   | `ArrowRight`, `KeyD`, `Pad:Right`, `Pad:LeftStickRight` |
-| `up`      | `ArrowUp`, `KeyW`, `Pad:Up`, `Pad:LeftStickUp`          |
-| `down`    | `ArrowDown`, `KeyS`, `Pad:Down`, `Pad:LeftStickDown`    |
-| `confirm` | `Enter`, `Space`, `Pad:A`                               |
-| `back`    | `Escape`, `Backspace`, `Pad:B`                          |
-| `pause`   | `Escape`, `Pad:Start`                                   |
-| `jump`    | `Space`, `KeyZ`, `Pad:A`                                |
-| `action`  | `KeyX`, `ShiftLeft`, `Pad:X`                            |
+| Action     | Bindings                                                |
+| ---------- | ------------------------------------------------------- |
+| `left`     | `ArrowLeft`, `KeyA`, `Pad:Left`, `Pad:LeftStickLeft`    |
+| `right`    | `ArrowRight`, `KeyD`, `Pad:Right`, `Pad:LeftStickRight` |
+| `up`       | `ArrowUp`, `KeyW`, `Pad:Up`, `Pad:LeftStickUp`          |
+| `down`     | `ArrowDown`, `KeyS`, `Pad:Down`, `Pad:LeftStickDown`    |
+| `confirm`  | `Enter`, `Space`, `Pad:A`                               |
+| `back`     | `Escape`, `Backspace`, `Pad:B`                          |
+| `pause`    | `Escape`, `Pad:Start`                                   |
+| `jump`     | `Space`, `KeyZ`, `Pad:A`                                |
+| `action`   | `KeyX`, `ShiftLeft`, `Pad:X`                            |
+| `tabLeft`  | `KeyQ`, `PageUp`, `Pad:LB`                              |
+| `tabRight` | `KeyE`, `PageDown`, `Pad:RB`                            |
 
 Binding syntax:
 
@@ -65,7 +67,9 @@ Binding syntax:
 
 An invalid binding in `game.config.ts` stops the game with the accepted forms. Action names are typed from the configuration (see [Assets](./assets#generated-types)): `pressed('jupm')` is a type error, and at runtime an unknown action logs a warning once and reads as not pressed.
 
-Keys bound to an action do not scroll the page. Keys typed in a text field are left to the field. When the window loses focus every key, button and touch is released, so no action stays stuck.
+`confirm`, `back`, the four directions, `tabLeft` and `tabRight` also drive the [UI layer](./ui)'s menus. While a menu blocks game input (`input.blocked`), every action reads as idle in game code; the UI reads through `input.uiPlayer(n)`, which is never blocked.
+
+Keys bound to an action do not scroll the page. Letters typed in a text field are left to the field; named keys there (arrows, Escape, Enter, Tab) still feed actions, so menus can leave the field. When the window loses focus every key, button and touch is released, so no action stays stuck.
 
 ## Reading actions
 
@@ -145,6 +149,8 @@ Changed bindings are saved in `game.settings` under `input.bindings` and loaded 
 ```ts
 this.listen(this.input.events, 'device', (device) => this.showPrompts(device));
 ```
+
+Pointer events on the HTML UI layer do not reach the canvas, so the UI layer reports its presses with `input.noteDevice(device, player?)`; code that handles input outside the canvas can do the same.
 
 `input.events` also has `gamepadconnected` and `gamepaddisconnected` with `{ index, id }`.
 

@@ -32,6 +32,7 @@ cd ../my-game && pnpm install && pnpm dev
 | ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `packages/core`    | `@blacklight/core`: the runtime                                                                                                                          |
 | `packages/physics` | `@blacklight/physics`: Rapier rigid bodies                                                                                                               |
+| `packages/ui`      | `@blacklight/ui`: Vue UI layer (`prompts/` holds Kenney's CC0 glyphs; `node scripts/prompt-urls.mjs` regenerates `src/prompt-urls.js`)                   |
 | `packages/cli`     | `@blacklight/cli`: the `blacklight` command and its Vite configuration                                                                                   |
 | `packages/create`  | `create-blacklight`: the project scaffolder                                                                                                              |
 | `templates/`       | project templates, copied by `create-blacklight`                                                                                                         |

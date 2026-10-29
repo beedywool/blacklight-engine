@@ -169,6 +169,7 @@ Each scene has a main camera, `this.camera`, and can add up to three more for sp
 | `this.bounds`                                           | World rectangle from `static size`, used by `onLeave`.                                             |
 | `this.input`                                            | Input; see [Input](./input).                                                                       |
 | `this.pointer`                                          | Mouse or touch position in world coordinates, with `screen`, `down`, `pressed`, `released`.        |
+| `this.ui`                                               | Screens of the scene (`open`, `push`, `pop`, `replace`, `closeAll`); see [UI layer](./ui).         |
 | `this.audio`                                            | `play`, `music`, `stopMusic`, with keys looked up in the scene folder first; see [Audio](./audio). |
 | `this.camera`, `this.cameras`                           | Main camera and every camera.                                                                      |
 | `this.events`                                           | Scene event bus, cleared when the scene ends.                                                      |

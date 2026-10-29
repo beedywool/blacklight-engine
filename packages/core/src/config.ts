@@ -61,12 +61,14 @@ export interface GameConfig {
   input?: InputConfig;
   /** Seed of `game.random` and of every scene's generator. Omitted: a new seed each run. */
   seed?: string | number;
+  /** UI layer defaults (`@blacklight/ui`); the player's saved choices win. */
+  ui?: { theme?: string; scale?: number };
 }
 
 export interface ResolvedGameConfig
   extends
-    Required<Omit<GameConfig, 'resolution' | 'input' | 'seed'>>,
-    Pick<GameConfig, 'input' | 'seed'> {
+    Required<Omit<GameConfig, 'resolution' | 'input' | 'seed' | 'ui'>>,
+    Pick<GameConfig, 'input' | 'seed' | 'ui'> {
   resolution: Required<ResolutionConfig>;
 }
 
@@ -163,6 +165,9 @@ export function resolveConfig(input: unknown): ResolvedGameConfig {
   if (typeof pauseOnBlur !== 'boolean') {
     issues.push('`pauseOnBlur` must be a boolean');
   }
+  if (input.ui !== undefined && !isRecord(input.ui)) {
+    issues.push('`ui` must be an object, e.g. `ui: { theme: "persona" }`');
+  }
   if (seed !== undefined && typeof seed !== 'string' && typeof seed !== 'number') {
     issues.push('`seed` must be a string or a number');
   }
@@ -208,5 +213,6 @@ export function resolveConfig(input: unknown): ResolvedGameConfig {
     pauseOnBlur: pauseOnBlur as boolean,
     input: inputConfig as InputConfig | undefined,
     seed: seed as string | number | undefined,
+    ui: input.ui as GameConfig['ui'],
   };
 }

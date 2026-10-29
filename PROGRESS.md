@@ -6,7 +6,7 @@ One line per `SPEC.md` requirement: `- [x] ID · where · test`. A requirement i
 
 - [x] Phase 0 Foundations · `pnpm create blacklight` → empty project runs in the browser · e2e: `e2e/create-empty.spec.ts` (passes locally on Linux; CI matrix configured in `.github/workflows/ci.yml`, not yet run: no remote)
 - [x] Phase 1 Runtime · animated character (`.anim.json`) moved by a behavior, collides, plays audio; screenshot matches; release build packs atlases and strips debug · e2e: `e2e/runtime.spec.ts` (local Linux)
-- [ ] Phase 2 UI core
+- [x] Phase 2 UI core · Persona-style pause menu (templates/persona-menu) fully navigable by a simulated gamepad; screenshots at 1920×1080 and phone; release build loads screens and Kenney glyphs · e2e: `e2e/ui.spec.ts` (local Linux)
 - [ ] Phase 3a UI complete
 - [ ] Phase 3b Light 3D
 - [ ] Phase 3c Desktop
@@ -52,19 +52,19 @@ One line per `SPEC.md` requirement: `- [x] ID · where · test`. A requirement i
 
 ## UI (UI)
 
-- [ ] UI-01 Vue 3 DOM layer above the canvas, scaled with the virtual…
-- [ ] UI-02 Screen stack
-- [ ] UI-03 Spatial focus
-- [ ] UI-04 Input prompts
-- [ ] UI-05 Layout
-- [ ] UI-06 Shapes
-- [ ] UI-07 Timelines
+- [x] UI-01 Vue 3 layer · packages/ui/src/runtime.ts, components/UiRoot.vue (virtual pixels, scaled with the canvas) · test: runtime.spec.ts, e2e ui.spec.ts (phone + 1080p)
+- [x] UI-02 Screen stack · runtime.ts UiStack (open/push/pop/replace/modal/confirm, scene and global screens, transitions, modal blocks game input) · test: runtime.spec.ts, e2e ui.spec.ts
+- [x] UI-03 Spatial focus · focus.ts, spatial.ts (4/8 directions, groups, wrap, trap, memory, sounds, pointer sync) · test: spatial.spec.ts, focus.spec.ts, e2e ui.spec.ts
+- [x] UI-04 Input prompts · prompts.ts, InputPrompt.vue, Kenney Input Prompts 1.5 (CC0) in packages/ui/prompts, setPromptPack, follows device and rebinding · test: runtime.spec.ts, e2e ui.spec.ts (Xbox glyph, release build loads glyphs)
+- [x] UI-05 Layout · Anchor.vue (9 points, safe area, UI scale saved in settings) · test: runtime.spec.ts (scale), e2e ui.spec.ts (HUD anchored)
+- [x] UI-06 Shapes · Skew, Slant, Mask, NineSlice, outlines, offset shadows (components/*, styles.css) · test: e2e ui.spec.ts screenshots
+- [x] UI-07 Timelines · timeline.ts, useTimeline (labels, sound cues, interruption, ui or game clock, reduced motion) · test: runtime.spec.ts, widgets.spec.ts
 - [ ] UI-08 Transitions
 - [ ] UI-09 Rich text
 - [ ] UI-10 Dialogue
 - [ ] UI-11 FX layer
-- [ ] UI-12 Themes
-- [ ] UI-13 Widgets
+- [x] UI-12 Themes · theme.ts (tokens → CSS variables, blacklight and persona, live switch saved in settings) · test: runtime.spec.ts, e2e ui.spec.ts (theme switch)
+- [x] UI-13 Widgets · widgets/* (button, menu list, tabs, gauge with trail, counter, virtualized scroll list, inventory grid, slider, toggle, select, text input with IME + virtual keyboard, tooltip, toast, confirm dialog, radial menu) · test: widgets.spec.ts, e2e ui.spec.ts
 - [ ] UI-14 World-anchored UI
 - [ ] UI-15 Localization
 - [ ] UI-16 Accessibility
@@ -144,7 +144,7 @@ One line per `SPEC.md` requirement: `- [x] ID · where · test`. A requirement i
 - [ ] DOC-02 Live-editable examples on the page
 - [ ] DOC-03 Docs examples are type-checked and run in CI; a broken…
 - [ ] DOC-04 Playground
-- [ ] DOC-05 Templates via `create-blacklight` — partial · create-blacklight with the empty template (packages/create, test: scaffold.spec.ts, e2e: create-empty.spec.ts)
+- [ ] DOC-05 Templates — partial · create-blacklight with `empty` and `persona-menu` (packages/create, templates/*); party-game, visual-novel, platformer, 2d-with-3d to do
 - [ ] DOC-06 Each template runs with `blacklight dev` and builds for…
 - [ ] DOC-07 Open source — partial · README, CONTRIBUTING, code of conduct, issue/PR templates, MIT license, THIRD_PARTY_LICENSES.md; changelog to do
 - [ ] DOC-08 Deployment guides for the docs site, playground, registry…

@@ -164,3 +164,16 @@ describe('findPath', () => {
     expect(findPath({ column: 0, row: 0 }, { column: 5, row: 5 }, () => true)).toBeUndefined();
   });
 });
+
+describe('UI input', () => {
+  it('modal blocking hides actions from the game, not from the UI', () => {
+    const input = new InputManager({}, undefined, () => []);
+    input.keyDown('Enter');
+    input.update();
+    input.blocked = true;
+    expect(input.pressed('confirm')).toBe(false);
+    expect(input.uiPlayer(1).pressed('confirm')).toBe(true);
+    input.blocked = false;
+    expect(input.pressed('confirm')).toBe(true);
+  });
+});

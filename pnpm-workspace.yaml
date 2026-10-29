@@ -12,3 +12,5 @@ minimumReleaseAgeExclude:
   - framer-motion@14.8.0
   - motion-dom@14.8.0
   - motion@14.8.0
+  - '@vue/language-core@3.3.14'
+  - vue-tsc@3.3.14

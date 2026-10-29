@@ -32,6 +32,64 @@ export interface CreateGameOptions {
   assets?: AssetManifest;
   /** Element the game fills. */
   mount: HTMLElement;
+  /** Set up before the first scene starts (`@blacklight/ui` installs its layer this way). */
+  plugins?: ((game: Game) => void | Promise<void>)[];
+}
+
+/**
+ * What `@blacklight/ui` provides to scenes as `this.ui`. Core only knows the shape; screens are
+ * Vue components, typed `unknown` here.
+ */
+export interface SceneUi {
+  /** Shows a screen over the others (HUD). */
+  open(
+    screen: unknown,
+    props?: Record<string, unknown>,
+    options?: Record<string, unknown>,
+  ): UiScreenHandle;
+  /** Shows a screen and hides the ones below until it closes (menus). */
+  push(
+    screen: unknown,
+    props?: Record<string, unknown>,
+    options?: Record<string, unknown>,
+  ): UiScreenHandle;
+  /** Shows a modal screen and resolves with its result. */
+  modal(
+    screen: unknown,
+    props?: Record<string, unknown>,
+    options?: Record<string, unknown>,
+  ): Promise<unknown>;
+  /** Asks a yes/no question. */
+  confirm(options: {
+    title?: string;
+    message: string;
+    confirm?: string;
+    cancel?: string;
+    danger?: boolean;
+  }): Promise<boolean>;
+  /** Closes the top menu of this owner. */
+  pop(result?: unknown): void;
+  replace(
+    screen: unknown,
+    props?: Record<string, unknown>,
+    options?: Record<string, unknown>,
+  ): UiScreenHandle;
+  closeAll(): void;
+}
+
+/** An open screen, as `SceneUi` returns it. */
+export interface UiScreenHandle {
+  readonly id: number;
+  close(result?: unknown): void;
+  readonly result: Promise<unknown>;
+}
+
+/** A UI layer installed on the game (`@blacklight/ui`). */
+export interface UiHost {
+  /** Screens that belong to `scene` and close with it. */
+  forScene(scene: Scene<never>): SceneUi;
+  /** Called when a scene stops. */
+  sceneEnded(scene: Scene<never>): void;
 }
 
 /** A scene change effect. `progress` goes 0 → 1 while covering, then 1 → 0 while revealing. */
@@ -55,6 +113,10 @@ export interface GameEvents {
   loading: { scene: string; progress: number };
   /** Every fixed step, after the scenes. */
   step: { step: number };
+  /** The screen size or the viewport changed. */
+  resize: { viewport: Viewport };
+  /** Every displayed frame, paused or not (UI layers animate with it). */
+  frame: { deltaMS: number };
 }
 
 /** Game time, advanced by the fixed step. */
@@ -131,6 +193,8 @@ export class Game {
   textResolution = 1;
   /** `true` while paused by `pause()` (not by losing focus). */
   paused = false;
+  /** UI layer, installed by `@blacklight/ui`. */
+  ui: UiHost | undefined;
   /** Drawn while scenes load; replace it to show your own art. */
   loadingScreen: LoadingScreen = BAR_LOADING_SCREEN;
   /**
@@ -143,7 +207,9 @@ export class Game {
   private readonly registry: ObjectRegistry;
   private readonly classes = new Map<string, typeof GameObject>();
   private readonly sceneClasses = new Map<string, Map<string, typeof GameObject>>();
-  private readonly mount: HTMLElement;
+  /** Element the game fills; UI layers add themselves to it. */
+  readonly mount: HTMLElement;
+  private readonly plugins: ((game: Game) => void | Promise<void>)[];
   private readonly steps: FixedStep;
   private blurred = false;
   private switching: Promise<void> = Promise.resolve();
@@ -157,6 +223,7 @@ export class Game {
     this.scenes = options.scenes;
     this.registry = options.objects ?? { global: {}, scenes: {} };
     this.mount = options.mount;
+    this.plugins = options.plugins ?? [];
     this.steps = new FixedStep(config.tickRate);
     this.settings = new Settings(`blacklight:${config.id}:settings`);
     this.assets = new AssetStore(options.assets);
@@ -212,6 +279,7 @@ export class Game {
       ),
     );
 
+    this.app.ticker.add((ticker) => this.events.emit('frame', { deltaMS: ticker.deltaMS }));
     this.app.ticker.add((ticker) => {
       if (!this.paused && !this.blurred) {
         this.draw(this.steps.advance(ticker.deltaMS * this.time.scale, () => this.tick()));
@@ -220,6 +288,7 @@ export class Game {
       }
     });
 
+    for (const plugin of this.plugins) await plugin(this);
     this.mount.dataset.blacklightState = 'loading';
     await this.goto(this.config.entry as SceneName);
     this.mount.dataset.blacklightState = 'running';
@@ -253,7 +322,8 @@ export class Game {
   pause(): void {
     if (this.paused) return;
     this.paused = true;
-    this.audio.setPaused(true);
+    // Menus keep their sounds while paused: only game buses go quiet.
+    this.audio.setPaused(true, { ui: true });
     this.events.emit('pause');
   }
 
@@ -261,7 +331,7 @@ export class Game {
     if (!this.paused) return;
     this.paused = false;
     this.steps.reset();
-    this.audio.setPaused(false);
+    this.audio.setPaused(false, { ui: true });
     this.events.emit('resume');
   }
 
@@ -510,6 +580,7 @@ export class Game {
     this.world.position.set(originX, originY);
     this.textResolution = Math.min(4, Math.max(1, scale * this.app.renderer.resolution));
     this.safeArea = this.readSafeArea();
+    this.events.emit('resize', { viewport: this.viewport });
     for (const scene of [this.scene, ...this.overlays.map((o) => o.scene)]) {
       for (const object of scene?.objects ?? []) {
         if (object instanceof Text) object.setScreenResolution(this.textResolution);

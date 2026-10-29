@@ -128,9 +128,22 @@ export class AudioManager {
   }
 
   /** Suspends or resumes all sound (the game pauses on blur). */
-  setPaused(paused: boolean): void {
+  /**
+   * Suspends or resumes all sound (window hidden), or with `{ ui: true }` only the game buses:
+   * music, sfx and voice fade out while the `ui` bus keeps playing (pause menus).
+   */
+  setPaused(paused: boolean, options: { ui?: boolean } = {}): void {
     if (!this.context) return;
-    void (paused ? this.context.suspend() : this.context.resume());
+    if (!options.ui) {
+      void (paused ? this.context.suspend() : this.context.resume());
+      return;
+    }
+    const now = this.context.currentTime;
+    for (const bus of ['music', 'sfx', 'voice'] as const) {
+      const gain = this.buses.get(bus)!.gain;
+      gain.cancelScheduledValues(now);
+      gain.setTargetAtTime(paused ? 0 : this.volumes[bus], now, 0.05);
+    }
   }
 
   /** Gets or sets a bus volume (0–1); saved with the settings. */
