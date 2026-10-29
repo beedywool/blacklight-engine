@@ -40,3 +40,14 @@ Run `pnpm --filter blacklight-template-persona-menu dev`.
 5. On a phone (landscape), tap menu rows. Expected: one tap focuses and selects; nothing scrolls the page.
 
 Device-specific sections (gamepads per OS, Android, iPhone, Steam client, Discord, store signing) are added by the phases that implement them.
+
+## Online play (packages/net, servers/relay)
+
+Run `pnpm build`, then `pnpm --filter @blacklight/relay start` on one machine (prints its LAN addresses), and `pnpm --filter blacklight-fixture-net dev --host` (Push-Push online fixture).
+
+1. Open the fixture without parameters. Expected: four wrestlers in a ring; you steer the white one with the arrows and shove with X; the three bots play over a simulated 150 ms, 2 % loss network in the page. Movement of your wrestler is immediate; the others correct themselves now and then (rollback) without jumping across the ring.
+2. On machine A open the fixture's network URL followed by `?relay=ws://<relay-address>:5360&players=2`, read the room code with `window.netState.room` in the console; on machine B (another OS or browser) open the same URL with `?relay=ws://<relay-address>:5360&room=<CODE>`. Expected: both start the match; each controls one wrestler; positions match on both screens; `window.netState.desyncs` stays empty after several rounds.
+3. Repeat step 2 with an iPhone (Safari) against a Windows or Linux PC (Chrome). Expected: no desync after five minutes (`window.netState.desyncs` empty on both): JavaScriptCore against V8 on real devices.
+4. On a Linux machine with the WebKit dependencies (`sudo pnpm exec playwright install-deps webkit`), run `pnpm e2e e2e/net.spec.ts`. Expected: the WebKit test runs instead of being skipped and passes (it is skipped on hosts without WebKit's system libraries; CI installs them).
+5. Docker: `pnpm --filter @blacklight/relay build && docker build -t blacklight-relay servers/relay && docker run --rm -p 5360:5360 blacklight-relay`, then `curl localhost:5360/health`. Expected: `{"ok":true,…}`; step 2 works against this container; the image is about 240 MB (node:24-alpine).
+6. Desktop LAN hosting (once `@blacklight/native` registers the `relay` module): in the desktop build call `hostLan(game)`, then join from a second machine on the same network with the address it returns. Expected: the OS firewall asks once; the match plays as in step 2.

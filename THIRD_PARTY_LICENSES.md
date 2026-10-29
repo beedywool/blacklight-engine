@@ -32,3 +32,11 @@ Every dependency that ships inside a game or a published package, and every asse
 | vue                           | 3.5.44  | MIT                                             |
 | Google Sans Flex (font files) | —       | SIL Open Font License 1.1                       |
 | BlackLight logo               | —       | © BlackLight, used with permission of the owner |
+
+## Relay server (Docker image; desktop builds that host LAN games)
+
+| Package | Version | License | Used by                                                  |
+| ------- | ------- | ------- | -------------------------------------------------------- |
+| ws      | 8.22.0  | MIT     | @blacklight/relay (bundled into the image's `relay.cjs`) |
+
+`@blacklight/net` and `eslint-plugin-blacklight` have no runtime dependencies.
