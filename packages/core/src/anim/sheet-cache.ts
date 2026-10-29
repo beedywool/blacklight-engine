@@ -91,7 +91,7 @@ export class SheetCache {
   /** Loads the files of a sprite class. */
   async preload(type: typeof GameObject & SpriteSource): Promise<void> {
     const plan = this.plan(type);
-    const extra = (type.assets ?? []).flatMap((a) =>
+    const extra = [...(type.assets ?? []), ...(type.requiredAssets?.() ?? [])].flatMap((a) =>
       this.assets.find(a, { baseDir: baseDirOf(type) }),
     );
     if (!plan) {
