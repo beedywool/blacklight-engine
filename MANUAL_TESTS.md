@@ -40,3 +40,13 @@ Run `pnpm --filter blacklight-template-persona-menu dev`.
 5. On a phone (landscape), tap menu rows. Expected: one tap focuses and selects; nothing scrolls the page.
 
 Device-specific sections (gamepads per OS, Android, iPhone, Steam client, Discord, store signing) are added by the phases that implement them.
+
+## Light 3D (templates/2d-with-3d)
+
+Run `pnpm --filter blacklight-template-2d-with-3d build && pnpm --filter blacklight-template-2d-with-3d preview --host` and open the printed URL on each device.
+
+1. Desktop Chrome, Firefox and Safari: press Enter, walk the red robot with the arrows into the grey pillar. Expected: the pillar covers the robot, the robot covers the grass and sky; the robot turns towards where it walks and its legs move; X makes it wave. The blue robot (Draco file) patrols, the crate (KTX2 texture) turns with a wood texture; the round portrait top right is sepia and cut to the circle.
+2. Same: press Escape. Expected: the menu shows the robot turning on a dark card while the game behind stays still; Resume returns to the game.
+3. Same, with the network disconnected after the first load (or Electron / Capacitor build once available): reload, enter the arena. Expected: identical to step 1 (models and decoders come from the game's files).
+4. Samsung Galaxy A54 (Chrome) and iPhone 12 (Safari), landscape: open `/#bench`, wait 7 s. Expected: the line at the top reads 58 fps or more and CPU under 8 ms; note the numbers in docs (3D page, performance table). Then `/#bench-2d` for the 2D baseline.
+5. Same phones: open the arena and the pause menu. Expected: no visible stutter while walking; the menu model turns smoothly.

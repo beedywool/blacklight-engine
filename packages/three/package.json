@@ -1,0 +1,58 @@
+{
+  "name": "@blacklight/three",
+  "version": "0.0.0",
+  "description": "Light 3D for Blacklight Engine: glTF models inside 2D scenes and menus (Three.js).",
+  "license": "MIT",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    },
+    "./ui": {
+      "types": "./dist/ui.d.ts",
+      "import": "./dist/ui.js",
+      "default": "./dist/ui.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "typecheck": "tsc --noEmit",
+    "models": "node scripts/generate-models.mjs"
+  },
+  "peerDependencies": {
+    "@blacklight/core": "workspace:*",
+    "@blacklight/ui": "workspace:*",
+    "pixi.js": "8.22.0",
+    "vue": "^3.5.0"
+  },
+  "peerDependenciesMeta": {
+    "@blacklight/ui": {
+      "optional": true
+    },
+    "vue": {
+      "optional": true
+    }
+  },
+  "dependencies": {
+    "@types/three": "0.186.0",
+    "three": "0.186.1"
+  },
+  "devDependencies": {
+    "@blacklight/core": "workspace:*",
+    "@blacklight/ui": "workspace:*",
+    "@gltf-transform/core": "4.5.1",
+    "@gltf-transform/extensions": "4.5.1",
+    "draco3d": "1.5.7",
+    "ktx2-encoder": "0.6.0",
+    "pixi.js": "8.22.0",
+    "tsup": "9.0.0",
+    "typescript": "6.0.3",
+    "vue": "3.5.44"
+  }
+}
