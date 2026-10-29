@@ -58,6 +58,13 @@ export default defineConfig({
         ],
       },
       {
+        text: '3D',
+        items: [
+          { text: '3D models', link: '/guide/3d' },
+          { text: 'Render to texture', link: '/guide/3d-render-to-texture' },
+        ],
+      },
+      {
         text: 'Tools',
         items: [
           { text: 'Snapshots', link: '/guide/snapshots' },
