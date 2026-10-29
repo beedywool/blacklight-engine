@@ -20,6 +20,8 @@ export interface MobileGame {
   version: string;
   resolution: { width: number; height: number };
   mobile?: Partial<MobileSettings>;
+  /** `security` from game.config.ts: `webview: false` (or `security: false`) keeps inspection on. */
+  security?: false | { webview?: boolean };
 }
 
 /** Applies the defaults of the `mobile` section (same rules as `resolveMobileConfig`). */
@@ -88,9 +90,10 @@ export function capacitorConfig(
   options: { release: boolean; plugins: string[] },
 ): Record<string, unknown> {
   const settings = mobileSettings(game);
-  // SEC-07: the WebView is inspectable in debug builds only.
+  // SEC-07: the WebView is inspectable in debug builds only (unless `security.webview` is false).
+  const blocked = options.release && game.security !== false && game.security?.webview !== false;
   const platform = {
-    webContentsDebuggingEnabled: !options.release,
+    webContentsDebuggingEnabled: !blocked,
     includePlugins: options.plugins,
   };
   return {

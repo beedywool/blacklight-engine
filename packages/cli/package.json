@@ -23,12 +23,13 @@
   },
   "dependencies": {
     "@blacklight/mobile": "workspace:*",
-    "@capacitor/cli": "8.6.0",
     "@blacklight/registry": "workspace:*",
+    "@capacitor/cli": "8.6.0",
     "@vitejs/plugin-vue": "6.0.10",
     "cac": "7.1.0",
     "create-blacklight": "workspace:*",
     "inkjs": "2.4.0",
+    "javascript-obfuscator": "5.9.0",
     "magic-string": "1.4.5",
     "plist": "5.0.0",
     "pngjs": "7.0.0",
@@ -38,6 +39,8 @@
     "vue": "3.5.44"
   },
   "devDependencies": {
+    "@blacklight/core": "workspace:*",
+    "@blacklight/native": "workspace:*",
     "@types/node": "24.19.2",
     "@types/pngjs": "6.0.5",
     "@types/semver": "7.8.0",

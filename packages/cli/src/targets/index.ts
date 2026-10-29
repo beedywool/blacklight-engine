@@ -1,6 +1,7 @@
 import { resolve } from 'node:path';
 import { build } from 'vite';
 import { createViteConfig } from '../vite';
+import { desktopTargets } from './desktop';
 import { mobileTargets } from './mobile';
 
 /** Options every target builder receives. */
@@ -29,6 +30,7 @@ export async function buildWeb({ root }: Pick<TargetOptions, 'root'>): Promise<v
  */
 export const targets: Record<string, TargetBuilder> = {
   web: (options) => buildWeb(options),
+  ...desktopTargets,
   ...mobileTargets,
 };
 

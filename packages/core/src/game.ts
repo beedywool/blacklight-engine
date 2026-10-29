@@ -19,6 +19,9 @@ import { nameOf, stamp, type ObjectRegistry } from './registry';
 import { Scene } from './scene';
 import type { SceneClass, SceneLoader } from './scenes';
 import { WebPlatform, type Platform } from './platform';
+import { SaveManager } from './save/manager';
+import { resolveSecurity, type TamperEvent } from './security/config';
+import { SecurityRuntime } from './security/runtime';
 import { Settings } from './settings';
 import { ModuleHost, type GameModules, type ModuleList } from './modules/index';
 import { didYouMean } from './suggest';
@@ -36,6 +39,8 @@ export interface CreateGameOptions {
   mount: HTMLElement;
   /** Set up before the first scene starts (`@blacklight/ui` installs its layer this way). */
   plugins?: ((game: Game) => void | Promise<void>)[];
+  /** Release build: encrypted saves and the `security` measures (the CLI passes it). */
+  release?: boolean;
   /** Modules from `game.config.ts`, set up after the plugins (the CLI generates the list). */
   modules?: ModuleList;
 }
@@ -125,6 +130,8 @@ export interface GameEvents {
   resize: { viewport: Viewport };
   /** Every displayed frame, paused or not (UI layers animate with it). */
   frame: { deltaMS: number };
+  /** Tampering detected (release builds): a listener replaces the default restore + log. */
+  tamper: TamperEvent;
 }
 
 /** Game time, advanced by the fixed step. */
@@ -221,6 +228,12 @@ export class Game {
    * of the design area. Anchor HUD elements inside it.
    */
   safeArea: Rect = { x: 0, y: 0, width: 0, height: 0 };
+  /** `true` in release builds (`blacklight build`), `false` with `blacklight dev`. */
+  readonly release: boolean;
+  /** Save slots and the current save data. */
+  readonly save: SaveManager;
+  /** Release-build hardening (protected values, debugger detection, tamper reaction). */
+  readonly security: SecurityRuntime;
 
   private readonly scenes: Record<string, SceneLoader>;
   private readonly registry: ObjectRegistry;
@@ -255,6 +268,21 @@ export class Game {
     this.audio = new AudioManager(this.assets, this.settings);
     this.random = new Random(config.seed ?? Date.now());
     this.time = { step: 0, now: 0, dt: 1 / config.tickRate, scale: 1 };
+    this.release = options.release ?? false;
+    this.save = new SaveManager(this);
+    this.security = new SecurityRuntime(this, resolveSecurity(config.security, this.release));
+  }
+
+  /**
+   * Listens to a game event; same as `game.events.on`.
+   *
+   * @example
+   * ```ts
+   * game.on('tamper', (event) => { report(event.kind); event.restore(); });
+   * ```
+   */
+  on<K extends keyof GameEvents>(name: K, listener: (payload: GameEvents[K]) => void): () => void {
+    return this.events.on(name, listener);
   }
 
   /** @internal Called by {@link createGame}. */
@@ -312,6 +340,7 @@ export class Game {
     });
 
     for (const plugin of this.plugins) await plugin(this);
+    this.security.start();
     // After the plugins, which may replace `platform`; before the first scene, which may use modules.
     this.moduleHost = new ModuleHost(this);
     await this.moduleHost.install(this.moduleList ?? { definitions: [] });

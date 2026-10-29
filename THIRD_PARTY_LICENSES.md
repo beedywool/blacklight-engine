@@ -139,3 +139,23 @@ Assets:
 | Asset                                                                        | License | Origin                                                                        |
 | ---------------------------------------------------------------------------- | ------- | ----------------------------------------------------------------------------- |
 | templates/visual-novel portraits, gallery images, sounds, music, intro video | CC0     | Generated for the template by `e2e/fixtures/generate-visual-novel-assets.mjs` |
+
+## Desktop app (phase 3c: inside desktop builds)
+
+| Package              | Version | License                                          | Used by                                                                                          |
+| -------------------- | ------- | ------------------------------------------------ | ------------------------------------------------------------------------------------------------ |
+| electron             | 44.9.3  | MIT (Chromium BSD-3-Clause, Node.js MIT, others) | desktop builds (runtime of the app)                                                              |
+| @kmamal/sdl          | 0.11.13 | MIT                                              | @blacklight/native (gamepads, main process)                                                      |
+| SDL2                 | 2.x     | zlib                                             | shipped inside @kmamal/sdl's prebuilt binary                                                     |
+| steamworks.js        | 0.4.0   | MIT                                              | @blacklight/native (steam target only)                                                           |
+| Steamworks SDK       | —       | Valve Steamworks SDK Access Agreement            | redistributable steam_api library inside steamworks.js (steam target only, optional per SPEC §9) |
+| bytenode             | 2.1.0   | MIT                                              | V8 bytecode loader of release desktop builds                                                     |
+| SDL_GameControllerDB | —       | zlib                                             | bundled into the main process (same file as core)                                                |
+
+## Desktop tooling (published, not inside games)
+
+| Package               | Version | License      | Used by                                           |
+| --------------------- | ------- | ------------ | ------------------------------------------------- |
+| electron-builder      | 26.18.1 | MIT          | @blacklight/native/build (installers)             |
+| @electron/fuses       | 2.1.3   | MIT          | @blacklight/native/build (fuses, verification)    |
+| javascript-obfuscator | 5.9.0   | BSD-2-Clause | @blacklight/cli (release obfuscation, build time) |

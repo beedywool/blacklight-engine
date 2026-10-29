@@ -9,6 +9,11 @@ packages:
 # Dependencies allowed to run install scripts (pnpm blocks the others).
 allowBuilds:
   esbuild: true
+  # Desktop (@blacklight/native): Electron's binary and the SDL gamepad binding's prebuilt library.
+  electron: true
+  '@kmamal/sdl': true
+  # Squirrel.Windows installer pulled by electron-builder; the NSIS target does not need it.
+  electron-winstaller: false
   # Downloads a native binary to sign extensions on publish; packaging does not need it.
   '@vscode/vsce-sign': false
 

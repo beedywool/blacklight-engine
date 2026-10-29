@@ -192,3 +192,48 @@ Run `pnpm --filter blacklight-template-visual-novel dev` and open the printed UR
 8. A gamepad (Xbox and PlayStation): navigate the title menu, the dialogue (A advances, the D-pad reaches AUTO/SKIP/LOG…), the choices, the backlog, SETTINGS › CONTROLS rebinding (press a pad button). Expected: every screen is usable without keyboard or mouse.
 9. VIDEO › FULL SCREEN toggles the browser's full screen and back.
 10. In dev, press F9 and point at menu items and the dialogue box. Expected: the inspector names the component (MenuList, DialogueBox), its props and state, and the focused element.
+
+## Desktop app (phase 3c): Windows 10+, macOS 12+, Ubuntu 22.04+
+
+Build the fixture on each OS: `pnpm build && pnpm --dir e2e/fixtures/desktop exec blacklight build --target <win|mac|linux>`, install the package from `e2e/fixtures/desktop/release/<os>/`.
+
+1. Install and start (NSIS installer and portable .exe; dmg and zip on Intel and Apple Silicon; AppImage and deb). Expected: a black window with a blue square, no menu bar (macOS: app menu only), no console.
+2. Resize the window by its corner. Expected: the content keeps 16:9 (the window snaps back to the ratio). F11 and Alt+Enter (macOS: Cmd+Ctrl+F) toggle fullscreen; restart: the last choice is kept.
+3. Press Enter twice, quit with Escape, start again. Expected: the save file is in `%APPDATA%\dev.blacklight.fixture.desktop\saves`, `~/Library/Application Support/dev.blacklight.fixture.desktop/saves` or `~/.local/share/dev.blacklight.fixture.desktop/saves`; opening `1.sav` in a text editor shows no readable data.
+4. Change one byte of `1.sav` with a hex editor, start the game. Expected: it loads the previous save (gold 10 instead of 20).
+5. Press F12, Ctrl+Shift+I, Cmd+Alt+I, right-click. Expected: nothing opens. Start the app from a terminal with `--remote-debugging-port=9222` and with `--inspect`. Expected: it exits at once with "refusing to start with debugging switches".
+6. macOS: `codesign -dv --verbose=4` and `spctl -a -vv` on the signed app (with certificates, below). Windows: Properties › Digital Signatures on the installer. Expected: valid signatures.
+
+## Gamepads on desktop (SDL), each OS
+
+With an Xbox Series, a DualSense, a Switch Pro and a generic USB pad, in the desktop build of `templates/persona-menu` (or the runtime fixture built with `--target <os>`):
+
+1. Plug the pad while the game runs, then unplug it. Expected: the pad works without a restart; the UI prompts switch to its glyphs; unplugging releases its buttons.
+2. Call `this.input.player(1).rumble(1, 0.5, 400)` (a test scene key). Expected: both motors rumble. On an Xbox pad, `gamepad(game, 0).rumbleTriggers(0, 1, 400)`. Expected: the right trigger rumbles.
+3. DualSense / DualShock 4: `gamepad(game, 0).led('#ff0000')`. Expected: the light bar turns red.
+4. Expected limitation: `gamepad(game, 0).hasGyro` is `false` (the SDL binding has no controller sensors).
+
+## Steam (Steam client, Steamworks partner account)
+
+1. With the test app: `steam: { appId: 480 }` in a game, `blacklight build --target steam`, start `release/steam/content/<os>/` from a terminal while Steam runs. Expected: Steam shows "Spacewar" as playing.
+2. `steam(game).unlock('ACH_WIN_ONE_GAME')`. Expected: the Steam notification appears; `isUnlocked` is `true`; `clear` locks it again.
+3. `steam(game).setRichPresence('status', 'In the menu')`. Expected: the friends list shows the status.
+4. `game.save.useCloud(steam(game).cloud)`, save, then on a second machine `game.save.sync()`. Expected: the slot downloads. Steam's "Cloud" page of the app lists `save-1.json`.
+5. Shift+Tab. Expected: the overlay opens (it may not, see the accepted limitation L3; note the OS and GPU).
+6. With your own app id and depots: `STEAM_USERNAME=<builder> pnpm blacklight upload --target steam --dry-run`, then without `--dry-run`. Expected: steamcmd logs in, uploads the depots; the build appears in Steamworks › SteamPipe › Builds.
+
+## Discord Rich Presence (Discord desktop running)
+
+1. Create an application in the Discord developer portal, put its id in `discord: { appId }`, run the game with `presence.setActivity({ details: 'Testing', state: 'Lobby', party: { id: 'p1', size: 1, max: 4, joinSecret: 'code' } })`. Expected: your Discord profile shows the game, "Testing", "Lobby (1 of 4)".
+2. From a second account (friend), click "Ask to join". Expected: the game receives `onJoinRequest` with the friend's name; `accept(user.id)` sends the invite.
+3. The friend clicks "Join". Expected: the friend's game receives `onJoin('code')`.
+4. Quit Discord, start it again while the game runs. Expected: the presence comes back within 15 seconds.
+
+## Signing and notarization (owner certificates)
+
+1. Windows: `WIN_CSC_LINK=<cert.pfx> WIN_CSC_KEY_PASSWORD=… pnpm blacklight sign --dry-run --target win`, then `blacklight build --target win`. Expected: the plan lists `signtool` with the password masked; the installer and the portable .exe are signed and SmartScreen shows the publisher.
+2. macOS: `CSC_LINK`, `CSC_KEY_PASSWORD`, `APPLE_API_KEY`, `APPLE_API_KEY_ID`, `APPLE_API_ISSUER` set, `blacklight build --target mac`. Expected: notarization succeeds, `xcrun stapler validate` passes, the dmg opens without a Gatekeeper warning on another Mac.
+
+## Deep links on desktop
+
+1. With the deb installed (Linux) or the app installed (Windows, macOS), open `dev.blacklight.fixture.desktop:/oauth/callback?code=1` from a browser. Expected: the running game receives `deeplink` with that URL (the OIDC login of the accounts module completes the same way).

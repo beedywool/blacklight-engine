@@ -10,6 +10,7 @@ import { join, resolve } from 'node:path';
 import vue from '@vitejs/plugin-vue';
 import { searchForWorkspaceRoot, type InlineConfig, type Plugin, type ViteDevServer } from 'vite';
 import { buildAtlases, pngSize } from './atlas';
+import { hardening } from './security';
 import { blacklightModules, gameModulesTypes } from './modules';
 import { fontSubsetting } from './fonts';
 import { ink } from './ink';
@@ -85,7 +86,7 @@ try {
   const plugins = [${
     withUi ? "ui({ screens: import.meta.glob(['../ui/**/*.vue', '../scenes/*/ui/**/*.vue']) })" : ''
   }];
-  const game = await createGame(config, { scenes, objects, assets, mount, plugins, modules });
+  const game = await createGame(config, { scenes, objects, assets, mount, plugins, modules, release: import.meta.env.PROD });
   if (import.meta.env.DEV) {
     // Console and test access in dev: the running game and the engine module itself.
     Object.assign(window, { blacklight: game, blacklightCore: await import('@blacklight/core') });
@@ -311,6 +312,7 @@ export function createViteConfig(gameRoot: string, options: ViteConfigOptions = 
       vue(),
       ink(),
       fontSubsetting({ root }),
+      hardening({ root }),
     ],
     resolve: {
       // One copy of each, even when engine packages are linked from a checkout.

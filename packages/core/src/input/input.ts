@@ -217,7 +217,11 @@ export class InputManager {
   constructor(
     config: InputConfig = {},
     private readonly settings?: InputSettings,
-    private readonly getGamepads: () => (Gamepad | null)[] = () =>
+    /**
+     * Where gamepads come from: the browser Gamepad API by default. The desktop app replaces it
+     * with SDL pads read in the Electron main process, in the same shape.
+     */
+    public getGamepads: () => (Gamepad | null)[] = () =>
       typeof navigator !== 'undefined' && navigator.getGamepads ? [...navigator.getGamepads()] : [],
   ) {
     this.deadzone = config.deadzone ?? 0.2;

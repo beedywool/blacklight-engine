@@ -1,0 +1,19 @@
+{
+  "name": "blacklight-fixture-desktop",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "blacklight dev",
+    "build": "blacklight build --target web",
+    "preview": "blacklight preview",
+    "typecheck": "blacklight types && tsc --noEmit"
+  },
+  "dependencies": {
+    "@blacklight/core": "workspace:*",
+    "@blacklight/native": "workspace:*"
+  },
+  "devDependencies": {
+    "@blacklight/cli": "workspace:*",
+    "typescript": "6.0.3"
+  }
+}

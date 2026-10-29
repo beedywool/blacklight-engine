@@ -28,7 +28,14 @@ jobs:
       - run: pnpm --filter blacklight-template-persona-menu typecheck
       - run: pnpm docs:build
       - run: pnpm exec playwright install --with-deps chromium webkit
-      - run: pnpm e2e
+      # Electron (e2e/desktop.spec.ts) needs a display on Linux, and Ubuntu 24.04 restricts the
+      # unprivileged user namespaces Chromium's sandbox uses.
+      - if: runner.os == 'Linux'
+        run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+      - if: runner.os == 'Linux'
+        run: xvfb-run -a pnpm e2e
+      - if: runner.os != 'Linux'
+        run: pnpm e2e
       - run: pnpm --filter blacklight-vscode test:integration
       - uses: actions/upload-artifact@v5
         if: always()
@@ -105,4 +112,43 @@ jobs:
           path: |
             playwright-report/
             test-results/
+          retention-days: 7
+
+  # PF-03 / PF-07: real installers for each OS from the desktop fixture, built on that OS (V8
+  # bytecode and the SDL binding match the machine), plus the signing plan in dry-run mode.
+  desktop-packages:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: linux
+          - os: windows-latest
+            target: win
+          - os: macos-latest
+            target: mac
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      - if: runner.os == 'Linux'
+        run: xvfb-run -a pnpm --dir e2e/fixtures/desktop exec blacklight build --target linux
+      - if: runner.os != 'Linux'
+        run: pnpm --dir e2e/fixtures/desktop exec blacklight build --target ${{ matrix.target }}
+      - run: pnpm --dir e2e/fixtures/desktop exec blacklight sign --dry-run --target ${{ matrix.target }}
+      - uses: actions/upload-artifact@v5
+        with:
+          name: desktop-${{ matrix.target }}
+          path: |
+            e2e/fixtures/desktop/release/${{ matrix.target }}/*.exe
+            e2e/fixtures/desktop/release/${{ matrix.target }}/*.dmg
+            e2e/fixtures/desktop/release/${{ matrix.target }}/*.zip
+            e2e/fixtures/desktop/release/${{ matrix.target }}/*.AppImage
+            e2e/fixtures/desktop/release/${{ matrix.target }}/*.deb
           retention-days: 7
