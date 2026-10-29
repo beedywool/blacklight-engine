@@ -1,0 +1,9 @@
+{
+  "$schema": "../node_modules/@blacklight/core/schema/timeline.schema.json",
+  "steps": [
+    { "to": ".menu__title", "keyframes": { "opacity": [0, 1] }, "duration": 0.2 },
+    { "label": "buttons" },
+    { "to": ".bl-button", "keyframes": { "x": [-40, 0] }, "at": "buttons", "duration": 0.15 },
+    { "sound": "click", "at": "<" }
+  ]
+}

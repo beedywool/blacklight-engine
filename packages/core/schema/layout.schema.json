@@ -1,0 +1,57 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Blacklight scene layout",
+  "description": "Objects placed in a scene by the visual scene editor; spawned by scene.load(layout).",
+  "type": "object",
+  "required": ["objects"],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": { "type": "string" },
+    "objects": {
+      "type": "array",
+      "description": "Objects spawned in this order.",
+      "items": { "$ref": "#/$defs/placement" }
+    }
+  },
+  "$defs": {
+    "placement": {
+      "type": "object",
+      "required": ["type", "x", "y"],
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "type": "string",
+          "description": "Object name: the PascalCase folder name (objects/big-enemy → BigEnemy)."
+        },
+        "x": { "type": "number", "description": "Position in virtual pixels." },
+        "y": { "type": "number" },
+        "layer": {
+          "type": "string",
+          "description": "Scene layer; the default layer when omitted."
+        },
+        "angle": { "type": "number", "description": "Rotation in degrees." },
+        "scale": {
+          "description": "Uniform scale, or per axis.",
+          "oneOf": [
+            { "type": "number" },
+            {
+              "type": "object",
+              "required": ["x", "y"],
+              "additionalProperties": false,
+              "properties": { "x": { "type": "number" }, "y": { "type": "number" } }
+            }
+          ]
+        },
+        "tags": {
+          "type": "array",
+          "description": "Tags added to the object, found with scene.find('tag').",
+          "items": { "type": "string" }
+        },
+        "props": {
+          "type": "object",
+          "description": "Other public fields of the object, set before create()."
+        }
+      }
+    }
+  }
+}

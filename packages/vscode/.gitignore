@@ -1,0 +1,5 @@
+dist-webview/
+dist-test/
+schema/
+.vscode-test/
+*.vsix

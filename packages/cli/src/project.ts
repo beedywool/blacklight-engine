@@ -52,7 +52,7 @@ export const ASSET_EXTENSIONS = new Set([
 ]);
 
 /** JSON files imported as modules rather than fetched. */
-const MODULE_JSON = /\.(anim|tilemap)\.json$/;
+const MODULE_JSON = /\.(anim|tilemap|layout|timeline)\.json$/;
 
 function walk(dir: string, out: string[]): void {
   if (!existsSync(dir)) return;

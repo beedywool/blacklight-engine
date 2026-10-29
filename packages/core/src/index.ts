@@ -29,6 +29,7 @@ export {
   type ScenePointer,
   type SceneSnapshot,
 } from './scene';
+export { loadLayout, type LayoutObject, type SceneLayout } from './layout';
 export { scenesFromGlob, type SceneClass, type SceneLoader } from './scenes';
 export { objectsFromGlob, pascalCase, type ObjectLoader, type ObjectRegistry } from './registry';
 export type {

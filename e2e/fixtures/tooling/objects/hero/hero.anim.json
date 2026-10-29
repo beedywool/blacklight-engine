@@ -1,0 +1,10 @@
+{
+  "$schema": "../../node_modules/@blacklight/core/schema/anim.schema.json",
+  "source": "./hero@16x16.png",
+  "default": "idle",
+  "hitbox": { "type": "box", "x": -5, "y": -6, "width": 10, "height": 14 },
+  "animations": {
+    "idle": { "frames": [0, 1], "fps": 2 },
+    "run": { "frames": [2, 3], "fps": 8, "events": { "0": "step" } }
+  }
+}

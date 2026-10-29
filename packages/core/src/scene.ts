@@ -13,6 +13,7 @@ import type { WorldShape } from './collision/shapes';
 import { Disposables, EventBus, type EventMap, type Unsubscribe } from './events';
 import type { Game, GotoOptions, SceneUi } from './game';
 import type { InputManager } from './input/input';
+import { loadLayout, type SceneLayout } from './layout';
 import type { Point, Rect } from './math';
 import { Text } from './objects/basic';
 import { GameObject, type GameObjectClass, type SpawnProps } from './objects/game-object';
@@ -285,6 +286,23 @@ export abstract class Scene<P = void> {
     const { layer, parent, ...rest } = props as { layer?: string; parent?: GameObject };
     this.applyProps(object, rest);
     return this.add(object, { layer, parent });
+  }
+
+  /**
+   * Spawns the objects placed in a layout file (`<name>.layout.json`, saved by the VS Code scene
+   * editor), in order. Returns them.
+   *
+   * @example
+   * ```ts
+   * import layout from './level.layout.json';
+   * create() {
+   *   this.load(layout);
+   *   this.player = this.find('Player')!;
+   * }
+   * ```
+   */
+  load(layout: SceneLayout): GameObject[] {
+    return loadLayout(this as Scene<never>, layout);
   }
 
   /** Spawns `count` objects; `props` receives the index. */
@@ -682,8 +700,12 @@ export abstract class Scene<P = void> {
     return layers.includes('main') ? 'main' : (layers[0] ?? 'main');
   }
 
+  /** @internal Parameters given to `create()`; hot reload creates the new version with them. */
+  params: unknown;
+
   /** @internal Runs `create()`. */
   async start(params: unknown): Promise<void> {
+    this.params = params;
     await this.create(params as P);
   }
 

@@ -35,6 +35,14 @@ export {
 export { directionOf, pickNext, wrapTarget, type Box, type Direction } from './spatial';
 export { Timeline, type StepOptions, type StopMode } from './timeline';
 export {
+  applyTimeline,
+  type TimelineJson,
+  type TimelineLabelStep,
+  type TimelineSoundStep,
+  type TimelineStep,
+  type TimelineToStep,
+} from './timeline-json';
+export {
   defineTransition,
   getTransition,
   transitionNames,
