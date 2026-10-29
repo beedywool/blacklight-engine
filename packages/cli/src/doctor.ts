@@ -1,7 +1,14 @@
 import { spawnSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { createRequire } from 'node:module';
+import { homedir } from 'node:os';
 import { join } from 'node:path';
+import {
+  JAVA_RANGE,
+  androidSdkCandidates,
+  findJava,
+  parseJavaVersion,
+} from './targets/mobile-tools';
 
 /** What a check can see of the machine; replaced in tests. */
 export interface DoctorEnv {
@@ -199,37 +206,41 @@ const iosSigning: DoctorCheck = {
 
 const java: DoctorCheck = {
   name: 'Java (JDK 21)',
-  run: ({ exec, env }) => {
-    const javaBin = env.JAVA_HOME ? join(env.JAVA_HOME, 'bin', 'java') : 'java';
-    const output = exec(javaBin, ['-version']);
-    if (!output)
+  // The same search as the Android build (targets/mobile-tools.ts): JAVA_HOME, PATH, Android
+  // Studio's JBR, installed JDKs; Gradle 8.14 runs on Java 21 to 24.
+  run: ({ exec, env, platform }) => {
+    const versionOf = (home: string | undefined) =>
+      parseJavaVersion(exec(home ? join(home, 'bin', 'java') : 'java', ['-version']) ?? '');
+    try {
+      const home = findJava(env, platform, homedir(), versionOf);
+      return { ok: true, detail: `Java ${versionOf(home)}${home ? ` (${home})` : ''}` };
+    } catch (error) {
       return {
         ok: false,
-        detail: 'java not found',
-        fix: 'Install a JDK 21 (Temurin or the one bundled with Android Studio) and set JAVA_HOME.',
+        detail: (error as Error).message.split(';')[0]!,
+        fix: `Install a JDK ${JAVA_RANGE.min} (Temurin or the one bundled with Android Studio) and set JAVA_HOME.`,
       };
-    const major = Number(/version "(\d+)/.exec(output)?.[1] ?? 0);
-    return major >= 21
-      ? { ok: true, detail: firstLine(output) }
-      : {
-          ok: false,
-          detail: `${firstLine(output)} (needs 21 or later)`,
-          fix: 'Install a JDK 21 and point JAVA_HOME to it.',
-        };
+    }
   },
 };
 
 const androidSdk: DoctorCheck = {
   name: 'Android SDK',
   run: ({ env, exists, platform }) => {
-    const sdk = env.ANDROID_HOME ?? env.ANDROID_SDK_ROOT;
+    // Same search as the Android build: ANDROID_HOME, ANDROID_SDK_ROOT, Android Studio's folder.
+    const adbName = platform === 'win32' ? 'adb.exe' : 'adb';
+    const candidates = androidSdkCandidates(env, platform, homedir());
+    const sdk =
+      candidates.find((dir) => exists(join(dir, 'platform-tools', adbName))) ??
+      env.ANDROID_HOME ??
+      env.ANDROID_SDK_ROOT;
     if (!sdk)
       return {
         ok: false,
-        detail: 'ANDROID_HOME is not set',
+        detail: 'ANDROID_HOME is not set and no SDK in the default folder',
         fix: 'Install Android Studio (or the command line tools) and set ANDROID_HOME to the SDK folder.',
       };
-    const adb = join(sdk, 'platform-tools', platform === 'win32' ? 'adb.exe' : 'adb');
+    const adb = join(sdk, 'platform-tools', adbName);
     return exists(adb)
       ? { ok: true, detail: sdk }
       : {

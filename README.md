@@ -25,6 +25,7 @@ Until the packages are published on npm, create games from a checkout with `node
 | `packages/core`    | `@blacklight/core`: loop, scenes, objects, behaviors, animations, collisions, input, audio, camera, tweens           |
 | `packages/physics` | `@blacklight/physics`: Rapier 2D rigid bodies                                                                        |
 | `packages/ui`      | `@blacklight/ui`: Vue 3 UI layer, focus, prompts, themes, widgets                                                    |
+| `packages/mobile`  | `@blacklight/mobile`: Android and iOS (Capacitor): app files, Keystore/Keychain save key, haptics, achievements      |
 | `packages/cli`     | `@blacklight/cli`: `blacklight create / dev / build / preview / types`, asset manifest, atlases                      |
 | `packages/create`  | `create-blacklight`: the scaffolder behind `pnpm create blacklight`                                                  |
 | `templates/`       | `empty` and `persona-menu` today; `party-game`, `visual-novel`, `platformer` and `2d-with-3d` come with their phases |

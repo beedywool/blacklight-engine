@@ -10,7 +10,7 @@ One line per `SPEC.md` requirement: `- [x] ID · where · test`. A requirement i
 - [ ] Phase 3a UI complete
 - [x] Phase 3b Light 3D · glTF model between two 2D layers and inside a menu (RTT with filter + mask, Vue `<ModelView>`), Draco + KTX2 offline from the build, benchmark frame budget (templates/2d-with-3d) · e2e: `e2e/three.spec.ts` (local Linux; fps asserted on a hardware GPU, CPU budget everywhere)
 - [ ] Phase 3c Desktop
-- [ ] Phase 3d Mobile
+- [ ] Phase 3d Mobile — Android half passes: fixture + persona-menu template launch offline, real touch (adb input), back button, deep link, pause/resume, encrypted save read back after a restart, raw `sqlite` protocol on Capacitor SQLite (rows, blob, boolean, persisted), signed release APK with no WebView DevTools socket, on an API 36 x86_64 emulator · e2e: `e2e/mobile-android.spec.ts` (local Linux); web build with phone emulation + fake native side · e2e: `e2e/mobile-web.spec.ts`; iOS Simulator half · e2e: `e2e/mobile-ios.spec.ts` in CI job `ios` (macOS), not run yet: no macOS here
 - [x] Phase 3e Modules & services · `blacklight add sqlite` (and accounts-oidc, achievements) in a fresh project through a static registry index, typed `game.modules`, sql.js persisted across reloads, OIDC login against a mock provider with account linking on the reference server, offline queues replayed when the network returns, release build · e2e: `e2e/modules.spec.ts` (local Linux)
 - [x] Phase 3f Networking · 4 simulated players, 150 ms latency (+20 ms jitter), 2 % loss, 10 min of game time on the Push-Push online scene: no desync; V8 (Node, Chromium) and JavaScriptCore (WebKit; Bun locally) give the same checksums; two browsers play a live match through the relay · test: `packages/net/test/gate.spec.ts`, e2e: `e2e/net.spec.ts` (local Linux: WebKit skipped for missing system libraries, JavaScriptCore checked through Bun; CI installs WebKit)
 - [x] Phase 3g Tooling · VS Code extension integration tests (@vscode/test-electron) for every TL-03 feature; hot reload keeps state · tests: `packages/vscode/test/integration/suite.ts` (12 tests, `pnpm --filter blacklight-vscode test:integration`, local Linux under Xvfb with VS Code 1.139), e2e `e2e/tooling.spec.ts`
@@ -86,7 +86,7 @@ One line per `SPEC.md` requirement: `- [x] ID · where · test`. A requirement i
 - [ ] PF-01 Web/PWA
 - [ ] PF-02 Electron
 - [ ] PF-03 Builds
-- [ ] PF-04 Capacitor Android and iOS
+- [ ] PF-04 Capacitor Android and iOS — partial · packages/mobile, packages/cli/src/targets/mobile*.ts · test: mobile platform/plugin specs (packages/mobile/test), packages/cli/test/mobile.spec.ts, e2e/mobile-web.spec.ts, e2e/mobile-android.spec.ts (emulator, passes; `blacklight run --target android` checked by hand on it); iOS implemented (Xcode project generated and patched on Linux), Simulator run pending in CI
 - [ ] PF-05 Steam
 - [ ] PF-06 Everything works offline; online features fail gracefully…
 - [ ] PF-07 Signing and notarization in the CLI, optional, enabled by…

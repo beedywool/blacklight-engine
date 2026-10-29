@@ -1,0 +1,20 @@
+{
+  "name": "blacklight-fixture-mobile",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "blacklight dev",
+    "build": "blacklight build --target web",
+    "android": "blacklight build --target android",
+    "ios": "blacklight build --target ios",
+    "preview": "blacklight preview",
+    "typecheck": "blacklight types && tsc --noEmit"
+  },
+  "dependencies": {
+    "@blacklight/core": "workspace:*"
+  },
+  "devDependencies": {
+    "@blacklight/cli": "workspace:*",
+    "typescript": "6.0.3"
+  }
+}

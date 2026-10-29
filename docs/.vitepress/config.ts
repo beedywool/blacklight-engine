@@ -87,6 +87,10 @@ export default defineConfig({
         ],
       },
       {
+        text: 'Mobile',
+        items: [{ text: 'Android and iOS', link: '/guide/mobile' }],
+      },
+      {
         text: 'Online',
         items: [
           { text: 'Networking', link: '/guide/networking' },

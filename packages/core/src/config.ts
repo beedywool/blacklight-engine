@@ -1,3 +1,4 @@
+import { checkMobileConfig, type MobileConfig } from './config-mobile';
 import { parseBinding } from './input/bindings';
 import type { InputConfig } from './input/input';
 import type { ModulesConfig } from './modules/define';
@@ -73,12 +74,14 @@ export interface GameConfig {
    * ```
    */
   modules?: Partial<ModulesConfig>;
+  /** Android and iOS options (`@blacklight/mobile`). */
+  mobile?: MobileConfig;
 }
 
 export interface ResolvedGameConfig
   extends
-    Required<Omit<GameConfig, 'resolution' | 'input' | 'seed' | 'ui' | 'modules'>>,
-    Pick<GameConfig, 'input' | 'seed' | 'ui' | 'modules'> {
+    Required<Omit<GameConfig, 'resolution' | 'input' | 'seed' | 'ui' | 'modules' | 'mobile'>>,
+    Pick<GameConfig, 'input' | 'seed' | 'ui' | 'modules' | 'mobile'> {
   resolution: Required<ResolutionConfig>;
 }
 
@@ -218,6 +221,8 @@ export function resolveConfig(input: unknown): ResolvedGameConfig {
     }
   }
 
+  checkMobileConfig(input.mobile, issues);
+
   if (issues.length > 0) throw new ConfigError(issues);
   return {
     name: name as string,
@@ -231,5 +236,6 @@ export function resolveConfig(input: unknown): ResolvedGameConfig {
     seed: seed as string | number | undefined,
     ui: input.ui as GameConfig['ui'],
     modules: input.modules as GameConfig['modules'],
+    mobile: input.mobile as MobileConfig | undefined,
   };
 }
