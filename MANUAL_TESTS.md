@@ -50,6 +50,7 @@ Run `pnpm --filter blacklight-template-2d-with-3d build && pnpm --filter blackli
 3. Same, with the network disconnected after the first load (or Electron / Capacitor build once available): reload, enter the arena. Expected: identical to step 1 (models and decoders come from the game's files).
 4. Samsung Galaxy A54 (Chrome) and iPhone 12 (Safari), landscape: open `/#bench`, wait 7 s. Expected: the line at the top reads 58 fps or more and CPU under 8 ms; note the numbers in docs (3D page, performance table). Then `/#bench-2d` for the 2D baseline.
 5. Same phones: open the arena and the pause menu. Expected: no visible stutter while walking; the menu model turns smoothly.
+
 ## Modules and platform services (phase 3e)
 
 Automated with mocks: `e2e/modules.spec.ts` (registry, `blacklight add`, sql.js, OIDC against a mock provider, offline queues) and the module unit tests. These need real accounts, devices or services.
