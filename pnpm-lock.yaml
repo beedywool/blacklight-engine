@@ -225,6 +225,28 @@ importers:
         specifier: 6.0.3
         version: 6.0.3
 
+  e2e/fixtures/tooling:
+    dependencies:
+      '@blacklight/core':
+        specifier: workspace:*
+        version: link:../../../packages/core
+      '@blacklight/ui':
+        specifier: workspace:*
+        version: link:../../../packages/ui
+      vue:
+        specifier: 3.5.44
+        version: 3.5.44(typescript@6.0.3)
+    devDependencies:
+      '@blacklight/cli':
+        specifier: workspace:*
+        version: link:../../../packages/cli
+      typescript:
+        specifier: 6.0.3
+        version: 6.0.3
+      vue-tsc:
+        specifier: 3.3.14
+        version: 3.3.14(typescript@6.0.3)
+
   packages/cli:
     dependencies:
       '@vitejs/plugin-vue':
@@ -236,6 +258,9 @@ importers:
       create-blacklight:
         specifier: workspace:*
         version: link:../create
+      magic-string:
+        specifier: 1.4.5
+        version: 1.4.5
       pngjs:
         specifier: 7.0.0
         version: 7.0.0

@@ -8,6 +8,37 @@ import { formatDoctor, runDoctor, type DoctorEnv } from '../src/doctor';
 import { validate, type Schema } from '../src/json-schema';
 import { formatLint, lintProject } from '../src/lint';
 import { runners } from '../src/targets/runners';
+import { hotCode, hotTarget } from '../src/tooling';
+
+describe('hot reload transform', () => {
+  it('finds scene and object modules by their project path', () => {
+    expect(hotTarget('scenes/level/level.scene.ts')).toEqual({
+      kind: 'scene',
+      name: 'level',
+      path: 'scenes/level',
+    });
+    expect(hotTarget('objects/big-enemy/big-enemy.object.ts')).toEqual({
+      kind: 'object',
+      name: 'BigEnemy',
+      path: 'objects/big-enemy',
+    });
+    expect(hotTarget('scenes/level/objects/shadow/shadow.object.js')).toEqual({
+      kind: 'object',
+      name: 'Shadow',
+      path: 'scenes/level/objects/shadow',
+      scene: 'level',
+    });
+    expect(hotTarget('scenes/level/menu.scene.ts')).toBeUndefined();
+    expect(hotTarget('ui/Hud.vue')).toBeUndefined();
+  });
+
+  it('accepts updates and falls back to a reload', () => {
+    const code = hotCode({ kind: 'scene', name: 'level', path: 'scenes/level' });
+    expect(code).toContain('import.meta.hot.accept(');
+    expect(code).toContain('globalThis.__blacklightHot');
+    expect(code).toContain('import.meta.hot.invalidate()');
+  });
+});
 
 function env(overrides: Partial<DoctorEnv> = {}, commands: Record<string, string> = {}): DoctorEnv {
   return {

@@ -244,9 +244,7 @@ async function runEslint(root: string, issues: LintIssue[]): Promise<string | un
   }
   const { ESLint } = (await import(pathToFileURL(eslintPath).href)) as {
     ESLint: new (options: Record<string, unknown>) => {
-      lintFiles(
-        patterns: string[],
-      ): Promise<
+      lintFiles(patterns: string[]): Promise<
         {
           filePath: string;
           messages: { line: number; ruleId: string | null; severity: number; message: string }[];

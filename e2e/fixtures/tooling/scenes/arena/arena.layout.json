@@ -1,0 +1,8 @@
+{
+  "$schema": "../../node_modules/@blacklight/core/schema/layout.schema.json",
+  "objects": [
+    { "type": "Hero", "x": 60, "y": 100 },
+    { "type": "Coin", "x": 140, "y": 100, "tags": ["first"] },
+    { "type": "Coin", "x": 200, "y": 100 }
+  ]
+}
