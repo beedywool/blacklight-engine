@@ -1,0 +1,72 @@
+import type { Messages } from './i18n';
+
+/**
+ * English texts of the ready-made screens, under `bl.*`. Translate them by adding the same keys
+ * to `locales/<lang>.json`; a game's own files always win.
+ */
+export const BUILTIN_MESSAGES: Messages = {
+  bl: {
+    common: { back: 'BACK', select: 'SELECT', yes: 'YES', no: 'NO', on: 'ON', off: 'OFF' },
+    settings: {
+      title: 'SETTINGS',
+      audio: 'AUDIO',
+      video: 'VIDEO',
+      controls: 'CONTROLS',
+      language: 'LANGUAGE',
+      accessibility: 'ACCESSIBILITY',
+      master: 'MASTER',
+      music: 'MUSIC',
+      sfx: 'SOUND EFFECTS',
+      voice: 'VOICE',
+      ui: 'INTERFACE',
+      fullscreen: 'FULL SCREEN',
+      uiScale: 'UI SCALE',
+      theme: 'THEME',
+      press: 'PRESS A KEY OR BUTTON…',
+      resetControls: 'RESET CONTROLS',
+      textSize: 'TEXT SIZE',
+      textSpeed: 'TEXT SPEED',
+      instant: 'INSTANT',
+      contrast: 'HIGH CONTRAST',
+      colorFilter: 'COLOR FILTER',
+      reducedMotion: 'REDUCED MOTION',
+      system: 'SYSTEM',
+      subtitles: 'SUBTITLES',
+      subtitleSize: 'SUBTITLE SIZE',
+      subtitleBackground: 'SUBTITLE BACKGROUND',
+      filters: {
+        none: 'NONE',
+        protanopia: 'PROTANOPIA',
+        deuteranopia: 'DEUTERANOPIA',
+        tritanopia: 'TRITANOPIA',
+        grayscale: 'GRAYSCALE',
+      },
+    },
+    pause: {
+      title: 'PAUSE',
+      resume: 'RESUME',
+      settings: 'SETTINGS',
+      save: 'SAVE',
+      load: 'LOAD',
+      title_screen: 'TITLE SCREEN',
+      quit: 'QUIT GAME',
+      confirmTitle: 'Return to the title screen? Unsaved progress is lost.',
+      confirmQuit: 'Quit the game? Unsaved progress is lost.',
+    },
+    slots: {
+      save: 'SAVE',
+      load: 'LOAD',
+      empty: 'EMPTY',
+      slot: 'SLOT {n}',
+      overwrite: 'Overwrite this save?',
+      confirmLoad: 'Load this save? Unsaved progress is lost.',
+      delete: 'Delete this save?',
+      saved: 'Saved',
+      deleteHint: 'DELETE',
+      failed: 'Could not complete: {error}',
+    },
+    dialogue: { auto: 'AUTO', skip: 'SKIP', log: 'LOG', save: 'SAVE', load: 'LOAD', menu: 'MENU' },
+    backlog: { title: 'LOG' },
+    cutscene: { hold: 'Hold to skip', skip: 'Skip' },
+  },
+};

@@ -1,7 +1,7 @@
 {
   "name": "@blacklight/ui",
   "version": "0.0.0",
-  "description": "Blacklight Engine UI layer: Vue 3 screens, gamepad focus, Persona-style shapes, timelines, widgets.",
+  "description": "Blacklight Engine UI layer: Vue 3 screens, gamepad focus, Persona-style shapes, timelines, widgets, transitions, rich text, Ink dialogue, FX layer, localization, accessibility, video.",
   "license": "MIT",
   "type": "module",
   "sideEffects": [
@@ -12,6 +12,11 @@
       "types": "./dist/types/index.d.ts",
       "import": "./dist/index.js",
       "default": "./dist/index.js"
+    },
+    "./inspector": {
+      "types": "./dist/types/inspector.d.ts",
+      "import": "./dist/inspector.js",
+      "default": "./dist/inspector.js"
     },
     "./style.css": "./dist/ui.css"
   },
@@ -28,7 +33,9 @@
     "vue": "^3.5.0"
   },
   "dependencies": {
-    "motion": "14.8.0"
+    "inkjs": "2.4.0",
+    "motion": "14.8.0",
+    "pixi.js": "8.22.0"
   },
   "devDependencies": {
     "@blacklight/core": "workspace:*",
