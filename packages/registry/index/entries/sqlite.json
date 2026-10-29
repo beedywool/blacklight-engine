@@ -1,0 +1,5 @@
+{
+  "name": "sqlite",
+  "package": "@blacklight/module-sqlite",
+  "official": true
+}

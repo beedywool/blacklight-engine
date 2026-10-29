@@ -1,0 +1,60 @@
+{
+  "name": "@blacklight/module-sqlite",
+  "version": "0.0.0",
+  "description": "Local SQLite databases for Blacklight Engine games: sql.js on the web, better-sqlite3 on desktop, Capacitor SQLite on mobile.",
+  "license": "MIT",
+  "type": "module",
+  "sideEffects": false,
+  "keywords": [
+    "blacklight",
+    "blacklight-module",
+    "sqlite"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    },
+    "./native": {
+      "types": "./dist/native.d.ts",
+      "import": "./dist/native.js",
+      "default": "./dist/native.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "typecheck": "tsc --noEmit"
+  },
+  "blacklight": {
+    "module": "sqlite",
+    "engine": ">=0.0.0 <2.0.0",
+    "platforms": [
+      "web",
+      "desktop",
+      "android",
+      "ios"
+    ],
+    "permissions": [
+      "storage",
+      "native"
+    ]
+  },
+  "peerDependencies": {
+    "@blacklight/core": "workspace:*"
+  },
+  "dependencies": {
+    "sql.js": "1.15.2",
+    "better-sqlite3": "13.0.3"
+  },
+  "devDependencies": {
+    "@blacklight/core": "workspace:*",
+    "tsup": "9.0.0",
+    "typescript": "6.0.3",
+    "@types/better-sqlite3": "7.6.13",
+    "@types/sql.js": "1.4.11"
+  }
+}

@@ -1,0 +1,5 @@
+{
+  "name": "accounts-oidc",
+  "package": "@blacklight/module-accounts-oidc",
+  "official": true
+}

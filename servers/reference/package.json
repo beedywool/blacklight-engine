@@ -1,0 +1,21 @@
+{
+  "name": "blacklight-reference-server",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Blacklight reference server: cloud saves, achievements, leaderboards, account linking over OpenID Connect.",
+  "license": "MIT",
+  "type": "module",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "start": "node src/index.ts",
+    "dev": "node --watch src/index.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@blacklight/module-accounts-oidc": "workspace:*",
+    "@types/node": "24.19.2",
+    "typescript": "6.0.3"
+  }
+}

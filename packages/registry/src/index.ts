@@ -1,0 +1,31 @@
+// Module registry (MOD-05): manifest format, index repository validation and static API generation.
+export {
+  ALLOWED_LICENSES,
+  MODULE_NAME,
+  PERMISSIONS,
+  PLATFORMS,
+  isLicenseAllowed,
+  moduleNameOf,
+  suggestNames,
+  validateManifest,
+  validatePackage,
+  type ModuleManifest,
+  type ModulePermission,
+  type ModulePlatform,
+  type PackageJson,
+} from './manifest';
+export {
+  RegistryError,
+  buildIndex,
+  localPackuments,
+  npmPackuments,
+  readEntries,
+  validateIndex,
+  type IndexEntry,
+  type ModuleDetail,
+  type ModuleSummary,
+  type Packument,
+  type PackumentSource,
+  type RegistryIndex,
+  type VersionManifest,
+} from './build';

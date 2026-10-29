@@ -1,0 +1,22 @@
+# Example deployment of the reference server. Put a TLS reverse proxy in front of port 8080 for
+# public use. The relay server (servers/relay) can run next to it as a second service.
+services:
+  reference:
+    build: .
+    restart: unless-stopped
+    ports:
+      - '8080:8080'
+    environment:
+      # openssl rand -base64 48
+      SESSION_SECRET: ${SESSION_SECRET:?set SESSION_SECRET in .env}
+      OIDC_PROVIDERS: >-
+        [{"issuer":"https://sso.example.com","audiences":["mygame"]}]
+      GAMES_FILE: /config/games.json
+      CORS_ORIGINS: '*'
+      TRUST_PROXY: 'false'
+    volumes:
+      - reference_data:/data
+      - ./games.json:/config/games.json:ro
+
+volumes:
+  reference_data:

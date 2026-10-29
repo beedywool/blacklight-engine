@@ -1,0 +1,48 @@
+{
+  "name": "@blacklight/module-http",
+  "version": "0.0.0",
+  "description": "HTTP requests with an offline queue for Blacklight Engine games.",
+  "license": "MIT",
+  "type": "module",
+  "sideEffects": false,
+  "keywords": [
+    "blacklight",
+    "blacklight-module",
+    "http"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "typecheck": "tsc --noEmit"
+  },
+  "blacklight": {
+    "module": "http",
+    "engine": ">=0.0.0 <2.0.0",
+    "platforms": [
+      "web",
+      "desktop",
+      "android",
+      "ios"
+    ],
+    "permissions": [
+      "network"
+    ]
+  },
+  "peerDependencies": {
+    "@blacklight/core": "workspace:*"
+  },
+  "devDependencies": {
+    "@blacklight/core": "workspace:*",
+    "tsup": "9.0.0",
+    "typescript": "6.0.3"
+  }
+}
