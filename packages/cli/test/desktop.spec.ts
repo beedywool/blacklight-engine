@@ -1,7 +1,8 @@
+import { readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { signCommand } from '../src/commands/desktop';
-import { OBFUSCATION_LEVELS, isGameChunk, obfuscate } from '../src/security';
+import { OBFUSCATION_LEVELS, isGameChunk, obfuscate, withoutEmbindEval } from '../src/security';
 import { desktopEntry, hostOs, unpackedDir } from '../src/targets/desktop';
 import { capacitorConfig } from '../src/targets/mobile-native';
 import { nativeEntry } from '../src/targets/natives';
@@ -202,5 +203,20 @@ describe('SEC-07 switch on mobile builds', () => {
     expect(debugging(undefined, false)).toBe(true);
     expect(debugging({ webview: false }, true)).toBe(true);
     expect(debugging(false, true)).toBe(true);
+  });
+});
+
+describe('CSP and WebAssembly libraries (SEC-08)', () => {
+  it("removes embind's `new Function` invokers from three's Basis transcoder (KTX2)", () => {
+    const file = resolve(
+      import.meta.dirname,
+      '../../three/node_modules/three/examples/jsm/libs/basis/basis_transcoder.js',
+    );
+    const source = readFileSync(file, 'utf8');
+    expect(source.match(/newFunc\(Function,/g)).toHaveLength(2);
+    const patched = withoutEmbindEval(source);
+    expect(patched).not.toMatch(/newFunc\(Function,/);
+    expect(patched).toContain('var invokerFn=function(...invokeArgs)');
+    expect(withoutEmbindEval('const a = 1;')).toBe('const a = 1;');
   });
 });

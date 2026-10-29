@@ -89,6 +89,32 @@ export const OBFUSCATION_LEVELS: Record<ObfuscationLevel, Record<string, unknown
   },
 };
 
+/** The line of Emscripten's embind that compiles each bound function with `new Function`. */
+const EMBIND_EVAL = 'var invokerFn=newFunc(Function,args)(...closureArgs);';
+
+/**
+ * The same invoker as a closure: what Emscripten generates with `DYNAMIC_EXECUTION=0`. WebAssembly
+ * libraries built with embind and dynamic execution (three's Basis transcoder for KTX2 textures)
+ * otherwise need `'unsafe-eval'`, which the release CSP refuses. Variables come from
+ * `craftInvokerFunction`'s scope.
+ */
+const EMBIND_CLOSURE = `var invokerFn=function(...invokeArgs){if(invokeArgs.length!==argCount-2){throwBindingError(\`function \${humanName} called with \${invokeArgs.length} arguments, expected \${argCount-2}\`)}var destructors=needsDestructorStack?[]:null;var thisWired;if(isClassMethodFunc){thisWired=argTypes[1].toWireType(destructors,this)}var argsWired=[];for(var i=0;i<argCount-2;++i){argsWired.push(argTypes[i+2].toWireType(destructors,invokeArgs[i]))}var rv=isClassMethodFunc?cppInvokerFunc(cppTargetFunc,thisWired,...argsWired):cppInvokerFunc(cppTargetFunc,...argsWired);if(needsDestructorStack){runDestructors(destructors)}else{for(var j=isClassMethodFunc?1:2;j<argTypes.length;j++){var param=j===1?thisWired:argsWired[j-2];if(argTypes[j].destructorFunction!==null){argTypes[j].destructorFunction(param)}}}if(returns){return argTypes[0].fromWireType(rv)}};`;
+
+/** embind's `val` method callers (`__emval_get_method_caller`) are compiled the same way. */
+const EMVAL_EVAL = 'var invokerFunction=newFunc(Function,params)(...args);';
+const EMVAL_CLOSURE = `var invokerFunction=function(obj,func,destructorsRef,argsPtr){var values=[];var offset=0;for(var i=0;i<argCount;++i){values.push(types[i].readValueFromPointer(argsPtr+offset));offset+=types[i].argPackAdvance}var rv=kind===0?func.call(obj,...values):kind===1?new func(...values):func.call(...values);if(!retType.isVoid){return emval_returnValue(retType,destructorsRef,rv)}};`;
+
+/**
+ * Replaces embind's `new Function` invokers with closures (see {@link EMBIND_CLOSURE}), so
+ * WebAssembly libraries built with embind run under the release CSP.
+ */
+export function withoutEmbindEval(code: string): string {
+  let out = code;
+  if (out.includes(EMBIND_EVAL)) out = out.split(EMBIND_EVAL).join(EMBIND_CLOSURE);
+  if (out.includes(EMVAL_EVAL)) out = out.split(EMVAL_EVAL).join(EMVAL_CLOSURE);
+  return out;
+}
+
 /** Obfuscates one ES module chunk. */
 export async function obfuscate(code: string, level: ObfuscationLevel): Promise<string> {
   const { default: obfuscator } = (await import('javascript-obfuscator')) as unknown as {
@@ -178,6 +204,17 @@ export function hardening(options: { root: string }): Plugin {
       },
     },
     async generateBundle(_, bundle) {
+      if (settings.csp) {
+        for (const file of Object.values(bundle)) {
+          if (file.type === 'chunk') file.code = withoutEmbindEval(file.code);
+          else if (typeof file.source === 'string') file.source = withoutEmbindEval(file.source);
+          else if (file.fileName.endsWith('.js')) {
+            const text = new TextDecoder().decode(file.source);
+            const patched = withoutEmbindEval(text);
+            if (patched !== text) file.source = patched;
+          }
+        }
+      }
       const level = settings.obfuscate;
       if (!level) return;
       for (const chunk of Object.values(bundle)) {

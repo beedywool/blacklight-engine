@@ -41,6 +41,8 @@ form-action 'none'
 
 Scripts come only from the game's own files: no inline script, no `eval`, no `new Function`. `'wasm-unsafe-eval'` allows compiling WebAssembly (Rapier physics, the Draco and KTX2 decoders of 3D models) and nothing else; `worker-src 'self' blob:` lets Pixi and the 3D decoders run their workers, which start from blob URLs. `style-src 'unsafe-inline'` stays because Vue and the engine set element styles at run time, which runs no script. Release builds also load Pixi's eval-free shader code paths (`pixi.js/unsafe-eval`), since Pixi otherwise compiles them with `new Function`.
 
+WebAssembly libraries built with Emscripten's embind and dynamic execution compile small invoker functions with `new Function`; three's Basis transcoder (KTX2 textures) is one. Release builds replace those invokers with the equivalent closures Emscripten itself generates with `DYNAMIC_EXECUTION=0`, so KTX2 textures load under the policy without `'unsafe-eval'`.
+
 A game that talks to its own servers lists them: `csp: { connect: ['https://api.example.com'] }`. `img`, `media` and `font` add sources the same way. A source with spaces, semicolons or `'unsafe-…'` is refused at startup.
 
 ## Obfuscation
