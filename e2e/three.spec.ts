@@ -236,11 +236,17 @@ test.describe('release build', () => {
     expect(assets.some((file) => /^draco_decoder-.*\.wasm$/.test(file))).toBe(true);
     expect(assets.some((file) => /^basis_transcoder-.*\.wasm$/.test(file))).toBe(true);
 
-    // The crate (KTX2 texture) is drawn: wood colors around its center.
-    await page.waitForTimeout(500);
-    const [wood] = await pixels(page, [[330, 420]]);
-    expect(wood![0]).toBeGreaterThan(90);
-    expect(wood![0]).toBeGreaterThan(wood![2]! + 30);
+    // The crate (KTX2 texture) is drawn: wood colors around its center. The texture transcodes
+    // in a worker, so wait for it rather than for a fixed time.
+    await expect
+      .poll(
+        async () => {
+          const [wood] = await pixels(page, [[330, 420]]);
+          return wood![0]! > 90 && wood![0]! > wood![2]! + 30;
+        },
+        { timeout: 15_000 },
+      )
+      .toBe(true);
     expect(errors).toEqual([]);
   });
 
