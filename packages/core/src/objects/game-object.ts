@@ -36,6 +36,7 @@ export type SpawnProps<T> = {
 export type GameObjectClass<T extends GameObject = GameObject> = (new () => T) & typeof GameObject;
 
 const ENGINE_KEYS = Symbol('blacklight.engineKeys');
+const POSITION_KEYS = ['_lx', '_ly', 'prevX', 'prevY'];
 
 /**
  * Base class of everything placed in a scene. Positions are in virtual pixels; speeds in virtual
@@ -110,7 +111,11 @@ export class GameObject extends PixiContainer {
    * game's subclass adds. Engine subclasses call it at the end of their constructor.
    */
   protected markEngineKeys(): void {
-    (this as unknown as Record<symbol, Set<string>>)[ENGINE_KEYS] = new Set(Object.keys(this));
+    // Position fields are declared, not initialized: they appear later and are not game data.
+    (this as unknown as Record<symbol, Set<string>>)[ENGINE_KEYS] = new Set([
+      ...Object.keys(this),
+      ...POSITION_KEYS,
+    ]);
   }
 
   /** @internal */
