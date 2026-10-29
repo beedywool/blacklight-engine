@@ -1,0 +1,54 @@
+{
+  "name": "@blacklight/module-cloud-save",
+  "version": "0.0.0",
+  "description": "Cloud saves for Blacklight Engine games: reference server or Steam Cloud, with conflict resolution.",
+  "license": "MIT",
+  "type": "module",
+  "sideEffects": false,
+  "keywords": [
+    "blacklight",
+    "blacklight-module",
+    "cloud-save"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "typecheck": "tsc --noEmit"
+  },
+  "blacklight": {
+    "module": "cloud-save",
+    "engine": ">=0.0.0 <2.0.0",
+    "platforms": [
+      "web",
+      "desktop",
+      "android",
+      "ios"
+    ],
+    "permissions": [
+      "network",
+      "storage"
+    ],
+    "dependencies": [
+      "http"
+    ]
+  },
+  "peerDependencies": {
+    "@blacklight/core": "workspace:*",
+    "@blacklight/module-http": "workspace:*"
+  },
+  "devDependencies": {
+    "@blacklight/core": "workspace:*",
+    "@blacklight/module-http": "workspace:*",
+    "tsup": "9.0.0",
+    "typescript": "6.0.3"
+  }
+}
