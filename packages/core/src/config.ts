@@ -63,12 +63,18 @@ export interface GameConfig {
   seed?: string | number;
   /** UI layer defaults (`@blacklight/ui`); the player's saved choices win. */
   ui?: { theme?: string; scale?: number };
+  /**
+   * Languages (`locales/<lang>.json`, `@blacklight/ui`). `default` is used when the player's
+   * language has no file; `fallback` fills keys missing from the current language.
+   * @defaultValue `{ default: 'en', fallback: 'en' }`
+   */
+  locales?: { default?: string; fallback?: string };
 }
 
 export interface ResolvedGameConfig
   extends
-    Required<Omit<GameConfig, 'resolution' | 'input' | 'seed' | 'ui'>>,
-    Pick<GameConfig, 'input' | 'seed' | 'ui'> {
+    Required<Omit<GameConfig, 'resolution' | 'input' | 'seed' | 'ui' | 'locales'>>,
+    Pick<GameConfig, 'input' | 'seed' | 'ui' | 'locales'> {
   resolution: Required<ResolutionConfig>;
 }
 
@@ -168,6 +174,13 @@ export function resolveConfig(input: unknown): ResolvedGameConfig {
   if (input.ui !== undefined && !isRecord(input.ui)) {
     issues.push('`ui` must be an object, e.g. `ui: { theme: "persona" }`');
   }
+  if (
+    input.locales !== undefined &&
+    (!isRecord(input.locales) ||
+      Object.values(input.locales).some((lang) => typeof lang !== 'string'))
+  ) {
+    issues.push('`locales` must be an object of language codes, e.g. `locales: { default: "en" }`');
+  }
   if (seed !== undefined && typeof seed !== 'string' && typeof seed !== 'number') {
     issues.push('`seed` must be a string or a number');
   }
@@ -214,5 +227,6 @@ export function resolveConfig(input: unknown): ResolvedGameConfig {
     input: inputConfig as InputConfig | undefined,
     seed: seed as string | number | undefined,
     ui: input.ui as GameConfig['ui'],
+    locales: input.locales as GameConfig['locales'],
   };
 }

@@ -101,8 +101,12 @@ export interface Transition {
 }
 
 export interface GotoOptions {
-  /** `'fade'` (black), `'none'`, or a custom transition. @defaultValue `'none'` */
-  transition?: 'fade' | 'none' | Transition;
+  /**
+   * `'none'`, `'fade'` (black), a name registered in `game.transitions` (`@blacklight/ui` adds
+   * `wipe`, `iris`, `ink`, `slices`, `shatter`, `zoom`…), or a transition object.
+   * @defaultValue `'none'`
+   */
+  transition?: 'fade' | 'none' | (string & {}) | Transition;
 }
 
 export interface GameEvents {
@@ -201,6 +205,8 @@ export class Game {
   platform: Platform;
   /** UI layer, installed by `@blacklight/ui`. */
   ui: UiHost | undefined;
+  /** Scene transitions by name, usable as `goto(name, params, { transition: 'fade' })`. */
+  readonly transitions = new Map<string, Transition>([['fade', FADE]]);
   /** Drawn while scenes load; replace it to show your own art. */
   loadingScreen: LoadingScreen = BAR_LOADING_SCREEN;
   /**
@@ -410,12 +416,7 @@ export class Game {
   }
 
   private async switchTo(name: SceneName, params: unknown, options: GotoOptions): Promise<void> {
-    const transition =
-      options.transition === 'fade'
-        ? FADE
-        : options.transition === 'none' || !options.transition
-          ? undefined
-          : options.transition;
+    const transition = this.resolveTransition(options.transition);
     if (transition && this.scene) await this.runTransition(transition, 0, 1);
 
     const scene = await this.instantiate(name);
@@ -432,6 +433,19 @@ export class Game {
     this.mount.dataset.blacklightScene = name;
     this.events.emit('scene', { name });
     if (transition) await this.runTransition(transition, 1, 0);
+  }
+
+  private resolveTransition(transition: GotoOptions['transition']): Transition | undefined {
+    if (!transition || transition === 'none') return undefined;
+    if (typeof transition !== 'string') return transition;
+    const found = this.transitions.get(transition);
+    if (!found) {
+      const known = [...this.transitions.keys()];
+      throw new Error(
+        `Unknown scene transition "${transition}".${didYouMean(transition, known)} Known: none, ${known.join(', ')}. Register one with game.transitions.set(name, transition).`,
+      );
+    }
+    return found;
   }
 
   /** @internal Loads a scene and creates it (without starting it). */
