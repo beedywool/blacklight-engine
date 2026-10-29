@@ -584,6 +584,9 @@ importers:
       '@blacklight/core':
         specifier: workspace:*
         version: link:../core
+      '@blacklight/net':
+        specifier: workspace:*
+        version: link:../net
       '@types/node':
         specifier: 24.19.2
         version: 24.19.2

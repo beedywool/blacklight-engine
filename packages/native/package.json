@@ -48,6 +48,7 @@
   },
   "devDependencies": {
     "@blacklight/core": "workspace:*",
+    "@blacklight/net": "workspace:*",
     "@types/node": "24.19.2",
     "tsup": "9.0.0",
     "typescript": "6.0.3"
