@@ -112,6 +112,13 @@ export { Disposables, EventBus, type EventMap, type Unsubscribe } from './events
 export { FixedStep } from './loop';
 export { Random } from './random';
 export { Settings } from './settings';
+export {
+  WebPlatform,
+  type Platform,
+  type PlatformFiles,
+  type PlatformName,
+  type WebFallback,
+} from './platform';
 export { Timers } from './timers';
 export { Tween, Tweens, type EaseName, type SpringOptions, type TweenOptions } from './tween';
 export { computeViewport, type Viewport } from './viewport';

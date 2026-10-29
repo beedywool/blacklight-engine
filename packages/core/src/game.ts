@@ -18,6 +18,7 @@ import type { SceneName } from './register';
 import { nameOf, stamp, type ObjectRegistry } from './registry';
 import { Scene } from './scene';
 import type { SceneLoader } from './scenes';
+import { WebPlatform, type Platform } from './platform';
 import { Settings } from './settings';
 import { didYouMean } from './suggest';
 import type { Rect } from './math';
@@ -193,6 +194,11 @@ export class Game {
   textResolution = 1;
   /** `true` while paused by `pause()` (not by losing focus). */
   paused = false;
+  /**
+   * Platform services (files, save key, native calls). The web platform unless a platform package
+   * replaces it from a plugin, before the first scene starts.
+   */
+  platform: Platform;
   /** UI layer, installed by `@blacklight/ui`. */
   ui: UiHost | undefined;
   /** Drawn while scenes load; replace it to show your own art. */
@@ -224,6 +230,7 @@ export class Game {
     this.registry = options.objects ?? { global: {}, scenes: {} };
     this.mount = options.mount;
     this.plugins = options.plugins ?? [];
+    this.platform = new WebPlatform(config.id);
     this.steps = new FixedStep(config.tickRate);
     this.settings = new Settings(`blacklight:${config.id}:settings`);
     this.assets = new AssetStore(options.assets);
