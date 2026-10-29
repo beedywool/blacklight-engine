@@ -39,6 +39,9 @@ export interface Steamworks {
   electronEnableSteamOverlay(disableEachFrameInvalidation?: boolean): void;
 }
 
+const LEADERBOARDS =
+  'Steam leaderboards are not available: steamworks.js 0.4.0 does not expose them. Use the reference server for scores.';
+
 const OVERLAY_DIALOGS = [
   'friends',
   'community',
@@ -77,6 +80,20 @@ export function startSteam(steamworks: Steamworks, appId: number): (() => void) 
       [ACHIEVEMENT],
       (name) => client.achievement.activate(name) && client.stats.store(),
     ),
+    // Names used by the achievements module (SVC-02).
+    activateAchievement: method(
+      [ACHIEVEMENT],
+      (name) => client.achievement.activate(name) && client.stats.store(),
+    ),
+    uploadScore: method([v.string({ min: 1, max: 128 }), v.number()], () => {
+      throw new Error(LEADERBOARDS);
+    }),
+    getScores: method(
+      [v.string({ min: 1, max: 128 }), v.optional(v.integer({ min: 1, max: 100 }))],
+      () => {
+        throw new Error(LEADERBOARDS);
+      },
+    ),
     isUnlocked: method([ACHIEVEMENT], (name) => client.achievement.isActivated(name)),
     clear: method([ACHIEVEMENT], (name) => client.achievement.clear(name) && client.stats.store()),
     player: method([], () => ({
@@ -103,17 +120,20 @@ export function startSteam(steamworks: Steamworks, appId: number): (() => void) 
         ? client.cloud.listFiles().map((file) => ({ name: file.name, size: Number(file.size) }))
         : [],
     ),
+    // Cloud files cross the bridge as base64 text (what Steam stores): the cloud-save module and
+    // `steam(game).cloud` encode on the game side.
     cloudRead: method([CLOUD_NAME], (name) =>
-      cloudOn() && client.cloud.fileExists(name)
-        ? new Uint8Array(Buffer.from(client.cloud.readFile(name), 'base64'))
-        : undefined,
+      cloudOn() && client.cloud.fileExists(name) ? client.cloud.readFile(name) : null,
     ),
-    cloudWrite: method([CLOUD_NAME, v.bytes({ max: 50 * 1024 * 1024 })], (name, data) => {
-      if (!cloudOn()) throw new Error('Steam Cloud is turned off for this player or this app.');
-      if (!client.cloud.writeFile(name, Buffer.from(data).toString('base64'))) {
-        throw new Error(`Steam Cloud refused to write "${name}" (quota or Steam offline).`);
-      }
-    }),
+    cloudWrite: method(
+      [CLOUD_NAME, v.string({ max: 70 * 1024 * 1024, pattern: /^[A-Za-z0-9+/=]*$/ })],
+      (name, base64) => {
+        if (!cloudOn()) throw new Error('Steam Cloud is turned off for this player or this app.');
+        if (!client.cloud.writeFile(name, base64)) {
+          throw new Error(`Steam Cloud refused to write "${name}" (quota or Steam offline).`);
+        }
+      },
+    ),
     cloudDelete: method([CLOUD_NAME], (name) => cloudOn() && client.cloud.deleteFile(name)),
   });
 }

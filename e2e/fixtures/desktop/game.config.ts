@@ -14,4 +14,5 @@ export default defineConfig({
   window: { minSize: { width: 320, height: 180 } },
   steam: { appId: 480 },
   discord: { appId: '123456789012345678' },
+  modules: { echo: { suffix: '!' } },
 });

@@ -4,7 +4,7 @@
 
 import { readFileSync } from 'node:fs';
 import { mkdir, writeFile } from 'node:fs/promises';
-import { createRequire } from 'node:module';
+import Module, { createRequire } from 'node:module';
 import { dirname, join, relative, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import {
@@ -22,7 +22,14 @@ import {
 } from 'electron';
 import { GAME_CONTROLLER_DB } from '../../../core/src/input/gamecontrollerdb';
 import { CHANNELS, type InvokeResult, type NativeInfo } from '../bridge';
+import type { NativeModule } from '../define-native';
 import { startDiscord } from './discord';
+import {
+  DeepLinks,
+  registerNativeExports,
+  startNativeModules,
+  startSecureStorage,
+} from './modules';
 import { dataFolder, defaultDataDir } from './files';
 import { loadSaveKey } from './keystore';
 import { APP_HOST, APP_ORIGIN, APP_SCHEME, type AppManifest } from './manifest';
@@ -98,6 +105,12 @@ export function startApp(options: StartOptions = {}): void {
     },
   ]);
 
+  // Native parts of modules require their addons (better-sqlite3…) by name: resolve them from
+  // native_modules/ too.
+  process.env.NODE_PATH = [join(dir, 'native_modules'), process.env.NODE_PATH]
+    .filter(Boolean)
+    .join(process.platform === 'win32' ? ';' : ':');
+  (Module as unknown as { _initPaths(): void })._initPaths();
   const nodeRequire = createRequire(join(dir, 'main.cjs'));
   // Native addons ship in native_modules/ (outside node_modules, which electron-builder rebuilds).
   const requireNative = (name: string): unknown => {
@@ -147,7 +160,11 @@ export function startApp(options: StartOptions = {}): void {
       info.steam = startSteam(steamworks, manifest.steam.appId) !== undefined;
     if (manifest.discord) startDiscord(manifest.discord.appId, emitToGame);
     startSdl();
-    for (const file of manifest.natives ?? []) loadNative(resolve(dir, file));
+    startSecureStorage(join(app.getPath('userData'), 'secure-storage.bin'), safeStorage);
+    const context = { gameId: manifest.id, dataDir, dev: !manifest.release };
+    const ready = startNativeModules(loadNatives(), context).then((dispose) => {
+      app.once('will-quit', () => void dispose());
+    });
 
     session.defaultSession.setPermissionRequestHandler((_wc, permission, callback) =>
       callback(ALLOWED_PERMISSIONS.has(permission)),
@@ -155,15 +172,32 @@ export function startApp(options: StartOptions = {}): void {
     session.defaultSession.setPermissionCheckHandler((_wc, permission) =>
       ALLOWED_PERMISSIONS.has(permission),
     );
-    window = createWindow();
+    // Module setup (opening databases…) finishes before the game can call them.
+    void ready.then(
+      () => (window = createWindow()),
+      (error: unknown) => {
+        console.error('[blacklight] a native module failed to start:', error);
+        app.exit(1);
+      },
+    );
   });
 
-  app.on('second-instance', () => {
+  app.on('second-instance', (_event, argv) => {
+    links.fromArgv(argv);
     if (!window) return;
     if (window.isMinimized()) window.restore();
     window.focus();
   });
   app.on('window-all-closed', () => app.quit());
+  // OAuth redirects and invitations come back as `<game id>:/…` URLs (macOS: open-url; Windows
+  // and Linux: the command line of a second instance, or of this one).
+  const links = new DeepLinks(manifest.id);
+  app.setAsDefaultProtocolClient(manifest.id);
+  app.on('open-url', (event, url) => {
+    event.preventDefault();
+    links.receive(url);
+  });
+  links.fromArgv(process.argv);
 
   // The preload asks before the page's document exists, so the frame URL is not known yet: the
   // window is enough (the info is not secret; native calls check the page's origin).
@@ -262,27 +296,12 @@ export function startApp(options: StartOptions = {}): void {
     }
   }
 
-  function loadNative(file: string): void {
-    const exported = nodeRequire(file) as unknown;
-    const definition = (exported as { default?: unknown }).default ?? exported;
-    if (typeof definition === 'function') {
-      (definition as (api: unknown) => void)({ registerNative, method, v, emitToGame });
-    } else if (
-      definition &&
-      typeof definition === 'object' &&
-      'name' in definition &&
-      'methods' in definition
-    ) {
-      const { name, methods } = definition as {
-        name: string;
-        methods: Parameters<typeof registerNative>[1];
-      };
-      registerNative(name, methods);
-    } else {
-      throw new Error(
-        `${file} must export a native module ({ name, methods }) or a function receiving { registerNative, method, v }.`,
-      );
-    }
+  function loadNatives(): NativeModule[] {
+    const api = { registerNative, method, v, emitToGame };
+    return (manifest.natives ?? []).flatMap((file) => {
+      const path = resolve(dir, file);
+      return registerNativeExports(path, nodeRequire(path), api);
+    });
   }
 
   function settingsFile(): string {

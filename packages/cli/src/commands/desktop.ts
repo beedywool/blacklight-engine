@@ -5,7 +5,14 @@ import type { ResolvedGameConfig } from '@blacklight/core/config';
 import type { CAC } from 'cac';
 import { createServer } from 'vite';
 import { loadGameConfig } from '../project';
-import { buildDesktop, desktopViteConfig, hostOs, loadNative, type DesktopOs } from '../targets/desktop';
+import {
+  buildDesktop,
+  desktopViteConfig,
+  hostOs,
+  loadNative,
+  type DesktopOs,
+} from '../targets/desktop';
+import { bundleNatives, copyAddon } from '../targets/natives';
 
 const OSES: DesktopOs[] = ['win', 'mac', 'linux'];
 
@@ -31,11 +38,13 @@ export async function signCommand(
   const { build: native } = await loadNative(root);
   const lines: string[] = [];
   for (const os of osList(options.target)) {
-    const artifact = os === 'mac' ? 'release/mac/<Game>.app' : os === 'win' ? 'release/win/<Game> Setup.exe' : '';
+    const artifact =
+      os === 'mac' ? 'release/mac/<Game>.app' : os === 'win' ? 'release/win/<Game> Setup.exe' : '';
     const plan = native.signingPlan(os, env, artifact);
     lines.push(`${os}: ${plan.summary}`);
     for (const step of plan.steps) lines.push(`  ${options.dryRun ? '[dry-run] ' : ''}${step}`);
-    if (plan.missing.length > 0 && os !== 'linux') lines.push(`  missing: ${plan.missing.join('; ')}`);
+    if (plan.missing.length > 0 && os !== 'linux')
+      lines.push(`  missing: ${plan.missing.join('; ')}`);
     if (!options.dryRun && plan.sign) {
       await buildDesktop(os, { root, sign: true, flags: { sign: true } });
     }
@@ -64,7 +73,9 @@ export async function uploadCommand(
   const steamDir = join(root, 'release', 'steam');
   const script = join(steamDir, 'scripts', `app_build_${config.steam.appId}.vdf`);
   if (!existsSync(script)) {
-    throw new Error(`No Steam build in ${steamDir}: run \`blacklight build --target steam\` first.`);
+    throw new Error(
+      `No Steam build in ${steamDir}: run \`blacklight build --target steam\` first.`,
+    );
   }
   const { build: native } = await loadNative(root);
   const command = native.steamUploadCommand(script, {
@@ -75,10 +86,15 @@ export async function uploadCommand(
   const lines = [`${options.dryRun ? '[dry-run] ' : ''}${command.display}`];
   if (options.dryRun) return lines;
   if (!process.env.STEAM_USERNAME) {
-    throw new Error('Set STEAM_USERNAME to a Steamworks builder account, then run the upload again.');
+    throw new Error(
+      'Set STEAM_USERNAME to a Steamworks builder account, then run the upload again.',
+    );
   }
   const run = spawnSync(command.command, command.args, { cwd: steamDir, stdio: 'inherit' });
-  if (run.error) throw new Error(`steamcmd could not start (${run.error.message}): install the Steamworks SDK's steamcmd.`);
+  if (run.error)
+    throw new Error(
+      `steamcmd could not start (${run.error.message}): install the Steamworks SDK's steamcmd.`,
+    );
   if (run.status !== 0) throw new Error(`steamcmd failed with exit code ${run.status}.`);
   return lines;
 }
@@ -102,12 +118,20 @@ export async function runDesktop(
   await server.listen();
   const url = server.resolvedUrls?.local[0] ?? `http://localhost:${options.port ?? 5173}/`;
   const appDir = join(dir, '.blacklight', 'desktop');
+  const natives = await bundleNatives(
+    dir,
+    Object.keys(config.modules ?? {}),
+    join(appDir, '..', 'desktop-natives'),
+  );
   native.build.stageApp({
     appDir,
     manifest: native.build.appManifest(config, { release: false, devServer: url }),
     link: true,
     steam: !!config.steam,
+    natives: natives.bundles,
   });
+  for (const addon of natives.addons)
+    copyAddon(addon.name, addon.importer, join(appDir, 'native_modules'));
   const electron = spawn(native.build.electronBinary(), [appDir, ...(options.electronArgs ?? [])], {
     stdio: 'inherit',
   });
@@ -125,7 +149,10 @@ export async function runDesktop(
 /** sign, upload, desktop. */
 export function registerDesktopCommands(cli: CAC): void {
   cli
-    .command('sign [root]', 'Sign and notarize desktop builds with the certificates in the environment')
+    .command(
+      'sign [root]',
+      'Sign and notarize desktop builds with the certificates in the environment',
+    )
     .option('--target <target>', 'win, mac or linux (default: all)')
     .option('--dry-run', 'Check the certificates and print the steps without running them')
     .action(async (root: string | undefined, options: { target?: string; dryRun?: boolean }) => {
@@ -141,7 +168,10 @@ export function registerDesktopCommands(cli: CAC): void {
     });
 
   cli
-    .command('desktop [root]', `Run the game in the desktop app (Electron) with hot reload (${hostOs()})`)
+    .command(
+      'desktop [root]',
+      `Run the game in the desktop app (Electron) with hot reload (${hostOs()})`,
+    )
     .option('--port <port>', 'Port of the dev server', { default: 5173 })
     .option('--devtools', 'Open the developer tools at start')
     .action(async (root: string | undefined, options: { port?: number; devtools?: boolean }) => {

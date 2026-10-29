@@ -91,7 +91,9 @@ export const OBFUSCATION_LEVELS: Record<ObfuscationLevel, Record<string, unknown
 /** Obfuscates one ES module chunk. */
 export async function obfuscate(code: string, level: ObfuscationLevel): Promise<string> {
   const { default: obfuscator } = (await import('javascript-obfuscator')) as unknown as {
-    default: { obfuscate(code: string, options: Record<string, unknown>): { getObfuscatedCode(): string } };
+    default: {
+      obfuscate(code: string, options: Record<string, unknown>): { getObfuscatedCode(): string };
+    };
   };
   return obfuscator
     .obfuscate(code, { ...OBFUSCATION_LEVELS[level], target: 'browser', sourceMap: false, seed: 0 })

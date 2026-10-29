@@ -18,6 +18,17 @@ export {
   type SteamServices,
 } from './renderer/services';
 export type { NativeBridge, NativeInfo, SdlPadState } from './bridge';
+export {
+  defineNative,
+  fn,
+  isNativeModule,
+  type AnyNativeFunction,
+  type ArgSchema,
+  type NativeContext,
+  type NativeFunction,
+  type NativeModule,
+  type NativeOptions,
+} from './define-native';
 
 /**
  * Game plugin of the desktop app: replaces `game.platform` with {@link DesktopPlatform}, reads

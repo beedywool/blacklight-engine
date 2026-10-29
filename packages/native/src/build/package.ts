@@ -98,6 +98,8 @@ export function builderConfig(options: PackageOptions): Configuration {
       notarize: sign && plan.notarize,
     },
     linux: { target: targets, category: 'Game', synopsis: options.name },
+    // Deep links (`<game id>:/oauth/callback`) open the game: registered by the installers.
+    protocols: [{ name: options.name, schemes: [options.id] }],
   } as Configuration;
 }
 

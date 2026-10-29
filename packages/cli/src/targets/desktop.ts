@@ -10,6 +10,7 @@ import type * as NativeBuild from '@blacklight/native/build';
 import { build, type InlineConfig, type Plugin } from 'vite';
 import { loadGameConfig } from '../project';
 import { createViteConfig, type ViteConfigOptions } from '../vite';
+import { bundleNatives, copyAddon } from './natives';
 import type { TargetBuilder, TargetOptions } from './index';
 
 export type DesktopOs = 'win' | 'mac' | 'linux';
@@ -44,7 +45,11 @@ export async function loadNative(root: string): Promise<{ build: Native; index: 
   return { build: (await import(pathToFileURL(buildPath).href)) as Native, index };
 }
 
-async function loadSecurity(root: string, release: boolean, config: ResolvedGameConfig): Promise<ResolvedSecurity> {
+async function loadSecurity(
+  root: string,
+  release: boolean,
+  config: ResolvedGameConfig,
+): Promise<ResolvedSecurity> {
   const core = (await import(
     pathToFileURL(gameRequire(root).resolve('@blacklight/core/config')).href
   )) as typeof import('@blacklight/core/config');
@@ -63,7 +68,9 @@ export function desktopEntry(nativeIndex: string): Plugin {
       if (!id.split('?')[0]!.replace(/\\/g, '/').endsWith('/.blacklight/main.ts')) return undefined;
       const patched = code.replace('const plugins = [', 'const plugins = [__blacklightDesktop(), ');
       if (patched === code) {
-        throw new Error('The generated .blacklight/main.ts has no plugin list: update @blacklight/cli.');
+        throw new Error(
+          'The generated .blacklight/main.ts has no plugin list: update @blacklight/cli.',
+        );
       }
       return {
         code: `import { desktop as __blacklightDesktop } from ${JSON.stringify(nativeIndex.replace(/\\/g, '/'))};\n${patched}`,
@@ -126,7 +133,9 @@ export async function buildDesktop(
   const config = (await loadGameConfig(root)) as unknown as ResolvedGameConfig;
   const security = await loadSecurity(root, true, config);
   if (options.steam && !config.steam) {
-    throw new Error('The steam target needs `steam: { appId }` in game.config.ts (480 is Valve\'s test app).');
+    throw new Error(
+      "The steam target needs `steam: { appId }` in game.config.ts (480 is Valve's test app).",
+    );
   }
 
   const flags = options.flags as { dir?: boolean; arch?: string; sign?: boolean };
@@ -136,11 +145,31 @@ export async function buildDesktop(
   const plan = native.build.signingPlan(os);
   console.log(`[blacklight] ${plan.summary}`);
 
+  const natives = await bundleNatives(
+    root,
+    Object.keys(config.modules ?? {}),
+    join(out, 'natives'),
+  );
+  if (natives.addons.length > 0) {
+    result.warnings.push(
+      `native addons ${natives.addons.map((a) => a.name).join(', ')} ship as installed: addons built against Node's ABI (not Node-API) must be rebuilt for Electron ${native.build.electronVersion()} (see the desktop guide).`,
+    );
+  }
+
   for (const arch of arches) {
     // Native addons and V8 bytecode match the machine that installed / runs them.
     const native_ = sameOs && arch === process.arch;
     const appDir = join(out, arches.length > 1 ? `app-${arch}` : 'app');
-    native.build.stageApp({ appDir, manifest, webDist: web, steam: options.steam, sdl: native_ });
+    native.build.stageApp({
+      appDir,
+      manifest,
+      webDist: web,
+      steam: options.steam,
+      sdl: native_,
+      natives: natives.bundles,
+    });
+    for (const addon of natives.addons)
+      copyAddon(addon.name, addon.importer, join(appDir, 'native_modules'));
     if (!native_) {
       result.warnings.push(
         `${os} ${arch}: built on ${hostOs()} ${process.arch}, so SDL gamepads (Gamepad API instead) and V8 bytecode are left out; build on a ${os} ${arch} machine for those.`,
@@ -175,7 +204,8 @@ export async function buildDesktop(
 /** Folder electron-builder writes the unpacked app of `os` to. */
 export function unpackedDir(out: string, os: DesktopOs, arch = process.arch): string {
   if (os === 'win') return join(out, arch === 'x64' ? 'win-unpacked' : `win-${arch}-unpacked`);
-  if (os === 'linux') return join(out, arch === 'x64' ? 'linux-unpacked' : `linux-${arch}-unpacked`);
+  if (os === 'linux')
+    return join(out, arch === 'x64' ? 'linux-unpacked' : `linux-${arch}-unpacked`);
   return join(out, arch === 'x64' ? 'mac' : `mac-${arch}`);
 }
 

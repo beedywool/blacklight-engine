@@ -11,6 +11,11 @@
       "import": "./dist/index.js",
       "default": "./dist/index.js"
     },
+    "./define-native": {
+      "types": "./dist/define-native.d.ts",
+      "import": "./dist/define-native.js",
+      "default": "./dist/define-native.js"
+    },
     "./main": {
       "types": "./dist/main/index.d.cts",
       "require": "./dist/main/index.cjs",

@@ -6,7 +6,7 @@ const nodeExternal = ['electron', '@kmamal/sdl', 'steamworks.js', 'bytenode', 'e
 export default defineConfig([
   {
     // Game side: runs in the page, like the other engine packages.
-    entry: { index: 'src/index.ts' },
+    entry: { index: 'src/index.ts', 'define-native': 'src/define-native.ts' },
     format: ['esm'],
     dts: true,
     sourcemap: true,

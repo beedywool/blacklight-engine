@@ -119,9 +119,12 @@ export function steam(game: Game): SteamServices {
   const encoder = new TextEncoder();
   const decoder = new TextDecoder();
   const download = async (slot: string): Promise<SavePayload | undefined> => {
-    const bytes = await call<Uint8Array | undefined>('cloudRead', undefined, `save-${slot}.json`);
-    return bytes ? (JSON.parse(decoder.decode(bytes)) as SavePayload) : undefined;
+    const base64 = await call<string | null>('cloudRead', null, `save-${slot}.json`);
+    if (!base64) return undefined;
+    const bytes = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
+    return JSON.parse(decoder.decode(bytes)) as SavePayload;
   };
+
   const cloud: CloudSaveProvider = {
     name: 'steam',
     async list() {
@@ -137,12 +140,10 @@ export function steam(game: Game): SteamServices {
     },
     download,
     upload: async (slot, payload) => {
-      await call(
-        'cloudWrite',
-        undefined,
-        `save-${slot}.json`,
-        encoder.encode(JSON.stringify(payload)),
-      );
+      let binary = '';
+      for (const byte of encoder.encode(JSON.stringify(payload)))
+        binary += String.fromCharCode(byte);
+      await call('cloudWrite', undefined, `save-${slot}.json`, btoa(binary));
     },
     remove: async (slot) => {
       await call('cloudDelete', false, `save-${slot}.json`);

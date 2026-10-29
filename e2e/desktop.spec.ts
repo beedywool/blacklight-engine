@@ -111,6 +111,8 @@ test('PF-02: app:// protocol, sandboxed window, minimal validated bridge', async
   const box = sandbox();
   const { electron, page } = await launch(appDir, box.env);
   expect(page.url()).toBe('app://game/index.html');
+  // MOD-03: the fixture's `echo` module answered from its native part in the main process.
+  expect(await status(page, 'echo')).toBe(`HI!:${GAME_ID}`);
   expect(await status(page, 'platform')).toBe('desktop');
   const prefs = await electron.evaluate(({ BrowserWindow }) => {
     const p = BrowserWindow.getAllWindows()[0]!.webContents.getLastWebPreferences()!;
@@ -139,6 +141,11 @@ test('PF-02: app:// protocol, sandboxed window, minimal validated bridge', async
       badUrl: await fail(bridge.invoke('shell', 'openUrl', ['file:///etc/passwd'])),
       badType: await fail(bridge.invoke('window', 'setFullscreen', ['yes'])),
       extraArgs: await fail(bridge.invoke('keystore', 'saveKey', [1])),
+      nativeArgs: await fail(bridge.invoke('echo', 'shout', [42])),
+      secret: await bridge
+        .invoke('secure-storage', 'set', ['token', 'abc'])
+        .then(() => bridge.invoke('secure-storage', 'get', ['token'])),
+      csp: await fetch('index.html').then((r) => r.headers.get('content-security-policy')),
       // eslint-disable-next-line no-eval
       evalBlocked: (() => {
         try {
@@ -156,6 +163,10 @@ test('PF-02: app:// protocol, sandboxed window, minimal validated bridge', async
   expect(page_.badUrl).toMatch(/openUrl argument 1 must be/);
   expect(page_.badType).toMatch(/must be a boolean/);
   expect(page_.extraArgs).toMatch(/at most 0 arguments/);
+  expect(page_.nativeArgs).toMatch(/"echo.shout" refused its arguments/);
+  expect(page_.secret).toBe('abc');
+  expect(page_.csp).toContain("script-src 'self' 'wasm-unsafe-eval'");
+  expect(page_.csp).toContain("worker-src 'self' blob:");
   expect(page_.evalBlocked).toBe('EvalError'); // SEC-08: CSP header, no eval
   await electron.close();
   box.dispose();

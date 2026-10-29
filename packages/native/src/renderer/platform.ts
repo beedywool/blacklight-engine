@@ -12,6 +12,7 @@ export class DesktopPlatform implements Platform {
   readonly files: PlatformFiles;
   private readonly events = new EventBus<Record<string, unknown>>();
   private key: Promise<CryptoKey> | undefined;
+  private linksTaken = false;
 
   constructor(private readonly bridge: NativeBridge) {
     this.steam = bridge.info.steam;
@@ -48,7 +49,18 @@ export class DesktopPlatform implements Platform {
   }
 
   on(event: string, listener: (payload: unknown) => void): Unsubscribe {
-    return this.events.on(event, listener);
+    const off = this.events.on(event, listener);
+    if (event === 'deeplink' && !this.linksTaken) {
+      // Links that started the app arrived before anyone listened: the main process kept them.
+      this.linksTaken = true;
+      void this.bridge.invoke('deeplinks', 'take', []).then(
+        (urls) => {
+          for (const url of urls as string[]) this.events.emit('deeplink', { url } as never);
+        },
+        () => undefined,
+      );
+    }
+    return off;
   }
 
   async openUrl(url: string): Promise<void> {

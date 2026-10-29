@@ -43,6 +43,8 @@ export default class Main extends Scene {
     this.status.gold = String(this.game.save.data.gold ?? 0);
     this.status.platform = this.game.platform.name;
     this.status.location = this.game.platform.files.location ?? '';
+    const echo = await this.game.modules.echo.shout('hi');
+    this.status.echo = `${echo.text}:${echo.gameId}`;
     await this.game.save.save('boot', { thumbnail: false });
     this.status.ready = '1';
   }
