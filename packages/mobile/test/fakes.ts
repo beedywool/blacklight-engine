@@ -174,6 +174,11 @@ export function fakeDevice(
         unlock: async (options) => void log('games.unlock', options),
         progress: async (options) => void log('games.progress', options),
         show: async () => void log('games.show'),
+        submitScore: async (options) => void log('games.submitScore', options),
+        scores: async (options) => {
+          log('games.scores', options);
+          return { entries: [{ rank: 1, name: 'Ada', score: 900 }] };
+        },
       },
       plugin: (name) => device.extra[name],
     },

@@ -25,5 +25,9 @@ internal class PlayGamesBackend(context: Context, activity: () -> Activity) {
 
     fun progress(call: PluginCall, id: String, current: Int) = unavailable(call)
 
+    fun submitScore(call: PluginCall, board: String, score: Long) = unavailable(call)
+
+    fun scores(call: PluginCall, board: String, limit: Int) = unavailable(call)
+
     fun show(call: PluginCall, open: (Intent) -> Unit) = unavailable(call)
 }

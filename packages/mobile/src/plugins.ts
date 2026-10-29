@@ -113,6 +113,11 @@ export interface GamesPlugin {
   unlock(options: { id: string }): Promise<void>;
   progress(options: { id: string; current: number; total: number }): Promise<void>;
   show(): Promise<void>;
+  submitScore(options: { board: string; score: number }): Promise<void>;
+  scores(options: {
+    board: string;
+    limit: number;
+  }): Promise<{ entries: { rank: number; name: string; score: number }[] }>;
 }
 
 /** Haptic styles accepted by `invoke('haptics', 'impact', style)`. */

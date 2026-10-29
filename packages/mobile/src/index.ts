@@ -1,11 +1,13 @@
 export { CapacitorFiles, FILES_ROOT, fromBase64, isNotFound, toBase64 } from './files';
 export {
+  DATABASE_NAME,
   RESERVED_PREFIX,
   appModule,
   gamesModule,
   hapticsModule,
   secureStorageModule,
   sqliteModule,
+  type LeaderboardRow,
   type NativeModule,
   type SqliteChanges,
 } from './modules';

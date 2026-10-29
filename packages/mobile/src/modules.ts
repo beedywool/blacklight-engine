@@ -25,8 +25,33 @@ function params(value: unknown): unknown[] {
   if (!Array.isArray(value)) {
     throw new TypeError('SQL parameters must be an array, e.g. ["alice", 3] for "VALUES (?, ?)".');
   }
-  return value;
+  return value.map((item: unknown) => {
+    // SQLite has no booleans; the bridge carries blobs as arrays of bytes.
+    if (typeof item === 'boolean') return item ? 1 : 0;
+    if (item instanceof Uint8Array) return Array.from(item);
+    if (
+      item === null ||
+      typeof item === 'string' ||
+      (typeof item === 'number' && Number.isFinite(item))
+    ) {
+      return item;
+    }
+    throw new TypeError(
+      'SQL parameters must be strings, finite numbers, booleans, null or Uint8Array.',
+    );
+  });
 }
+
+/** Blobs come back from the bridge as arrays of bytes; games get `Uint8Array`s. */
+function row(values: Record<string, unknown>): Record<string, unknown> {
+  for (const [key, value] of Object.entries(values)) {
+    if (Array.isArray(value)) values[key] = Uint8Array.from(value as number[]);
+  }
+  return values;
+}
+
+/** Database names are file names (same rule as `@blacklight/module-sqlite`). */
+export const DATABASE_NAME = /^[A-Za-z0-9_-][A-Za-z0-9_.-]{0,63}$/;
 
 function userKey(value: unknown): string {
   const key = text(value, 'A secure-storage key', '"refreshToken"');
@@ -40,7 +65,7 @@ function userKey(value: unknown): string {
 
 /**
  * `secure-storage`: strings kept by the Android Keystore (encrypted shared preferences) or the
- * iOS Keychain. `get(key) → string | undefined`, `set(key, value)`, `remove(key)`, `keys()`.
+ * iOS Keychain. `get(key) → string | null`, `set(key, value)`, `remove(key)`, `keys()`.
  */
 export function secureStorageModule(plugins: Pick<MobilePlugins, 'secureStorage'>): NativeModule {
   const store = plugins.secureStorage;
@@ -48,7 +73,7 @@ export function secureStorageModule(plugins: Pick<MobilePlugins, 'secureStorage'
     async get(key) {
       const name = userKey(key);
       const { value: keys } = await store.keys();
-      if (!keys.includes(name)) return undefined;
+      if (!keys.includes(name)) return null;
       return (await store.get({ key: name })).value;
     },
     async set(key, value) {
@@ -69,28 +94,31 @@ export function secureStorageModule(plugins: Pick<MobilePlugins, 'secureStorage'
 export interface SqliteChanges {
   /** Rows inserted, updated or deleted. */
   changes: number;
-  /** Row id of the last insert, when there was one. */
-  lastInsertId?: number;
+  /** Row id of the last insert (0 when none). */
+  lastInsertId: number;
 }
 
 /**
  * `sqlite`, through `@capacitor-community/sqlite`. Databases live in the app's private database
  * folder, by name:
- * - `open(name, options?: { readOnly?: boolean })`
- * - `execute(name, sql, params?) → { changes, lastInsertId? }` (several statements when there are
- *   no parameters)
- * - `query(name, sql, params?) → rows` (objects keyed by column name)
- * - `close(name)`
+ * - `open(database, options?: { readOnly?: boolean })`
+ * - `execute(database, sql, params?) → { changes, lastInsertId }` (several statements when there
+ *   are no parameters)
+ * - `query(database, sql, params?) → rows` (objects keyed by column name, blobs as `Uint8Array`)
+ * - `close(database)`
+ *
+ * The protocol of `@blacklight/module-sqlite`; parameters are strings, numbers, booleans (1 / 0),
+ * `null` or `Uint8Array`.
  */
 export function sqliteModule(plugins: Pick<MobilePlugins, 'sqlite'>): NativeModule {
   const db = plugins.sqlite;
   const open = new Map<string, boolean>();
   let cleaned = false;
   const name = (value: unknown) => {
-    const database = text(value, 'A database name', '"game"');
-    if (!/^[\w-]+$/.test(database)) {
+    const database = text(value, 'A database name', '"game.db"');
+    if (!DATABASE_NAME.test(database)) {
       throw new Error(
-        `Database name "${database}" may only use letters, digits, "_" and "-" (it becomes a file name).`,
+        `Database name "${database}" must be a file name of letters, digits, "_", "-" and "." (64 characters at most), e.g. "game.db".`,
       );
     }
     return database;
@@ -104,10 +132,8 @@ export function sqliteModule(plugins: Pick<MobilePlugins, 'sqlite'>): NativeModu
     return { database, readonly };
   };
   const changes = (result: { changes?: { changes?: number; lastId?: number } }): SqliteChanges => {
-    const { changes: count = 0, lastId } = result.changes ?? {};
-    return lastId !== undefined && lastId > 0
-      ? { changes: count, lastInsertId: lastId }
-      : { changes: count };
+    const { changes: count = 0, lastId = 0 } = result.changes ?? {};
+    return { changes: count, lastInsertId: Math.max(0, lastId) };
   };
   return {
     async open(value, options) {
@@ -152,7 +178,7 @@ export function sqliteModule(plugins: Pick<MobilePlugins, 'sqlite'>): NativeModu
         readonly,
       });
       // iOS puts the column names in a first row.
-      return rows.length > 0 && 'ios_columns' in rows[0]! ? rows.slice(1) : rows;
+      return (rows.length > 0 && 'ios_columns' in rows[0]! ? rows.slice(1) : rows).map(row);
     },
     async close(value) {
       const database = name(value);
@@ -224,11 +250,20 @@ export function appModule(
   };
 }
 
+/** A leaderboard row, as `scores(board, limit)` returns it. */
+export interface LeaderboardRow {
+  rank: number;
+  name: string;
+  score: number;
+}
+
 /**
- * `gamecenter` (iOS) and `playgames` (Android): `signIn() → { authenticated, playerId?,
- * displayName? }`, `unlock(id)`, `progress(id, current, total)` (Game Center reports the
- * percentage; Play Games sets the steps of an incremental achievement to `current`), `show()`
- * (the system achievements screen).
+ * `gamecenter` (iOS) and `playgames` (Android), the calls of `@blacklight/module-achievements`:
+ * `unlock(id)`, `submitScore(board, score)`, `scores(board, limit = 10) → [{ rank, name, score }]`
+ * (top of the all-time public board); plus `signIn() → { authenticated, playerId?, displayName? }`,
+ * `progress(id, current, total)` (Game Center reports the percentage; Play Games sets the steps of
+ * an incremental achievement to `current`) and `show()` (the system achievements screen). Calls
+ * that need a player sign in first, showing the system sign-in when needed.
  */
 export function gamesModule(
   plugins: Pick<MobilePlugins, 'games' | 'platform'>,
@@ -267,6 +302,23 @@ export function gamesModule(
     async show() {
       check();
       await plugins.games.show();
+    },
+    async submitScore(board, score) {
+      check();
+      const value = number(score, 'The score');
+      await plugins.games.submitScore({
+        board: text(board, 'A leaderboard id', '"high_scores"'),
+        score: Math.round(value),
+      });
+    },
+    async scores(board, limit = 10) {
+      check();
+      const count = number(limit, 'The number of scores');
+      const { entries } = await plugins.games.scores({
+        board: text(board, 'A leaderboard id', '"high_scores"'),
+        limit: Math.max(1, Math.min(25, Math.round(count))),
+      });
+      return entries.map(({ rank, name, score }): LeaderboardRow => ({ rank, name, score }));
     },
   };
 }

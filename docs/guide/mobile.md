@@ -98,7 +98,7 @@ The web bundle of a mobile build is the web build plus `@blacklight/mobile`; gam
 
 - **Back button.** The Android back button and back gesture press the `back` action of player 1 for one step, whatever its bindings, and raise the `back` platform event. The app does not close by itself: the title screen decides, for example with a confirmation and `game.platform.quit()`.
 - **Background.** When the app leaves the foreground the loop stops, held inputs are released and the audio is suspended, as for a hidden browser tab (`pauseOnBlur`). `pause` and `resume` platform events fire too: save there.
-- **Deep links.** The app opens links with its id as scheme (`com.example.mygame://login?code=…`). Each one raises `deeplink`; the link that launched the app is kept until the first listener subscribes.
+- **Deep links.** The app opens links with its id as scheme (`com.example.mygame://…`; the accounts module's redirect URI is `com.example.mygame:/oauth/callback`). Each one raises `deeplink`; the link that launched the app is kept until the first listener subscribes.
 - **Touch.** Touch input is the same as in a mobile browser (`Touch` binding, `input.pointer`, `input.touches`, UI taps).
 - **Safe areas.** `game.safeArea` excludes notches and rounded corners; the generated page uses `viewport-fit=cover` and the WebView reports the insets.
 
@@ -116,14 +116,14 @@ override update() {
 
 `platform.invoke(module, method, ...args)` reaches native code. Arguments are checked before they cross to the native side; wrong ones throw with the expected form.
 
-| Module           | Methods                                                                                                                                                                                   |
-| ---------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `haptics`        | `impact(style = 'medium')` with `light`, `medium`, `heavy`; `notification(type)` with `success`, `warning`, `error`; `vibrate(ms = 300)`; `selection()`.                                  |
-| `app`            | `info()` → `{ id, name, version, build }`; `exit()`; `minimize()` (Android); `orientation('landscape' \| 'portrait' \| 'any')`; `keepAwake(on)`; `statusBar(visible)`; `launchUrl()`.     |
-| `secure-storage` | `get(key)` → string or `undefined`; `set(key, value)`; `remove(key)`; `keys()`. Strings encrypted by the Keystore or kept in the Keychain. Keys starting with `blacklight.` are reserved. |
-| `sqlite`         | `open(name, { readOnly? })`; `execute(name, sql, params?)` → `{ changes, lastInsertId? }`; `query(name, sql, params?)` → rows; `close(name)`.                                             |
-| `playgames`      | Android. `signIn()` → `{ authenticated, playerId?, displayName? }`; `unlock(id)`; `progress(id, current, total)`; `show()`.                                                               |
-| `gamecenter`     | iOS. Same methods as `playgames`.                                                                                                                                                         |
+| Module           | Methods                                                                                                                                                                                                                                                                                                        |
+| ---------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `haptics`        | `impact(style = 'medium')` with `light`, `medium`, `heavy`; `notification(type)` with `success`, `warning`, `error`; `vibrate(ms = 300)`; `selection()`.                                                                                                                                                       |
+| `app`            | `info()` → `{ id, name, version, build }`; `exit()`; `minimize()` (Android); `orientation('landscape' \| 'portrait' \| 'any')`; `keepAwake(on)`; `statusBar(visible)`; `launchUrl()`.                                                                                                                          |
+| `secure-storage` | `get(key)` → string or `null`; `set(key, value)`; `remove(key)`; `keys()`. Strings encrypted by the Keystore or kept in the Keychain. Keys starting with `blacklight.` are reserved.                                                                                                                           |
+| `sqlite`         | `open(database)`; `execute(database, sql, params?)` → `{ changes, lastInsertId }`; `query(database, sql, params?)` → rows; `close(database)`. Database names are file names (`game.db`); parameters are strings, numbers, booleans (stored as 1 / 0), `null` or `Uint8Array`; blobs come back as `Uint8Array`. |
+| `playgames`      | Android. `unlock(id)`; `submitScore(board, score)`; `scores(board, limit = 10)` → `[{ rank, name, score }]` (all-time public top, 25 at most); `signIn()` → `{ authenticated, playerId?, displayName? }`; `progress(id, current, total)`; `show()`. Calls that need a player show the sign-in first.           |
+| `gamecenter`     | iOS. Same methods as `playgames`.                                                                                                                                                                                                                                                                              |
 
 ```ts
 await this.game.platform.invoke('haptics', 'impact', 'heavy');
@@ -131,7 +131,7 @@ await this.game.platform.invoke('secure-storage', 'set', 'refreshToken', token);
 const rows = await this.game.platform.invoke(
   'sqlite',
   'query',
-  'game',
+  'game.db',
   'SELECT * FROM scores WHERE points > ?',
   [100],
 );

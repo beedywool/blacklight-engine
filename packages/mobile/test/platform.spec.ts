@@ -49,7 +49,7 @@ describe('MobilePlatform save key', () => {
 describe('MobilePlatform native modules', () => {
   it('keeps strings in secure storage, away from the engine keys', async () => {
     const { mobile } = await started();
-    expect(await mobile.invoke('secure-storage', 'get', 'token')).toBeUndefined();
+    expect(await mobile.invoke('secure-storage', 'get', 'token')).toBeNull();
     await mobile.invoke('secure-storage', 'set', 'token', 'abc');
     expect(await mobile.invoke('secure-storage', 'get', 'token')).toBe('abc');
     await mobile.saveKey();
@@ -70,17 +70,27 @@ describe('MobilePlatform native modules', () => {
     await expect(mobile.invoke('sqlite', 'query', 'game', 'SELECT 1')).rejects.toThrow(
       /not open: call open\("game"\)/,
     );
-    await expect(mobile.invoke('sqlite', 'open', '../game')).rejects.toThrow(/letters, digits/);
+    await expect(mobile.invoke('sqlite', 'open', '../game')).rejects.toThrow(/file name/);
     await mobile.invoke('sqlite', 'open', 'game');
     await mobile.invoke('sqlite', 'open', 'game');
+    await mobile.invoke('sqlite', 'open', 'scores.db');
     expect(
       await mobile.invoke('sqlite', 'execute', 'game', 'CREATE TABLE t (a); CREATE TABLE u (b)'),
-    ).toEqual({ changes: 0 });
+    ).toEqual({ changes: 0, lastInsertId: 0 });
     expect(
-      await mobile.invoke('sqlite', 'execute', 'game', 'INSERT INTO t VALUES (?)', ['x']),
+      await mobile.invoke('sqlite', 'execute', 'game', 'INSERT INTO t VALUES (?, ?, ?)', [
+        'x',
+        true,
+        new Uint8Array([1, 2]),
+      ]),
     ).toEqual({ changes: 1, lastInsertId: 7 });
-    device.rows = [{ ios_columns: ['a'] }, { a: 'x' }];
-    expect(await mobile.invoke('sqlite', 'query', 'game', 'SELECT a FROM t')).toEqual([{ a: 'x' }]);
+    await expect(
+      mobile.invoke('sqlite', 'execute', 'game', 'INSERT INTO t VALUES (?)', [{}]),
+    ).rejects.toThrow(/booleans, null or Uint8Array/);
+    device.rows = [{ ios_columns: ['a', 'b'] }, { a: 'x', b: [1, 2] }];
+    expect(await mobile.invoke('sqlite', 'query', 'game', 'SELECT a, b FROM t')).toEqual([
+      { a: 'x', b: new Uint8Array([1, 2]) },
+    ]);
     await expect(mobile.invoke('sqlite', 'query', 'game', 'SELECT ?', 'x')).rejects.toThrow(
       /must be an array/,
     );
@@ -91,13 +101,15 @@ describe('MobilePlatform native modules', () => {
       'sqlite.checkConnectionsConsistency',
       'sqlite.createConnection',
       'sqlite.open',
+      'sqlite.createConnection',
+      'sqlite.open',
       'sqlite.execute',
       'sqlite.run',
       'sqlite.query',
       'sqlite.close',
       'sqlite.closeConnection',
     ]);
-    expect(sqlite[4]![1]).toMatchObject({ statement: 'INSERT INTO t VALUES (?)', values: ['x'] });
+    expect(sqlite[6]![1]).toMatchObject({ values: ['x', 1, [1, 2]] });
   });
 
   it('plays haptics and drives the app', async () => {
@@ -138,6 +150,10 @@ describe('MobilePlatform native modules', () => {
     await mobile.invoke('playgames', 'unlock', 'first_win');
     await mobile.invoke('playgames', 'progress', 'collector', 12, 10);
     await mobile.invoke('playgames', 'show');
+    await mobile.invoke('playgames', 'submitScore', 'high', 1234.4);
+    expect(await mobile.invoke('playgames', 'scores', 'high', 100)).toEqual([
+      { rank: 1, name: 'Ada', score: 900 },
+    ]);
     await expect(mobile.invoke('gamecenter', 'unlock', 'first_win')).rejects.toThrow(
       /only on iOS; on Android use the "playgames"/,
     );
@@ -148,6 +164,8 @@ describe('MobilePlatform native modules', () => {
       ['games.unlock', { id: 'first_win' }],
       ['games.progress', { id: 'collector', current: 10, total: 10 }],
       ['games.show', undefined],
+      ['games.submitScore', { board: 'high', score: 1234 }],
+      ['games.scores', { board: 'high', limit: 25 }],
     ]);
     const ios = await started('ios');
     await ios.mobile.invoke('gamecenter', 'unlock', 'first_win');

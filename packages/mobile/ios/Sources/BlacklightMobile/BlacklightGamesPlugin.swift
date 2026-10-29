@@ -14,9 +14,10 @@ public class BlacklightGamesPlugin: CAPPlugin, CAPBridgedPlugin, GKGameCenterCon
         CAPPluginMethod(name: "unlock", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "progress", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "show", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "submitScore", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "scores", returnType: CAPPluginReturnPromise),
     ]
 
-    private var pendingSignIn: [CAPPluginCall] = []
     private var pendingShow: CAPPluginCall?
 
     private func playerResult(_ player: GKLocalPlayer) -> [String: Any] {
@@ -34,8 +35,36 @@ public class BlacklightGamesPlugin: CAPPlugin, CAPBridgedPlugin, GKGameCenterCon
             call.resolve(playerResult(player))
             return
         }
+        authenticate { authenticated, error in
+            if !authenticated, let error = error {
+                call.resolve(["authenticated": false, "error": error.localizedDescription])
+            } else {
+                call.resolve(self.playerResult(player))
+            }
+        }
+    }
+
+    /// Runs `then` with a signed-in player, showing Game Center's sign-in when needed.
+    private func signedIn(_ call: CAPPluginCall, then: @escaping () -> Void) {
+        if GKLocalPlayer.local.isAuthenticated {
+            then()
+            return
+        }
+        authenticate { authenticated, error in
+            if authenticated {
+                then()
+            } else {
+                call.reject("The player did not sign in to Game Center\(error.map { ": \($0.localizedDescription)" } ?? ".")", "UNAVAILABLE")
+            }
+        }
+    }
+
+    private var authWaiters: [(Bool, Error?) -> Void] = []
+
+    private func authenticate(_ done: @escaping (Bool, Error?) -> Void) {
         DispatchQueue.main.async {
-            self.pendingSignIn.append(call)
+            self.authWaiters.append(done)
+            let player = GKLocalPlayer.local
             // Game Center calls the handler again later (sign-out, account change): only the
             // calls waiting at that moment are answered.
             player.authenticateHandler = { [weak self] controller, error in
@@ -44,32 +73,66 @@ public class BlacklightGamesPlugin: CAPPlugin, CAPBridgedPlugin, GKGameCenterCon
                     self.bridge?.viewController?.present(controller, animated: true)
                     return
                 }
-                let calls = self.pendingSignIn
-                self.pendingSignIn.removeAll()
-                for waiting in calls {
-                    if let error = error, !player.isAuthenticated {
-                        waiting.resolve(["authenticated": false, "error": error.localizedDescription])
-                    } else {
-                        waiting.resolve(self.playerResult(player))
-                    }
-                }
+                let waiters = self.authWaiters
+                self.authWaiters.removeAll()
+                for waiter in waiters { waiter(player.isAuthenticated, error) }
             }
         }
     }
 
     private func report(_ call: CAPPluginCall, id: String, percent: Double) {
-        guard GKLocalPlayer.local.isAuthenticated else {
-            call.reject("Game Center is not signed in: call signIn() first.", "UNAVAILABLE")
-            return
-        }
         let achievement = GKAchievement(identifier: id)
         achievement.percentComplete = min(100, max(0, percent))
         achievement.showsCompletionBanner = true
-        GKAchievement.report([achievement]) { error in
-            if let error = error {
-                call.reject("Game Center could not report \"\(id)\": \(error.localizedDescription)")
-            } else {
-                call.resolve()
+        signedIn(call) {
+            GKAchievement.report([achievement]) { error in
+                if let error = error {
+                    call.reject("Game Center could not report \"\(id)\": \(error.localizedDescription)")
+                } else {
+                    call.resolve()
+                }
+            }
+        }
+    }
+
+    @objc func submitScore(_ call: CAPPluginCall) {
+        guard let board = call.getString("board"), !board.isEmpty, let score = call.getDouble("score") else {
+            call.reject("submitScore() needs a leaderboard id and a score.")
+            return
+        }
+        signedIn(call) {
+            GKLeaderboard.submitScore(Int(score), context: 0, player: GKLocalPlayer.local, leaderboardIDs: [board]) { error in
+                if let error = error {
+                    call.reject("Game Center could not submit a score to \"\(board)\": \(error.localizedDescription)")
+                } else {
+                    call.resolve()
+                }
+            }
+        }
+    }
+
+    @objc func scores(_ call: CAPPluginCall) {
+        guard let board = call.getString("board"), !board.isEmpty else {
+            call.reject("scores() needs a leaderboard id.")
+            return
+        }
+        let limit = max(1, min(25, call.getInt("limit") ?? 10))
+        signedIn(call) {
+            GKLeaderboard.loadLeaderboards(IDs: [board]) { boards, error in
+                guard let leaderboard = boards?.first else {
+                    call.reject("Game Center has no leaderboard \"\(board)\"\(error.map { ": \($0.localizedDescription)" } ?? ".")")
+                    return
+                }
+                leaderboard.loadEntries(for: .global, timeScope: .allTime, range: NSRange(location: 1, length: limit)) { _, entries, _, error in
+                    if let error = error {
+                        call.reject("Game Center could not read \"\(board)\": \(error.localizedDescription)")
+                        return
+                    }
+                    let rows: [[String: Any]] = (entries ?? []).map {
+                        ["rank": $0.rank, "name": $0.player.displayName, "score": $0.score]
+                    }
+                    call.resolve(["entries": rows])
+                }
             }
         }
     }
@@ -93,11 +156,13 @@ public class BlacklightGamesPlugin: CAPPlugin, CAPBridgedPlugin, GKGameCenterCon
     }
 
     @objc func show(_ call: CAPPluginCall) {
-        DispatchQueue.main.async {
-            let controller = GKGameCenterViewController(state: .achievements)
-            controller.gameCenterDelegate = self
-            self.pendingShow = call
-            self.bridge?.viewController?.present(controller, animated: true)
+        signedIn(call) {
+            DispatchQueue.main.async {
+                let controller = GKGameCenterViewController(state: .achievements)
+                controller.gameCenterDelegate = self
+                self.pendingShow = call
+                self.bridge?.viewController?.present(controller, animated: true)
+            }
         }
     }
 

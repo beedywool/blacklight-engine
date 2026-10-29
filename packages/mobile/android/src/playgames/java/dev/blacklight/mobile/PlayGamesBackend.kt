@@ -4,9 +4,11 @@ import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import com.getcapacitor.JSArray
 import com.getcapacitor.JSObject
 import com.getcapacitor.PluginCall
 import com.google.android.gms.games.PlayGames
+import com.google.android.gms.games.leaderboard.LeaderboardVariant
 import com.google.android.gms.games.PlayGamesSdk
 import com.google.android.gms.tasks.Task
 
@@ -75,24 +77,66 @@ internal class PlayGamesBackend(private val context: Context, private val activi
         }
     }
 
-    fun unlock(call: PluginCall, id: String) {
+    /** Runs [then] with a signed-in player, showing Google's sign-in when needed. */
+    private fun signedIn(call: PluginCall, then: () -> Unit) {
         if (!ready(call)) return
+        val client = PlayGames.getGamesSignInClient(activity())
+        client.isAuthenticated.answer(call, "check the sign-in") { current ->
+            if (current.isAuthenticated) {
+                then()
+            } else {
+                client.signIn().answer(call, "sign in") { result ->
+                    if (result.isAuthenticated) then() else call.reject("The player did not sign in to Play Games.", "UNAVAILABLE")
+                }
+            }
+        }
+    }
+
+    fun unlock(call: PluginCall, id: String) = signedIn(call) {
         PlayGames.getAchievementsClient(activity()).unlockImmediate(id).answer(call, "unlock \"$id\"") {
             call.resolve()
         }
     }
 
-    fun progress(call: PluginCall, id: String, current: Int) {
-        if (!ready(call)) return
-        // Incremental achievements count steps (their total is set in the Play Console); the API
-        // refuses 0 steps, which is the starting state anyway.
-        if (current < 1) return call.resolve()
-        PlayGames.getAchievementsClient(activity()).setStepsImmediate(id, current)
-            .answer(call, "set the progress of \"$id\"") { call.resolve() }
+    fun submitScore(call: PluginCall, board: String, score: Long) = signedIn(call) {
+        PlayGames.getLeaderboardsClient(activity()).submitScoreImmediate(board, score)
+            .answer(call, "submit a score to \"$board\"") { call.resolve() }
     }
 
-    fun show(call: PluginCall, open: (Intent) -> Unit) {
-        if (!ready(call)) return
+    fun scores(call: PluginCall, board: String, limit: Int) = signedIn(call) {
+        PlayGames.getLeaderboardsClient(activity())
+            .loadTopScores(board, LeaderboardVariant.TIME_SPAN_ALL_TIME, LeaderboardVariant.COLLECTION_PUBLIC, limit)
+            .answer(call, "read \"$board\"") { data ->
+                val entries = JSArray()
+                val result = data.get()
+                result?.scores?.let { buffer ->
+                    for (score in buffer) {
+                        entries.put(
+                            JSObject()
+                                .put("rank", score.rank)
+                                .put("name", score.scoreHolderDisplayName)
+                                .put("score", score.rawScore),
+                        )
+                    }
+                    buffer.release()
+                }
+                result?.release()
+                call.resolve(JSObject().put("entries", entries))
+            }
+    }
+
+    fun progress(call: PluginCall, id: String, current: Int) = signedIn(call) {
+        // Incremental achievements count steps (their total is set in the Play Console); the API
+        // refuses 0 steps, which is the starting state anyway.
+        if (current < 1) {
+            call.resolve()
+        } else {
+            PlayGames.getAchievementsClient(activity()).setStepsImmediate(id, current)
+                .answer(call, "set the progress of \"$id\"") { call.resolve() }
+        }
+    }
+
+    fun show(call: PluginCall, open: (Intent) -> Unit) = signedIn(call) {
         PlayGames.getAchievementsClient(activity()).achievementsIntent.answer(call, "open the achievements", open)
     }
 

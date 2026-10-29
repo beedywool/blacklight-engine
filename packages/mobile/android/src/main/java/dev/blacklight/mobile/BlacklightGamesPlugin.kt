@@ -37,6 +37,23 @@ class BlacklightGamesPlugin : Plugin() {
     }
 
     @PluginMethod
+    fun submitScore(call: PluginCall) {
+        val board = call.getString("board")
+        val score = call.getDouble("score")
+        if (board.isNullOrBlank() || score == null) {
+            return call.reject("submitScore() needs a leaderboard id and a score.")
+        }
+        backend.submitScore(call, board, score.toLong())
+    }
+
+    @PluginMethod
+    fun scores(call: PluginCall) {
+        val board = call.getString("board")
+        if (board.isNullOrBlank()) return call.reject("scores() needs a leaderboard id.")
+        backend.scores(call, board, (call.getInt("limit") ?: 10).coerceIn(1, 25))
+    }
+
+    @PluginMethod
     fun show(call: PluginCall) = backend.show(call) { intent ->
         startActivityForResult(call, intent, "achievementsClosed")
     }
