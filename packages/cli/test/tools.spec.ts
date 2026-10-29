@@ -229,7 +229,10 @@ describe('run', () => {
   it('serves the game for the web target', async () => {
     const previous = process.env.BROWSER;
     process.env.BROWSER = 'none';
-    const server = await runWeb(resolve(import.meta.dirname, '../../../e2e/fixtures/tooling'), 5373);
+    const server = await runWeb(
+      resolve(import.meta.dirname, '../../../e2e/fixtures/tooling'),
+      5373,
+    );
     try {
       const page = await fetch('http://localhost:5373/');
       expect(page.ok).toBe(true);
