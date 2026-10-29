@@ -1,7 +1,14 @@
 import { defineConfig } from 'tsup';
 
 // Native addons and Electron stay outside the bundles: the app loads them from its node_modules.
-const nodeExternal = ['electron', '@kmamal/sdl', 'steamworks.js', 'bytenode', 'electron-builder', '@electron/fuses'];
+const nodeExternal = [
+  'electron',
+  '@kmamal/sdl',
+  'steamworks.js',
+  'bytenode',
+  'electron-builder',
+  '@electron/fuses',
+];
 
 export default defineConfig([
   {

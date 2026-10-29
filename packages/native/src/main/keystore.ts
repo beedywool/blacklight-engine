@@ -29,7 +29,8 @@ export async function loadSaveKey(
     const stored = await readFile(file);
     const kind = stored[0];
     const body = stored.subarray(1);
-    if (kind === ENCRYPTED) return Buffer.from(storage.decryptString(body), 'base64');
+    if (kind === ENCRYPTED)
+      return new Uint8Array(Buffer.from(storage.decryptString(body), 'base64'));
     if (kind === RAW && body.length === 32) return new Uint8Array(body);
     throw new Error('unknown key format');
   } catch (error) {
