@@ -3,6 +3,8 @@
 // the `back` action, and an encrypted save survives an app restart. Needs a booted emulator or
 // device (`adb devices`) and BLACKLIGHT_E2E_ANDROID=1; CI runs it in the android job.
 import { spawnSync } from 'node:child_process';
+import { mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { _android, expect, test, type AndroidDevice, type Page } from '@playwright/test';
 import { run } from './server';
@@ -181,4 +183,61 @@ test('touch, back button and an encrypted save that survives a restart', async (
     body: screenshot(),
     contentType: 'image/png',
   });
+});
+
+test('a signed release build runs with WebView inspection off (SEC-07)', async () => {
+  const keys = mkdtempSync(join(tmpdir(), 'blacklight-keystore-'));
+  const keystore = join(keys, 'upload.jks');
+  const keytool = process.env.JAVA_HOME ? join(process.env.JAVA_HOME, 'bin', 'keytool') : 'keytool';
+  // Throwaway key: the store password lives in this test only.
+  const created = spawnSync(keytool, [
+    '-genkeypair',
+    '-keystore',
+    keystore,
+    '-alias',
+    'upload',
+    '-keyalg',
+    'RSA',
+    '-keysize',
+    '2048',
+    '-validity',
+    '1',
+    '-storepass',
+    'e2e-pass',
+    '-keypass',
+    'e2e-pass',
+    '-dname',
+    'CN=Blacklight e2e',
+  ]);
+  expect(created.status).toBe(0);
+  const env = {
+    ...process.env,
+    BLACKLIGHT_ANDROID_KEYSTORE: keystore,
+    BLACKLIGHT_ANDROID_KEYSTORE_PASSWORD: 'e2e-pass',
+    BLACKLIGHT_ANDROID_KEY_ALIAS: 'upload',
+  };
+  const build = spawnSync(
+    'pnpm',
+    ['exec', 'blacklight', 'build', '--target', 'android', '--release'],
+    {
+      cwd: fixture,
+      env,
+      stdio: 'inherit',
+    },
+  );
+  rmSync(keys, { recursive: true, force: true });
+  expect(build.status).toBe(0);
+
+  install(join(fixture, 'release/android/mobile-gate-1.2.3.apk'), FIXTURE_ID);
+  adb('shell', 'am', 'start', '-W', '-n', `${FIXTURE_ID}/.MainActivity`);
+  await expect
+    .poll(() => adb('shell', 'pidof', FIXTURE_ID).trim(), { timeout: 30_000 })
+    .not.toBe('');
+  const pid = adb('shell', 'pidof', FIXTURE_ID).trim();
+  // Give the WebView time to start; a debug build has opened its DevTools socket by then.
+  await new Promise((wait) => setTimeout(wait, 5000));
+  expect(adb('shell', 'cat', '/proc/net/unix')).not.toContain(`webview_devtools_remote_${pid}`);
+  expect(adb('shell', 'dumpsys', 'activity', 'activities')).toContain(
+    `${FIXTURE_ID}/.MainActivity`,
+  );
 });

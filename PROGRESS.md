@@ -10,7 +10,7 @@ One line per `SPEC.md` requirement: `- [x] ID · where · test`. A requirement i
 - [ ] Phase 3a UI complete
 - [ ] Phase 3b Light 3D
 - [ ] Phase 3c Desktop
-- [ ] Phase 3d Mobile — Android half passes: fixture + persona-menu template launch offline, real touch (adb input), back button, deep link, pause/resume, encrypted save read back after a restart, on an API 36 x86_64 emulator · e2e: `e2e/mobile-android.spec.ts` (local Linux); web build with phone emulation + fake native side · e2e: `e2e/mobile-web.spec.ts`; iOS Simulator half · e2e: `e2e/mobile-ios.spec.ts` in CI job `ios` (macOS), not run yet: no macOS here
+- [ ] Phase 3d Mobile — Android half passes: fixture + persona-menu template launch offline, real touch (adb input), back button, deep link, pause/resume, encrypted save read back after a restart, signed release APK with no WebView DevTools socket, on an API 36 x86_64 emulator · e2e: `e2e/mobile-android.spec.ts` (local Linux); web build with phone emulation + fake native side · e2e: `e2e/mobile-web.spec.ts`; iOS Simulator half · e2e: `e2e/mobile-ios.spec.ts` in CI job `ios` (macOS), not run yet: no macOS here
 - [ ] Phase 3e Modules & services
 - [ ] Phase 3f Networking
 - [ ] Phase 3g Tooling
