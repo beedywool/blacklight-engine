@@ -11,6 +11,7 @@ type ObfuscationLevel = 'low' | 'medium' | 'high';
 
 interface ResolvedSecurityLike {
   obfuscate: ObfuscationLevel | false;
+  debugger: boolean;
   csp: Record<string, string[]> | false;
 }
 
@@ -132,7 +133,7 @@ export function isGameChunk(
  */
 export function hardening(options: { root: string }): Plugin {
   const root = resolve(options.root);
-  let settings: ResolvedSecurityLike = { obfuscate: false, csp: false };
+  let settings: ResolvedSecurityLike = { obfuscate: false, csp: false, debugger: false };
   let policy = '';
   let unsafeEvalModule = '';
   return {
@@ -152,6 +153,10 @@ export function hardening(options: { root: string }): Plugin {
         const coreRequire = createRequire(require.resolve('@blacklight/core/config'));
         unsafeEvalModule = coreRequire.resolve('pixi.js/unsafe-eval').replace(/\.js$/, '.mjs');
       }
+      // SEC-06 times a `debugger` statement; the minifier drops those by default.
+      return settings.debugger
+        ? { build: { rolldownOptions: { output: { minify: { compress: { dropDebugger: false } } } } } }
+        : undefined;
     },
     transform(code, id) {
       const file = id.split('?')[0]!.replace(/\\/g, '/');
