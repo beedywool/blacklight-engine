@@ -1,0 +1,42 @@
+{
+  "name": "@blacklight/relay",
+  "version": "0.0.0",
+  "description": "Relay server for Blacklight Engine online games: rooms, room codes, lobby, WebSocket transport. Runs in Docker, in Node, or inside the desktop app for LAN play.",
+  "license": "MIT",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    }
+  },
+  "bin": {
+    "blacklight-relay": "./dist/cli.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "tsup",
+    "start": "node dist/cli.js",
+    "typecheck": "tsc --noEmit",
+    "docker:build": "pnpm build && docker build -t blacklight-relay .",
+    "docker:run": "docker run --rm -p 5360:5360 blacklight-relay"
+  },
+  "dependencies": {
+    "ws": "8.22.0"
+  },
+  "devDependencies": {
+    "@blacklight/net": "workspace:*",
+    "@blacklight/core": "workspace:*",
+    "@types/node": "24.19.2",
+    "@types/ws": "8.18.2",
+    "tsup": "9.0.0",
+    "typescript": "6.0.3"
+  }
+}

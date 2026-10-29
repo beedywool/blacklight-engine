@@ -215,6 +215,22 @@ importers:
         specifier: 3.5.44
         version: 3.5.44(typescript@6.0.3)
 
+  e2e/fixtures/net:
+    dependencies:
+      '@blacklight/core':
+        specifier: workspace:*
+        version: link:../../../packages/core
+      '@blacklight/net':
+        specifier: workspace:*
+        version: link:../../../packages/net
+    devDependencies:
+      '@blacklight/cli':
+        specifier: workspace:*
+        version: link:../../../packages/cli
+      typescript:
+        specifier: 6.0.3
+        version: 6.0.3
+
   e2e/fixtures/runtime:
     dependencies:
       '@blacklight/core':
@@ -308,6 +324,18 @@ importers:
         specifier: 8.72.1
         version: 8.72.1(eslint@10.13.0)(typescript@6.0.3)
 
+  packages/net:
+    devDependencies:
+      '@blacklight/core':
+        specifier: workspace:*
+        version: link:../core
+      tsup:
+        specifier: 9.0.0
+        version: 9.0.0(postcss@8.5.32)(typescript@6.0.3)
+      typescript:
+        specifier: 6.0.3
+        version: 6.0.3
+
   packages/physics:
     dependencies:
       '@dimforge/rapier2d-compat':
@@ -354,6 +382,31 @@ importers:
       vue-tsc:
         specifier: 3.3.14
         version: 3.3.14(typescript@6.0.3)
+
+  servers/relay:
+    dependencies:
+      ws:
+        specifier: 8.22.0
+        version: 8.22.0
+    devDependencies:
+      '@blacklight/core':
+        specifier: workspace:*
+        version: link:../../packages/core
+      '@blacklight/net':
+        specifier: workspace:*
+        version: link:../../packages/net
+      '@types/node':
+        specifier: 24.19.2
+        version: 24.19.2
+      '@types/ws':
+        specifier: 8.18.2
+        version: 8.18.2
+      tsup:
+        specifier: 9.0.0
+        version: 9.0.0(postcss@8.5.32)(typescript@6.0.3)
+      typescript:
+        specifier: 6.0.3
+        version: 6.0.3
 
   templates/empty:
     dependencies:

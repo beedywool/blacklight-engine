@@ -3,6 +3,7 @@ packages:
   - templates/*
   - docs
   - e2e/fixtures/*
+  - servers/*
 
 # Dependencies allowed to run install scripts (pnpm blocks the others).
 allowBuilds:
