@@ -68,7 +68,10 @@ export interface FileSlotsOptions<T> {
  * });
  * ```
  */
-export function fileSlots<T>(game: Pick<Game, 'platform'>, options: FileSlotsOptions<T>): SaveSlots {
+export function fileSlots<T>(
+  game: Pick<Game, 'platform'>,
+  options: FileSlotsOptions<T>,
+): SaveSlots {
   const folder = options.folder ?? 'slots';
   const files = () => game.platform.files;
   const file = (id: string) => {
@@ -119,7 +122,10 @@ export function fileSlots<T>(game: Pick<Game, 'platform'>, options: FileSlotsOpt
  * slots.save('1', { thumbnail: await captureThumbnail(game) });
  * ```
  */
-export async function captureThumbnail(game: Pick<Game, 'app' | 'world'>, width = 320): Promise<string | undefined> {
+export async function captureThumbnail(
+  game: Pick<Game, 'app' | 'world'>,
+  width = 320,
+): Promise<string | undefined> {
   try {
     const canvas = game.app.renderer.extract.canvas(game.app.stage) as HTMLCanvasElement;
     const out = document.createElement('canvas');

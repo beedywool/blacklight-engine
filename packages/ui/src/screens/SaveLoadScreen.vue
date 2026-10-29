@@ -51,7 +51,9 @@ const rows = computed(() => {
 });
 
 const date = (ms: number) =>
-  new Intl.DateTimeFormat(i18n.locale.value, { dateStyle: 'medium', timeStyle: 'short' }).format(ms);
+  new Intl.DateTimeFormat(i18n.locale.value, { dateStyle: 'medium', timeStyle: 'short' }).format(
+    ms,
+  );
 const duration = (seconds: number) =>
   `${Math.floor(seconds / 3600)}:${String(Math.floor((seconds % 3600) / 60)).padStart(2, '0')}`;
 

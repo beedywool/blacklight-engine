@@ -77,7 +77,11 @@ function update() {
   shown.value = visibleCount(schedule.value, elapsed.value);
   if (shown.value > before) {
     emit('char', shown.value - 1);
-    if (props.blip && game && Math.floor(shown.value / props.blipEvery) > Math.floor(before / props.blipEvery)) {
+    if (
+      props.blip &&
+      game &&
+      Math.floor(shown.value / props.blipEvery) > Math.floor(before / props.blipEvery)
+    ) {
       try {
         game.audio.play(props.blip, { bus: 'ui' });
       } catch {

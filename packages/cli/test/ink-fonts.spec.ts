@@ -19,7 +19,10 @@ afterEach(() => rmSync(root, { recursive: true, force: true }));
 
 describe('Ink compilation (UI-10)', () => {
   it('compiles a story with includes into JSON the runtime plays', () => {
-    file('stories/main.ink', 'INCLUDE chapter.ink\nVAR met = false\nHello. # portrait: mira happy\n-> chapter\n');
+    file(
+      'stories/main.ink',
+      'INCLUDE chapter.ink\nVAR met = false\nHello. # portrait: mira happy\n-> chapter\n',
+    );
     file('stories/chapter.ink', '=== chapter ===\n* [Wave]\n  ~ met = true\n  Hi!\n- -> END\n');
     const { json, files } = compileInk(join(root, 'stories/main.ink'));
     expect(files).toHaveLength(2);
@@ -32,7 +35,9 @@ describe('Ink compilation (UI-10)', () => {
 
   it('reports Ink errors with the line', () => {
     file('stories/bad.ink', 'Hello\n* [Unclosed\n');
-    expect(() => compileInk(join(root, 'stories/bad.ink'))).toThrow(/Ink errors in .*bad\.ink:\n.*line 2/);
+    expect(() => compileInk(join(root, 'stories/bad.ink'))).toThrow(
+      /Ink errors in .*bad\.ink:\n.*line 2/,
+    );
   });
 
   it('the Vite plugin turns .ink imports into modules and leaves ?url alone', async () => {
@@ -52,7 +57,10 @@ describe('Ink compilation (UI-10)', () => {
   });
 });
 
-const fixtureFont = join(import.meta.dirname, '../../../docs/.vitepress/theme/fonts/google-sans-flex-latin.woff2');
+const fixtureFont = join(
+  import.meta.dirname,
+  '../../../docs/.vitepress/theme/fonts/google-sans-flex-latin.woff2',
+);
 
 describe('font subsetting (UI-15)', () => {
   it('collects the characters of locales, stories and screens', () => {
@@ -76,12 +84,26 @@ describe('font subsetting (UI-15)', () => {
     file('locales/en.json', '{"hello":"Hi"}');
     const source = readFileSync(fixtureFont);
     const bundle = {
-      a: { type: 'asset', fileName: 'assets/body-abc.woff2', originalFileNames: ['assets/body.woff2'], source: new Uint8Array(source) },
-      b: { type: 'asset', fileName: 'assets/name-abc.woff2', originalFileNames: ['assets/name.full.woff2'], source: new Uint8Array(source) },
+      a: {
+        type: 'asset',
+        fileName: 'assets/body-abc.woff2',
+        originalFileNames: ['assets/body.woff2'],
+        source: new Uint8Array(source),
+      },
+      b: {
+        type: 'asset',
+        fileName: 'assets/name-abc.woff2',
+        originalFileNames: ['assets/name.full.woff2'],
+        source: new Uint8Array(source),
+      },
     };
     const reports: string[] = [];
     const plugin = fontSubsetting({ root, onReport: (r) => reports.push(r.file) });
-    const generate = plugin.generateBundle as (this: unknown, o: unknown, b: typeof bundle) => Promise<void>;
+    const generate = plugin.generateBundle as (
+      this: unknown,
+      o: unknown,
+      b: typeof bundle,
+    ) => Promise<void>;
     await generate.call({ warn: (m: string) => reports.push(m) }, {}, bundle);
     expect(reports).toEqual(['assets/body-abc.woff2']);
     expect(bundle.a.source.length).toBeLessThan(source.length);

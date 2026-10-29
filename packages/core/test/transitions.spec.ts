@@ -17,9 +17,9 @@ describe('named scene transitions', () => {
     const iris: Transition = { duration: 10, draw: () => {} };
     game.transitions.set('iris', iris);
     const resolve = (name: string) =>
-      (game as unknown as { resolveTransition(n: string): Transition | undefined }).resolveTransition(
-        name,
-      );
+      (
+        game as unknown as { resolveTransition(n: string): Transition | undefined }
+      ).resolveTransition(name);
     expect(resolve('iris')).toBe(iris);
     expect(resolve('none')).toBeUndefined();
     expect(() => resolve('irs')).toThrow(/Unknown scene transition "irs".*iris/s);

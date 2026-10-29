@@ -233,7 +233,9 @@ export class UiRuntime implements UiHost {
       this.i18n.available.length > 0
         ? this.i18n
             .setLocale(options.locale ?? this.i18n.initialLocale(), { save: false })
-            .catch((error: unknown) => console.error('[blacklight] Could not load the language file:', error))
+            .catch((error: unknown) =>
+              console.error('[blacklight] Could not load the language file:', error),
+            )
         : Promise.resolve();
     this.scale.value = clampScale(
       game.settings.get<number>(UI_SCALE_SETTING) ?? game.config.ui?.scale ?? 1,

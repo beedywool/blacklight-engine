@@ -62,7 +62,10 @@ const VIDEO_TYPES: Record<string, string> = {
 /** `true` in Safari/WebKit, which plays WebM without its alpha channel: MP4 goes first there. */
 function prefersMp4(): boolean {
   if (typeof navigator === 'undefined') return false;
-  return /AppleWebKit/.test(navigator.userAgent) && !/Chrome|Chromium|Android|Edg\//.test(navigator.userAgent);
+  return (
+    /AppleWebKit/.test(navigator.userAgent) &&
+    !/Chrome|Chromium|Android|Edg\//.test(navigator.userAgent)
+  );
 }
 
 /**
@@ -92,7 +95,8 @@ export function videoSources(
     }
   }
   const mp4First = prefersMp4();
-  const rank = (type?: string) => (type === 'video/webm' ? (mp4First ? 1 : 0) : type === 'video/mp4' ? (mp4First ? 0 : 1) : 2);
+  const rank = (type?: string) =>
+    type === 'video/webm' ? (mp4First ? 1 : 0) : type === 'video/mp4' ? (mp4First ? 0 : 1) : 2;
   return out.sort((a, b) => rank(a.type) - rank(b.type));
 }
 

@@ -122,7 +122,10 @@ defineExpose({
         :key="s.src"
         :src="s.src"
         :type="s.type"
-        @error="i === sources.length - 1 && emit('error', new Error(`No playable source for ${String(src)}`))"
+        @error="
+          i === sources.length - 1 &&
+          emit('error', new Error(`No playable source for ${String(src)}`))
+        "
       />
     </video>
     <div

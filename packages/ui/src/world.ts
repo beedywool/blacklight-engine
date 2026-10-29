@@ -62,7 +62,13 @@ export function visibleArea(game: Pick<Game, 'viewport' | 'config'>): {
   height: number;
 } {
   const v = game.viewport;
-  if (!v) return { x: 0, y: 0, width: game.config.resolution.width, height: game.config.resolution.height };
+  if (!v)
+    return {
+      x: 0,
+      y: 0,
+      width: game.config.resolution.width,
+      height: game.config.resolution.height,
+    };
   return {
     x: -v.originX / v.scale,
     y: -v.originY / v.scale,

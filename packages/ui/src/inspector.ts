@@ -13,7 +13,8 @@ interface ComponentLike {
 /** Vue sets `__vueParentComponent` on elements in development builds. */
 function componentOf(element: Element | null): ComponentLike | undefined {
   for (let node = element; node; node = node.parentElement) {
-    const instance = (node as Element & { __vueParentComponent?: ComponentLike }).__vueParentComponent;
+    const instance = (node as Element & { __vueParentComponent?: ComponentLike })
+      .__vueParentComponent;
     if (instance) return instance;
   }
   return undefined;
@@ -23,7 +24,13 @@ function componentOf(element: Element | null): ComponentLike | undefined {
 export function componentName(instance: ComponentLike): string {
   const type = instance.type;
   return (
-    type.__name ?? type.name ?? type.__file?.split('/').pop()?.replace(/\.vue$/, '') ?? 'Anonymous'
+    type.__name ??
+    type.name ??
+    type.__file
+      ?.split('/')
+      .pop()
+      ?.replace(/\.vue$/, '') ??
+    'Anonymous'
   );
 }
 
@@ -31,15 +38,30 @@ function preview(value: unknown, depth = 0): string {
   const raw = isRef(value) ? unref(value) : value;
   if (raw === null || raw === undefined) return String(raw);
   if (typeof raw === 'function') return 'ƒ';
-  if (typeof raw === 'string') return JSON.stringify(raw.length > 60 ? `${raw.slice(0, 57)}…` : raw);
+  if (typeof raw === 'string')
+    return JSON.stringify(raw.length > 60 ? `${raw.slice(0, 57)}…` : raw);
   if (typeof raw !== 'object') return String(raw);
   if (raw instanceof Element) return `<${raw.tagName.toLowerCase()}>`;
   if (depth > 0) return Array.isArray(raw) ? `Array(${raw.length})` : '{…}';
   const object = toRaw(raw) as Record<string, unknown>;
-  if (Array.isArray(object)) return `[${object.slice(0, 5).map((v) => preview(v, 1)).join(', ')}${object.length > 5 ? ', …' : ''}]`;
+  if (Array.isArray(object))
+    return `[${object
+      .slice(0, 5)
+      .map((v) => preview(v, 1))
+      .join(', ')}${object.length > 5 ? ', …' : ''}]`;
   const keys = Object.keys(object).slice(0, 6);
   return `{ ${keys.map((k) => `${k}: ${preview(object[k], 1)}`).join(', ')}${Object.keys(object).length > 6 ? ', …' : ''} }`;
 }
+
+/** Components of the UI layer itself, left out of the chain. */
+const ENGINE_COMPONENTS = new Set([
+  'UiRoot',
+  'ScreenView',
+  'BaseTransition',
+  'Transition',
+  'TransitionGroup',
+  'Anonymous',
+]);
 
 /** What the inspector shows for an element. */
 export interface InspectedComponent {
@@ -55,7 +77,8 @@ export function inspectElement(element: Element | null): InspectedComponent | un
   const instance = componentOf(element);
   if (!instance) return undefined;
   const path: string[] = [];
-  for (let node: ComponentLike | null = instance; node; node = node.parent) path.unshift(componentName(node));
+  for (let node: ComponentLike | null = instance; node; node = node.parent)
+    path.unshift(componentName(node));
   const props: Record<string, string> = {};
   for (const [key, value] of Object.entries(instance.props ?? {})) props[key] = preview(value);
   const state: Record<string, string> = {};
@@ -63,7 +86,12 @@ export function inspectElement(element: Element | null): InspectedComponent | un
     if (key.startsWith('__') || typeof value === 'function') continue;
     state[key] = preview(value);
   }
-  return { path: path.filter((n) => n !== 'UiRoot' && n !== 'ScreenView'), name: componentName(instance), props, state };
+  return {
+    path: path.filter((n) => n && !ENGINE_COMPONENTS.has(n)),
+    name: componentName(instance),
+    props,
+    state,
+  };
 }
 
 const escape = (text: string) =>
@@ -79,7 +107,10 @@ const escape = (text: string) =>
  * if (import.meta.env.DEV) (await import('@blacklight/ui/inspector')).installInspector(game);
  * ```
  */
-export function installInspector(game: Game, options: { key?: string } = {}): { toggle(): void; destroy(): void } {
+export function installInspector(
+  game: Game,
+  options: { key?: string } = {},
+): { toggle(): void; destroy(): void } {
   if (!(game.ui instanceof UiRuntime)) {
     throw new Error('installInspector() needs the UI layer: install @blacklight/ui first.');
   }
@@ -109,7 +140,9 @@ export function installInspector(game: Game, options: { key?: string } = {}): { 
     };
     const rows = (record: Record<string, string>) =>
       Object.entries(record)
-        .map(([k, v]) => `<div><span class="bl-inspector__key">${escape(k)}</span> ${escape(v)}</div>`)
+        .map(
+          ([k, v]) => `<div><span class="bl-inspector__key">${escape(k)}</span> ${escape(v)}</div>`,
+        )
         .join('') || '<div class="bl-inspector__none">none</div>';
     panel.innerHTML = `
       <div class="bl-inspector__head">UI inspector <small>${escape(key)}</small></div>
@@ -124,12 +157,14 @@ export function installInspector(game: Game, options: { key?: string } = {}): { 
           ? `${escape(focused.tagName.toLowerCase())}${focused.className ? `.${escape(String(focused.className).split(' ').join('.'))}` : ''} “${escape((focused.textContent ?? '').trim().slice(0, 40))}” in ${escape(screenOf(focused))}`
           : 'none'
       }</div></section>
-      <section><h4>Screens</h4>${runtime.ordered
-        .map((e) => {
-          const c = e.component as { __name?: string; name?: string };
-          return `<div>${escape(c.__name ?? c.name ?? 'screen')} #${e.id} · ${e.mode}${e.closing ? ' · closing' : ''}${e.owner ? ` · ${escape(e.owner.name)}` : ' · global'}</div>`;
-        })
-        .join('') || '<div class="bl-inspector__none">none</div>'}</section>`;
+      <section><h4>Screens</h4>${
+        runtime.ordered
+          .map((e) => {
+            const c = e.component as { __name?: string; name?: string };
+            return `<div>${escape(c.__name ?? c.name ?? 'screen')} #${e.id} · ${e.mode}${e.closing ? ' · closing' : ''}${e.owner ? ` · ${escape(e.owner.name)}` : ' · global'}</div>`;
+          })
+          .join('') || '<div class="bl-inspector__none">none</div>'
+      }</section>`;
     const target = hovered?.closest('[data-bl-screen] *') as HTMLElement | null;
     if (target) {
       const rect = target.getBoundingClientRect();

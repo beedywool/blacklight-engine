@@ -62,7 +62,10 @@ const effects = new Map<string, TransitionEffect>();
  * });
  * ```
  */
-export function defineTransition(name: string, transition: ScreenTransition | TransitionEffect): void {
+export function defineTransition(
+  name: string,
+  transition: ScreenTransition | TransitionEffect,
+): void {
   if ('frame' in transition) {
     effects.set(name, transition);
     screenTransitions.set(name, {
@@ -207,7 +210,8 @@ export function coverTransition(
   let phase: 'in' | 'out' = 'in';
   const effect = () => {
     const found = effects.get(name);
-    if (!found) throw new Error(`Unknown transition effect "${name}". Known: ${effectNames().join(', ')}.`);
+    if (!found)
+      throw new Error(`Unknown transition effect "${name}". Known: ${effectNames().join(', ')}.`);
     return found;
   };
   return {

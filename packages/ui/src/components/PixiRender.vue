@@ -38,7 +38,8 @@ let destroyed = false;
 let offFrame: (() => void) | undefined;
 
 function applyStrength() {
-  for (const filter of filters) if ('strength' in filter) (filter as FxFilter).strength = props.strength;
+  for (const filter of filters)
+    if ('strength' in filter) (filter as FxFilter).strength = props.strength;
 }
 watch(() => props.strength, applyStrength);
 
@@ -97,7 +98,8 @@ function place() {
   sprite.position.set(rect.left - mount.left, rect.top - mount.top);
   sprite.width = rect.width;
   sprite.height = rect.height;
-  for (const filter of filters) if ('time' in filter) (filter as FxFilter).time = performance.now() / 1000;
+  for (const filter of filters)
+    if ('time' in filter) (filter as FxFilter).time = performance.now() / 1000;
 }
 
 onMounted(async () => {
@@ -115,7 +117,12 @@ onMounted(async () => {
         if (!rendering) schedule();
         else dirty = true;
       });
-      observer.observe(host.value!, { subtree: true, childList: true, attributes: true, characterData: true });
+      observer.observe(host.value!, {
+        subtree: true,
+        childList: true,
+        attributes: true,
+        characterData: true,
+      });
     }
     await render();
     place();

@@ -119,9 +119,12 @@ function scheduleAuto() {
   const voice = props.dialogue.playingVoice?.ended ?? Promise.resolve();
   void voice.then(() => {
     if (mode.value !== 'auto' || view.line !== line) return;
-    timer = setTimeout(() => {
-      if (mode.value === 'auto' && view.line === line) next();
-    }, props.autoDelay + 30 * lineLength(line));
+    timer = setTimeout(
+      () => {
+        if (mode.value === 'auto' && view.line === line) next();
+      },
+      props.autoDelay + 30 * lineLength(line),
+    );
   });
 }
 
@@ -186,7 +189,7 @@ defineExpose({ advance, mode });
 </script>
 
 <template>
-  <div class="bl-dialogue" :data-mode="mode" @wheel="onWheel">
+  <div class="bl-dialogue" :data-mode="mode" :data-typing="typing || undefined" @wheel="onWheel">
     <TransitionGroup tag="div" name="bl-portrait" class="bl-dialogue__portraits">
       <img
         v-for="p in view.portraits"

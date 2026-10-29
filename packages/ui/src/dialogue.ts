@@ -97,7 +97,8 @@ export function parseTag(raw: string): DialogueTag {
   if (colon > 0 && /^[\w-]+$/.test(text.slice(0, colon).trim()))
     return { name: text.slice(0, colon).trim().toLowerCase(), value: text.slice(colon + 1).trim() };
   const space = text.search(/\s/);
-  if (space > 0) return { name: text.slice(0, space).toLowerCase(), value: text.slice(space + 1).trim() };
+  if (space > 0)
+    return { name: text.slice(0, space).toLowerCase(), value: text.slice(space + 1).trim() };
   return { name: text.toLowerCase(), value: '' };
 }
 
@@ -235,9 +236,13 @@ export class Dialogue {
     this.story.ObserveVariable(name, (_, value) => fn(value));
   }
 
-  /** Starts (or restarts) at the beginning, or at a knot / stitch path. */
-  start(path?: string): void {
+  /**
+   * Starts (or restarts) at the beginning, or at a knot / stitch path. `vars` are set after the
+   * reset, before the first line (a player name typed on the title screen).
+   */
+  start(path?: string, vars: Record<string, unknown> = {}): void {
     this.story.ResetState();
+    for (const [name, value] of Object.entries(vars)) this.vars[name] = value;
     if (path) this.story.ChoosePathString(path);
     this.view.backlog.splice(0);
     this.view.portraits.splice(0);
@@ -460,7 +465,8 @@ export class Dialogue {
     this.view.portraits = state.portraits ?? [];
     this.view.ended = !!state.ended;
     if (state.line) this.events.emit('line', { line: state.line });
-    else if (this.view.choices.length > 0) this.events.emit('choices', { choices: this.view.choices });
+    else if (this.view.choices.length > 0)
+      this.events.emit('choices', { choices: this.view.choices });
   }
 
   /**
@@ -495,7 +501,8 @@ function wrapByTags(text: string, tags: DialogueTag[]): string {
     if (tag.name === 'color' && tag.value) out = `<color=${tag.value}>${out}</color>`;
     if (tag.name === 'size' && tag.value) out = `<size=${tag.value}>${out}</size>`;
     if (tag.name === 'speed' && tag.value) out = `<speed=${tag.value}>${out}</speed>`;
-    if (tag.name === 'effect' && /^(shake|wave)$/.test(tag.value)) out = `<${tag.value}>${out}</${tag.value}>`;
+    if (tag.name === 'effect' && /^(shake|wave)$/.test(tag.value))
+      out = `<${tag.value}>${out}</${tag.value}>`;
   }
   return out;
 }

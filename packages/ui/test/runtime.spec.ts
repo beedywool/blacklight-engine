@@ -4,6 +4,7 @@ import { FOCUS_ATTR } from '../src/focus';
 import { getTheme, resolveTheme, themeVariables } from '../src/theme';
 import { bindingForDevice, glyphFor, kenneyFile, padFamily } from '../src/prompts';
 import { Timeline } from '../src/timeline';
+import { UiRuntime } from '../src/runtime';
 import { installUi, place, settle } from './helpers';
 
 const Menu = defineComponent({
@@ -92,7 +93,7 @@ describe('UiRuntime', () => {
     expect(game.input.blocked).toBe(true);
     game.settings.set('ui.theme', 'custom');
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
-    const { runtime: next } = installUi();
+    const next = new UiRuntime(game);
     // The saved name is kept for when the theme gets registered; drawing uses BlackLight meanwhile.
     expect(next.theme).toBe('custom');
     expect(resolveTheme().name).toBe('blacklight');

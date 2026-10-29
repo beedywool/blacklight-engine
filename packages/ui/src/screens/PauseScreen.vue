@@ -73,8 +73,11 @@ async function select(item: Item) {
       break;
     case 'save':
     case 'load': {
-      const result = await ui.push(SaveLoadScreen, { mode: item, slots: props.slots, meta: props.meta })
-        .result;
+      const result = await ui.push(SaveLoadScreen, {
+        mode: item,
+        slots: props.slots,
+        meta: props.meta,
+      }).result;
       if (result === 'loaded') screen.close('loaded');
       break;
     }

@@ -48,7 +48,9 @@ function copyStyles(source: Element, target: Element): void {
  * Serializes `element` (with computed styles inlined and images embedded) into an SVG document of
  * its layout size.
  */
-export async function snapshotSvg(element: HTMLElement): Promise<{ svg: string; width: number; height: number }> {
+export async function snapshotSvg(
+  element: HTMLElement,
+): Promise<{ svg: string; width: number; height: number }> {
   const width = Math.max(1, Math.ceil(element.offsetWidth));
   const height = Math.max(1, Math.ceil(element.offsetHeight));
   const clone = element.cloneNode(true) as HTMLElement;
@@ -81,7 +83,11 @@ export async function snapshotSvg(element: HTMLElement): Promise<{ svg: string; 
  *
  * @throws Error when the browser refuses to decode the image (see the PixiRender limits).
  */
-export async function drawElement(element: HTMLElement, canvas: HTMLCanvasElement, scale: number): Promise<void> {
+export async function drawElement(
+  element: HTMLElement,
+  canvas: HTMLCanvasElement,
+  scale: number,
+): Promise<void> {
   const { svg, width, height } = await snapshotSvg(element);
   const image = new Image();
   image.decoding = 'async';

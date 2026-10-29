@@ -80,7 +80,7 @@ export function parseRichText(source: string): RichNode[] {
     text = '';
   };
 
-  for (let i = 0; i < source.length; ) {
+  for (let i = 0; i < source.length;) {
     const char = source[i]!;
     if (char === '\\' && (source[i + 1] === '<' || source[i + 1] === '\\')) {
       text += source[i + 1];
@@ -115,7 +115,10 @@ export function parseRichText(source: string): RichNode[] {
     flush();
     if (SINGLE.has(name)) {
       if (name === 'pause') {
-        const ms = raw?.endsWith('s') && !raw.endsWith('ms') ? parseFloat(raw) * 1000 : parseFloat(raw ?? '');
+        const ms =
+          raw?.endsWith('s') && !raw.endsWith('ms')
+            ? parseFloat(raw) * 1000
+            : parseFloat(raw ?? '');
         nodes.push({ kind: 'pause', ms: Number.isFinite(ms) ? ms : 300 });
       } else if (name === 'icon') nodes.push({ kind: 'icon', name: raw ?? '', style: style() });
       else nodes.push({ kind: 'input', action: raw ?? 'confirm', style: style() });
@@ -163,7 +166,9 @@ export function plainText(source: string): string {
 }
 
 const graphemeSegmenter =
-  typeof Intl.Segmenter === 'undefined' ? undefined : new Intl.Segmenter(undefined, { granularity: 'grapheme' });
+  typeof Intl.Segmenter === 'undefined'
+    ? undefined
+    : new Intl.Segmenter(undefined, { granularity: 'grapheme' });
 
 /** User-perceived characters (emoji, combining marks and CJK stay whole). */
 export function graphemes(text: string): string[] {
@@ -172,7 +177,7 @@ export function graphemes(text: string): string[] {
 }
 
 /** Characters that take no typewriter time (zero-width spaces added for line breaking). */
-const INVISIBLE = /^[​-‍⁠﻿]$/;
+const INVISIBLE = /^[\u200b-\u200d\u2060\ufeff]$/;
 
 /**
  * Reveal schedule of a typewriter: for each visible unit (a character, an icon or a glyph), the
@@ -211,4 +216,5 @@ export function visibleCount(times: number[], elapsed: number): number {
 }
 
 /** Scripts whose letters join (Arabic, Syriac, N'Ko, Mongolian…): per-character spans would break them. */
-export const JOINING_SCRIPT = /[؀-ۿ܀-ݏݐ-ݿ߀-߿ࡠ-ࣿ᠀-᢯ﭐ-﷿ﹰ-﻿]/;
+export const JOINING_SCRIPT =
+  /[\u0600-\u06ff\u0700-\u074f\u0750-\u077f\u07c0-\u07ff\u0860-\u08ff\u1800-\u18af\ufb50-\ufdff\ufe70-\ufeff]/;

@@ -133,7 +133,8 @@ const IDENTITY: Matrix3 = [1, 0, 0, 0, 1, 0, 0, 0, 1];
  */
 export function colorFilterMatrix(filter: ColorFilter): Matrix3 {
   if (filter === 'none') return [...IDENTITY];
-  if (filter === 'grayscale') return [0.299, 0.587, 0.114, 0.299, 0.587, 0.114, 0.299, 0.587, 0.114];
+  if (filter === 'grayscale')
+    return [0.299, 0.587, 0.114, 0.299, 0.587, 0.114, 0.299, 0.587, 0.114];
   const simulate = multiply(invert(RGB_TO_LMS), multiply(SIMULATE[filter], RGB_TO_LMS));
   const error = IDENTITY.map((v, i) => v - simulate[i]!) as Matrix3;
   const correction = multiply(SHIFT, error);

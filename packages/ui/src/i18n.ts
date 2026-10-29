@@ -23,9 +23,24 @@ export interface PluralForms {
 /** Values interpolated into `{name}` placeholders. Numbers are formatted for the language. */
 export type MessageValues = Record<string, string | number>;
 
-const RTL = new Set(['ar', 'arc', 'dv', 'fa', 'ha', 'he', 'iw', 'ks', 'ku', 'ps', 'sd', 'ur', 'ug', 'yi']);
+const RTL = new Set([
+  'ar',
+  'arc',
+  'dv',
+  'fa',
+  'ha',
+  'he',
+  'iw',
+  'ks',
+  'ku',
+  'ps',
+  'sd',
+  'ur',
+  'ug',
+  'yi',
+]);
 const NO_SPACES = new Set(['ja', 'zh', 'yue']);
-const ZWSP = '​';
+const ZWSP = '\u200b';
 
 /** Base language of a tag: `pt-BR` → `pt`. */
 const base = (lang: string) => lang.toLowerCase().split(/[-_]/)[0]!;
@@ -60,13 +75,14 @@ const CLOSING = /^[、。，．・：；？！ー）」』】〕〉》〙〗’�
  *
  * @example
  * ```ts
- * lineBreaks('今日はいい天気ですね', 'ja'); // '今日​は​いい​天気​です​ね'
+ * lineBreaks('今日はいい天気ですね', 'ja'); // '今日\u200bは\u200bいい\u200b天気\u200bです\u200bね'
  * ```
  */
 export function lineBreaks(text: string, lang: string): string {
   if (!isCjk(lang) || typeof Intl.Segmenter === 'undefined' || text.includes(ZWSP)) return text;
   let segmenter = segmenters.get(lang);
-  if (!segmenter) segmenters.set(lang, (segmenter = new Intl.Segmenter(lang, { granularity: 'word' })));
+  if (!segmenter)
+    segmenters.set(lang, (segmenter = new Intl.Segmenter(lang, { granularity: 'word' })));
   let out = '';
   for (const { segment } of segmenter.segment(text)) {
     if (out && !CLOSING.test(segment) && !/\s$/.test(out)) out += ZWSP;

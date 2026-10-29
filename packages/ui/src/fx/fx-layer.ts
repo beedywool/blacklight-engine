@@ -83,9 +83,11 @@ export class FxLayer {
     const target = options.target ?? 'world';
     if (this.game.app.renderer && this.game.app.renderer.name !== 'webgl' && !this.warned) {
       this.warned = true;
-      console.warn('[blacklight] FX effects use WebGL shaders; the WebGPU renderer shows them without effect.');
+      console.warn(
+        '[blacklight] FX effects use WebGL shaders; the WebGPU renderer shows them without effect.',
+      );
     }
-    const layer = this;
+    const detach = (e: Entry) => this.detach(e);
     let level = 0;
     const entry: Entry = {
       filter,
@@ -111,7 +113,7 @@ export class FxLayer {
       },
       async remove(fade = 0) {
         if (fade > 0) await entry.fadeTo(0, fade);
-        layer.detach(entry);
+        detach(entry);
       },
     };
     const strength = options.strength ?? 1;
@@ -123,7 +125,10 @@ export class FxLayer {
   }
 
   /** Plays an effect up and down once (`# fx: glitch` in Ink). Resolves when it is gone. */
-  async pulse(effect: FxName | Filter, options: FxOptions & { duration?: number } = {}): Promise<void> {
+  async pulse(
+    effect: FxName | Filter,
+    options: FxOptions & { duration?: number } = {},
+  ): Promise<void> {
     const duration = options.duration ?? 600;
     const handle = this.add(effect, { ...options, fade: duration * 0.25 });
     await new Promise((resolve) => setTimeout(resolve, duration * 0.5));

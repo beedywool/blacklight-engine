@@ -66,7 +66,11 @@ const FORMAT: Record<string, 'sfnt' | 'woff' | 'woff2'> = {
  * Keeps only the glyphs of `text` in a font, in the same format. A CJK font of 5–15 MB usually
  * drops to a few hundred KB.
  */
-export async function subsetFontData(data: Uint8Array, extension: string, text: string): Promise<Buffer> {
+export async function subsetFontData(
+  data: Uint8Array,
+  extension: string,
+  text: string,
+): Promise<Buffer> {
   const format = FORMAT[extension.toLowerCase()];
   if (!format) throw new Error(`Cannot subset .${extension} fonts; use woff2, woff, ttf or otf.`);
   return subsetFont(Buffer.from(data), text, { targetFormat: format });
@@ -88,7 +92,10 @@ const logReport = ({ file, before, after }: SubsetReport) =>
  * characters the game contains (CJK font subsetting, UI-15). Fonts named `*.full.<ext>` are kept
  * whole; a font that fails to subset is kept whole with a warning.
  */
-export function fontSubsetting(options: { root: string; onReport?(report: SubsetReport): void }): Plugin {
+export function fontSubsetting(options: {
+  root: string;
+  onReport?(report: SubsetReport): void;
+}): Plugin {
   let text: string | undefined;
   return {
     name: 'blacklight:fonts',
@@ -100,7 +107,9 @@ export function fontSubsetting(options: { root: string; onReport?(report: Subset
         if (names.some((name) => KEEP_FULL.test(name))) continue;
         text ??= collectCharacters(options.root);
         const source =
-          typeof output.source === 'string' ? Buffer.from(output.source) : Buffer.from(output.source);
+          typeof output.source === 'string'
+            ? Buffer.from(output.source)
+            : Buffer.from(output.source);
         const extension = output.fileName.slice(output.fileName.lastIndexOf('.') + 1);
         try {
           const subset = await subsetFontData(source, extension, text);

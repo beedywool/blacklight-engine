@@ -44,7 +44,7 @@ onUiStep(() => {
     if (props.skip === 'press') finish('skipped');
   }
   if (props.skip === 'hold') {
-    hold.value = input.held('confirm') ? hold.value + (game.time.dt * 1000) : 0;
+    hold.value = input.held('confirm') ? hold.value + game.time.dt * 1000 : 0;
     if (hold.value >= props.holdTime) finish('skipped');
   }
 });
@@ -70,7 +70,9 @@ function onClick() {
     <div v-if="skip && hint" class="bl-cutscene__skip">
       <InputPrompt action="confirm" :size="40" />
       <span>{{
-        skip === 'hold' ? t('bl.cutscene.hold', {}, 'Hold to skip') : t('bl.cutscene.skip', {}, 'Skip')
+        skip === 'hold'
+          ? t('bl.cutscene.hold', {}, 'Hold to skip')
+          : t('bl.cutscene.skip', {}, 'Skip')
       }}</span>
       <span
         v-if="skip === 'hold'"

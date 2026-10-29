@@ -47,9 +47,13 @@ const current = computed(() => tabs.value[tab.value]);
 const volumes = ref<Record<string, number>>(
   Object.fromEntries(props.buses.map((bus) => [bus, game.audio.volume(bus)])),
 );
-watch(volumes, (value) => {
-  for (const [bus, volume] of Object.entries(value)) game.audio.volume(bus as Bus, volume);
-}, { deep: true });
+watch(
+  volumes,
+  (value) => {
+    for (const [bus, volume] of Object.entries(value)) game.audio.volume(bus as Bus, volume);
+  },
+  { deep: true },
+);
 
 // Video
 const fullscreen = shallowRef(!!document.fullscreenElement);
@@ -71,7 +75,9 @@ const themes = themeNames().map((name) => ({ label: name.toUpperCase(), value: n
 const actions = computed(
   () =>
     (props.actions ??
-      game.input.actions.filter((a) => !['up', 'down', 'left', 'right', 'tabLeft', 'tabRight'].includes(a))) as ActionName[],
+      game.input.actions.filter(
+        (a) => !['up', 'down', 'left', 'right', 'tabLeft', 'tabRight'].includes(a),
+      )) as ActionName[],
 );
 const capturing = shallowRef<string | null>(null);
 async function rebind(action: ActionName) {
@@ -80,7 +86,10 @@ async function rebind(action: ActionName) {
   const binding = await game.input.captureBinding();
   capturing.value = null;
   if (!binding) return;
-  game.input.rebind(action, [binding, ...game.input.bindingsOf(action).filter((b) => b !== binding)]);
+  game.input.rebind(action, [
+    binding,
+    ...game.input.bindingsOf(action).filter((b) => b !== binding),
+  ]);
 }
 
 // Language
@@ -123,11 +132,27 @@ const highContrast = computed({
       </template>
 
       <template v-else-if="current === 'video'">
-        <Toggle v-model="fullscreen" :label="t('bl.settings.fullscreen')" :on="t('bl.common.on')" :off="t('bl.common.off')" />
-        <Slider v-model="scale" :label="t('bl.settings.uiScale')" :min="0.75" :max="1.5" :step="0.05">
+        <Toggle
+          v-model="fullscreen"
+          :label="t('bl.settings.fullscreen')"
+          :on="t('bl.common.on')"
+          :off="t('bl.common.off')"
+        />
+        <Slider
+          v-model="scale"
+          :label="t('bl.settings.uiScale')"
+          :min="0.75"
+          :max="1.5"
+          :step="0.05"
+        >
           <template #default="{ value }">{{ Math.round(value * 100) }}%</template>
         </Slider>
-        <Select v-if="themes.length > 1" v-model="theme" :label="t('bl.settings.theme')" :options="themes" />
+        <Select
+          v-if="themes.length > 1"
+          v-model="theme"
+          :label="t('bl.settings.theme')"
+          :options="themes"
+        />
       </template>
 
       <template v-else-if="current === 'controls'">
@@ -165,21 +190,55 @@ const highContrast = computed({
       </template>
 
       <template v-else-if="current === 'accessibility'">
-        <Slider v-model="accessibility.textScale" :label="t('bl.settings.textSize')" :min="0.8" :max="2" :step="0.1">
+        <Slider
+          v-model="accessibility.textScale"
+          :label="t('bl.settings.textSize')"
+          :min="0.8"
+          :max="2"
+          :step="0.1"
+        >
           <template #default="{ value }">{{ Math.round(value * 100) }}%</template>
         </Slider>
-        <Slider v-model="accessibility.textSpeed" :label="t('bl.settings.textSpeed')" :min="0" :max="120" :step="15">
-          <template #default="{ value }">{{ value === 0 ? t('bl.settings.instant') : value }}</template>
+        <Slider
+          v-model="accessibility.textSpeed"
+          :label="t('bl.settings.textSpeed')"
+          :min="0"
+          :max="120"
+          :step="15"
+        >
+          <template #default="{ value }">{{
+            value === 0 ? t('bl.settings.instant') : value
+          }}</template>
         </Slider>
-        <Toggle v-model="highContrast" :label="t('bl.settings.contrast')" :on="t('bl.common.on')" :off="t('bl.common.off')" />
+        <Toggle
+          v-model="highContrast"
+          :label="t('bl.settings.contrast')"
+          :on="t('bl.common.on')"
+          :off="t('bl.common.off')"
+        />
         <Select
           v-model="accessibility.colorFilter"
           :label="t('bl.settings.colorFilter')"
           :options="filters.map((value) => ({ value, label: t(`bl.settings.filters.${value}`) }))"
         />
-        <Select v-model="accessibility.reducedMotion" :label="t('bl.settings.reducedMotion')" :options="motionOptions" />
-        <Toggle v-model="accessibility.subtitles" :label="t('bl.settings.subtitles')" :on="t('bl.common.on')" :off="t('bl.common.off')" />
-        <Slider v-model="accessibility.subtitleSize" :label="t('bl.settings.subtitleSize')" :min="0.75" :max="2" :step="0.25">
+        <Select
+          v-model="accessibility.reducedMotion"
+          :label="t('bl.settings.reducedMotion')"
+          :options="motionOptions"
+        />
+        <Toggle
+          v-model="accessibility.subtitles"
+          :label="t('bl.settings.subtitles')"
+          :on="t('bl.common.on')"
+          :off="t('bl.common.off')"
+        />
+        <Slider
+          v-model="accessibility.subtitleSize"
+          :label="t('bl.settings.subtitleSize')"
+          :min="0.75"
+          :max="2"
+          :step="0.25"
+        >
           <template #default="{ value }">{{ Math.round(value * 100) }}%</template>
         </Slider>
         <Slider

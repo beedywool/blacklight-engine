@@ -96,8 +96,12 @@ class ShaderFx extends Filter implements FxFilter {
   }
 
   private get uniforms(): { uStrength: number; uTime: number } {
-    return (this.resources.fxUniforms as UniformGroup<{ uStrength: { value: number; type: 'f32' }; uTime: { value: number; type: 'f32' } }>)
-      .uniforms;
+    return (
+      this.resources.fxUniforms as UniformGroup<{
+        uStrength: { value: number; type: 'f32' };
+        uTime: { value: number; type: 'f32' };
+      }>
+    ).uniforms;
   }
 
   get strength(): number {

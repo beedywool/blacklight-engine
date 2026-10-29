@@ -1,3 +1,4 @@
+import type { t as translate } from './i18n';
 import './styles.css';
 import './styles-extra.css';
 
@@ -198,6 +199,6 @@ export { default as SettingsScreen } from './screens/SettingsScreen.vue';
 declare module 'vue' {
   interface ComponentCustomProperties {
     /** Translates a key in the current language (see `t`). */
-    $t: typeof import('./i18n').t;
+    $t: typeof translate;
   }
 }
