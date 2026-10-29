@@ -32,3 +32,20 @@ Every dependency that ships inside a game or a published package, and every asse
 | vue                           | 3.5.44  | MIT                                             |
 | Google Sans Flex (font files) | —       | SIL Open Font License 1.1                       |
 | BlackLight logo               | —       | © BlackLight, used with permission of the owner |
+
+## Official modules (inside games that use them)
+
+| Package        | Version | License       | Used by                                                           |
+| -------------- | ------- | ------------- | ----------------------------------------------------------------- |
+| sql.js         | 1.15.2  | MIT           | @blacklight/module-sqlite (web backend, lazy chunk)               |
+| SQLite         | 3.x     | Public domain | compiled into sql.js and better-sqlite3                           |
+| better-sqlite3 | 13.0.3  | MIT           | @blacklight/module-sqlite/native (desktop, Electron main process) |
+
+`@blacklight/module-http`, `-cloud-save`, `-accounts-oidc`, `-achievements` and `-telemetry` have no runtime dependencies (WebCrypto PKCE, hand-written Sentry envelopes).
+
+## Module registry and reference server (published, not inside games)
+
+| Package or image | Version | License                          | Used by                                                    |
+| ---------------- | ------- | -------------------------------- | ---------------------------------------------------------- |
+| semver           | 7.8.5   | ISC                              | @blacklight/cli, @blacklight/registry                      |
+| node:24-alpine   | 24      | MIT (Node.js), Alpine components | servers/reference Docker image; the server has no npm deps |

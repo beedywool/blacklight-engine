@@ -11,7 +11,7 @@ One line per `SPEC.md` requirement: `- [x] ID · where · test`. A requirement i
 - [ ] Phase 3b Light 3D
 - [ ] Phase 3c Desktop
 - [ ] Phase 3d Mobile
-- [ ] Phase 3e Modules & services
+- [x] Phase 3e Modules & services · `blacklight add sqlite` (and accounts-oidc, achievements) in a fresh project through a static registry index, typed `game.modules`, sql.js persisted across reloads, OIDC login against a mock provider with account linking on the reference server, offline queues replayed when the network returns, release build · e2e: `e2e/modules.spec.ts` (local Linux)
 - [ ] Phase 3f Networking
 - [ ] Phase 3g Tooling
 - [ ] Phase 4 Docs & templates
@@ -74,12 +74,12 @@ One line per `SPEC.md` requirement: `- [x] ID · where · test`. A requirement i
 
 ## Modules (MOD)
 
-- [ ] MOD-01 defineModule (config schema, typed game.modules, dispose)
-- [ ] MOD-02 Context
-- [ ] MOD-03 Native part
-- [ ] MOD-04 node_modules
-- [ ] MOD-05 Registry
-- [ ] MOD-06 Official modules
+- [x] MOD-01 defineModule · packages/core/src/modules (define.ts, host.ts, schema.ts), `modules` in config.ts, game.modules / game.destroy, cli/src/modules.ts (virtual module + Register types) · test: core modules.spec.ts, cli modules.spec.ts, e2e modules.spec.ts (tsc on game.modules)
+- [x] MOD-02 Context · packages/core/src/modules (config, events, ModuleSaves hook, network + OfflineQueue, logger, storage, platform) · test: core modules.spec.ts, http.spec.ts, cloud-save.spec.ts, e2e modules.spec.ts (offline replay)
+- [ ] MOD-03 Native part — partial · defineNative/fn in packages/native/src/define-native.ts (allowlist, argument schemas, inferred types via nativeModule) and the sqlite native part (better-sqlite3) · test: native/test/define-native.spec.ts, sqlite.spec.ts (through a simulated IPC); registration in the Electron main process (3c) and the Capacitor plugin side (3d) connect at merge (DECISIONS "define-native contract")
+- [x] MOD-04 node_modules · packages/cli/src/modules.ts (Node built-ins and native addons refused in game code, module deps pre-bundled) · test: cli modules.spec.ts
+- [x] MOD-05 Registry · packages/registry (manifest, validator, static API, index template with CI workflow), cli/src/commands/registry.ts (add, search, publish) · test: registry.spec.ts, cli registry.spec.ts, e2e modules.spec.ts
+- [x] MOD-06 Official modules · packages/modules/{http,sqlite,cloud-save,accounts-oidc,achievements,telemetry}; physics in packages/physics; discord from 3c · test: http.spec.ts, sqlite.spec.ts, cloud-save.spec.ts, accounts.spec.ts, achievements.spec.ts, telemetry.spec.ts, e2e modules.spec.ts
 
 ## Platforms (PF)
 
@@ -126,11 +126,11 @@ One line per `SPEC.md` requirement: `- [x] ID · where · test`. A requirement i
 
 ## Platform services (SVC)
 
-- [ ] SVC-01 Accounts
-- [ ] SVC-02 Achievements
+- [x] SVC-01 Accounts · packages/modules/accounts-oidc (PKCE S256, system browser, web redirect, custom-scheme deep link, refresh token in secure storage, BlackLight SSO preset, server linking) · test: accounts.spec.ts (desktop flow with simulated deep link), e2e modules.spec.ts (web flow against the mock provider); real SSO and devices in MANUAL_TESTS.md
+- [x] SVC-02 Achievements · packages/modules/achievements (Steam, Game Center, Play Games through platform.invoke, reference server, offline queue) · test: achievements.spec.ts, e2e modules.spec.ts; real stores in MANUAL_TESTS.md
 - [ ] SVC-03 Discord Rich Presence on desktop (presence, party…
-- [ ] SVC-04 Telemetry and crash reports
-- [ ] SVC-05 Reference server (`servers/`, Docker)
+- [x] SVC-04 Telemetry and crash reports · packages/modules/telemetry (opt-in, consent helper, Sentry envelopes, scrubbing, offline queue) · test: telemetry.spec.ts; real backend in MANUAL_TESTS.md
+- [ ] SVC-05 Reference server — partial · servers/reference (cloud saves, achievements/leaderboards, OIDC account linking, Docker image checked) · test: servers/reference/test/*.spec.ts, cloud-save.spec.ts, achievements.spec.ts, e2e modules.spec.ts; the relay is servers/relay (3f), one compose file joins them at merge
 
 ## Tooling (TL)
 
