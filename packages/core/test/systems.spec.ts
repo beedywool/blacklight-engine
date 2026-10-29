@@ -159,6 +159,17 @@ describe('assets', () => {
   it('explains unloaded files', () => {
     expect(() => store.texture('objects/hero/hero.png')).toThrow(/static assets/);
   });
+
+  it('loads extra file types through registered loaders', async () => {
+    const models = new AssetStore({ files: { 'models/hero.glb': '/hero.glb' } });
+    const loader = vi.fn((path: string, url: string) => Promise.resolve({ path, url }));
+    AssetStore.registerLoader(['GLB'], loader);
+    expect(() => models.get('models/hero.glb')).toThrow(/static assets/);
+    await models.load(['models/hero.glb', 'models/hero.glb']);
+    expect(loader).toHaveBeenCalledTimes(1);
+    expect(loader.mock.calls[0]![2]).toBe(models);
+    expect(models.get('models/hero.glb')).toEqual({ path: 'models/hero.glb', url: '/hero.glb' });
+  });
 });
 
 describe('registry', () => {

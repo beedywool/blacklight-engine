@@ -105,7 +105,13 @@ export { DEFAULT_ACTIONS, bindingLabel, parseBinding, type Binding } from './inp
 export { PAD_BUTTONS, type PadButton, type PadState } from './input/gamepad';
 
 // Systems
-export { AssetStore, assetKey, resolveProjectPath, type AssetManifest } from './assets';
+export {
+  AssetStore,
+  assetKey,
+  resolveProjectPath,
+  type AssetLoader,
+  type AssetManifest,
+} from './assets';
 export { AudioManager, type Bus, type PlayOptions, type SoundHandle } from './audio';
 export { Camera, type FollowOptions } from './camera';
 export { Disposables, EventBus, type EventMap, type Unsubscribe } from './events';
