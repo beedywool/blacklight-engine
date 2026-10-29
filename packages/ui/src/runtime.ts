@@ -5,6 +5,7 @@ import {
   reactive,
   shallowReactive,
   shallowRef,
+  watch,
   type App,
   type Component,
 } from 'vue';
@@ -16,7 +17,19 @@ import {
   type UiHost,
   type Viewport,
 } from '@blacklight/core';
+import { accessibility, applyColorFilter, bindAccessibility } from './a11y';
 import { FocusManager, type FocusSound } from './focus';
+import { FxLayer } from './fx/fx-layer';
+import { I18n, setCurrentI18n, t } from './i18n';
+import { BUILTIN_MESSAGES } from './messages';
+import {
+  coverTransition,
+  createCover,
+  effectNames,
+  getEffect,
+  onTransitionDefined,
+  playEffect,
+} from './transitions';
 import { directionOf, type Direction } from './spatial';
 import { activeTheme, defineTheme, getTheme, resolveTheme, type Theme } from './theme';
 import UiRoot from './components/UiRoot.vue';
@@ -153,6 +166,8 @@ export interface UiOptions {
   theme?: string;
   /** Themes to register before the layer starts (a saved custom theme must exist at startup). */
   themes?: Theme[];
+  /** Starting language. @defaultValue the saved choice, else the browser's, else `locales.default` */
+  locale?: string;
 }
 
 /** The UI layer of a game: a Vue app over the canvas, the screen stack, focus and input. */
@@ -175,8 +190,18 @@ export class UiRuntime implements UiHost {
   >();
   /** Fires after the UI handled input, every step (and every frame while the game is paused). */
   readonly ticks = new EventBus<{ step: void }>();
+  /** Translations (`locales/<lang>.json`), current language and text direction. */
+  readonly i18n: I18n;
+  /** WebGL effects synchronized with the screens (UI-11). */
+  readonly fx: FxLayer;
+  /** The player's accessibility options (the same object as the `accessibility` export). */
+  readonly accessibility = accessibility;
+  /** Resolves once the starting language is loaded. */
+  readonly ready: Promise<void>;
   private nextId = 1;
-  private repeat = { direction: undefined as Direction | undefined, next: 0 };
+  /** Key repeat of directions: `held` ms of the current direction, next move at `next` ms. */
+  private repeat = { direction: undefined as Direction | undefined, next: 0, held: 0 };
+  private lastPoll = 0;
 
   constructor(
     readonly game: Game,
@@ -204,6 +229,18 @@ export class UiRuntime implements UiHost {
       });
     }
     for (const theme of options.themes ?? []) defineTheme(theme);
+    bindAccessibility(game.settings);
+    this.i18n = I18n.fromGame(game);
+    this.i18n.add('en', BUILTIN_MESSAGES, { builtin: true });
+    setCurrentI18n(this.i18n);
+    this.ready =
+      this.i18n.available.length > 0
+        ? this.i18n
+            .setLocale(options.locale ?? this.i18n.initialLocale(), { save: false })
+            .catch((error: unknown) =>
+              console.error('[blacklight] Could not load the language file:', error),
+            )
+        : Promise.resolve();
     this.scale.value = clampScale(
       game.settings.get<number>(UI_SCALE_SETTING) ?? game.config.ui?.scale ?? 1,
     );
@@ -241,7 +278,16 @@ export class UiRuntime implements UiHost {
       });
     }).observe(this.element, { childList: true, subtree: true });
 
+    this.fx = new FxLayer(game, this.element);
+    this.registerSceneTransitions();
+    watch(
+      () => accessibility.colorFilter,
+      (filter) => applyColorFilter(game.mount, filter),
+      { immediate: true },
+    );
+
     this.app = createApp(UiRoot, { runtime: this });
+    this.app.config.globalProperties.$t = t;
     this.app.provide('blacklight:ui', this);
     this.app.provide('blacklight:game', game);
     this.app.mount(this.element);
@@ -255,6 +301,47 @@ export class UiRuntime implements UiHost {
       game.input.update();
       this.handleInput();
     });
+  }
+
+  private registerSceneTransitions(): void {
+    const transitions = (this.game as Partial<Game>).transitions;
+    if (!transitions) return;
+    const register = (name: string) => {
+      if (getEffect(name)) transitions.set(name, coverTransition(this.element, name));
+    };
+    for (const name of effectNames()) register(name);
+    transitions.set('distort', this.fx.distortTransition());
+    onTransitionDefined(register);
+  }
+
+  /**
+   * Covers the screen with a transition effect, runs `during` (change the background, move the
+   * camera), then reveals. For changes inside a scene; `goto` does the same between scenes.
+   *
+   * @example
+   * ```ts
+   * await uiOf(this.game).cover('ink', () => this.showBackground('night'));
+   * ```
+   */
+  async cover(
+    name: string,
+    during: () => void | Promise<void>,
+    options: { color?: string; duration?: number } = {},
+  ): Promise<void> {
+    const effect = getEffect(name);
+    if (!effect) {
+      throw new Error(`Unknown transition effect "${name}". Known: ${effectNames().join(', ')}.`);
+    }
+    const element = createCover(this.element, options.color);
+    const seconds = options.duration === undefined ? undefined : options.duration / 1000;
+    try {
+      await playEffect(effect, element, 0, 1, 'in', true, seconds);
+      element.style.visibility = 'visible';
+      await during();
+      await playEffect(effect, element, 1, 0, 'out', true, seconds);
+    } finally {
+      element.remove();
+    }
   }
 
   /** Screens of a scene (`scene.ui`). */
@@ -442,10 +529,20 @@ export class UiRuntime implements UiHost {
       : (any((p) => p.held('right')) ? 1 : 0) - (any((p) => p.held('left')) ? 1 : 0);
     const y = (any((p) => p.held('down')) ? 1 : 0) - (any((p) => p.held('up')) ? 1 : 0);
     const direction = directionOf(x, y);
+    // Hold time counts polls, each worth at most 100 ms: a stalled frame (a chunk loading, a slow
+    // device) must not turn a tap into a repeat.
     const now = performance.now();
-    if (direction && (direction !== this.repeat.direction || now >= this.repeat.next)) {
+    const elapsed = Math.min(100, Math.max(0, now - this.lastPoll));
+    this.lastPoll = now;
+    if (direction === this.repeat.direction) this.repeat.held += elapsed;
+    if (
+      direction &&
+      (direction !== this.repeat.direction || this.repeat.held >= this.repeat.next)
+    ) {
       const first = direction !== this.repeat.direction;
-      this.repeat = { direction, next: now + (first ? 380 : 90) };
+      this.repeat = first
+        ? { direction, next: 380, held: 0 }
+        : { direction, next: this.repeat.next + 90, held: this.repeat.held };
       let moved = this.focus.move(direction);
       if (!moved && direction.length > 5) {
         // Nothing diagonally: try each axis.
@@ -490,6 +587,7 @@ export class UiRuntime implements UiHost {
 
   /** Removes the layer. */
   destroy(): void {
+    this.fx.destroy();
     this.app.unmount();
     this.element.remove();
   }
@@ -499,9 +597,11 @@ export class UiRuntime implements UiHost {
  * Game plugin that installs the UI layer. The CLI adds it when the game depends on
  * `@blacklight/ui`; call it yourself with `createGame(config, { plugins: [ui()] })` otherwise.
  */
-export function ui(options: UiOptions = {}): (game: Game) => void {
-  return (game) => {
-    game.ui = new UiRuntime(game, options);
+export function ui(options: UiOptions = {}): (game: Game) => Promise<void> {
+  return async (game) => {
+    const runtime = new UiRuntime(game, options);
+    game.ui = runtime;
+    await runtime.ready;
   };
 }
 

@@ -53,6 +53,11 @@ export function getTheme(name = activeTheme.value): Theme {
   return theme;
 }
 
+/** Names of the registered themes. */
+export function themeNames(): string[] {
+  return [...themes.keys()];
+}
+
 const warned = new Set<string>();
 
 /**

@@ -4,9 +4,16 @@ import { defineConfig } from 'vite';
 export default defineConfig({
   plugins: [vue()],
   build: {
-    lib: { entry: 'src/index.ts', formats: ['es'], fileName: 'index', cssFileName: 'ui' },
+    lib: {
+      // The inspector is its own entry: games import it in dev builds only.
+      entry: { index: 'src/index.ts', inspector: 'src/inspector.ts' },
+      formats: ['es'],
+      cssFileName: 'ui',
+    },
     target: 'es2023',
     sourcemap: true,
-    rolldownOptions: { external: ['vue', 'motion', /^@blacklight\/core/, /prompt-urls/] },
+    rolldownOptions: {
+      external: ['vue', 'motion', 'inkjs', /^pixi\.js/, /^@blacklight\/core/, /prompt-urls/],
+    },
   },
 });

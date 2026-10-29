@@ -1,0 +1,122 @@
+{
+  "title": {
+    "name": "مطر النيون",
+    "subtitle": "رواية مرئية بمحرك Blacklight",
+    "new": "لعبة جديدة",
+    "continue": "متابعة",
+    "gallery": "المعرض",
+    "settings": "الإعدادات",
+    "lantern": "فانوس",
+    "lanternHint": "انقر على الفانوس"
+  },
+  "name": {
+    "title": "اسمك",
+    "label": "الاسم",
+    "start": "ابدأ",
+    "default": "آوي"
+  },
+  "gallery": {
+    "title": "المعرض",
+    "locked": "مقفل",
+    "unlocked": "{count} من {total} مفتوحة",
+    "street": "الحيّ القديم",
+    "rooftop": "ضوء السطح",
+    "night": "بعد المطر"
+  },
+  "story": {
+    "end": "النهاية",
+    "chapter": "الفصل الأول"
+  },
+  "speakers": {
+    "mira": "ميرا",
+    "ren": "رين"
+  },
+  "subtitles": {
+    "file": "intro-ar"
+  },
+  "actions": {
+    "confirm": "تأكيد",
+    "back": "رجوع",
+    "pause": "القائمة",
+    "jump": "قفز",
+    "action": "إجراء"
+  },
+  "bl": {
+    "common": {
+      "back": "رجوع",
+      "select": "اختيار",
+      "yes": "نعم",
+      "no": "لا",
+      "on": "تشغيل",
+      "off": "إيقاف"
+    },
+    "settings": {
+      "title": "الإعدادات",
+      "audio": "الصوت",
+      "video": "الشاشة",
+      "controls": "التحكم",
+      "language": "اللغة",
+      "accessibility": "إمكانية الوصول",
+      "master": "الصوت العام",
+      "music": "الموسيقى",
+      "sfx": "المؤثرات",
+      "voice": "الأصوات",
+      "ui": "الواجهة",
+      "fullscreen": "ملء الشاشة",
+      "uiScale": "حجم الواجهة",
+      "theme": "السمة",
+      "press": "اضغط مفتاحًا أو زرًا…",
+      "resetControls": "إعادة ضبط التحكم",
+      "textSize": "حجم النص",
+      "textSpeed": "سرعة النص",
+      "instant": "فوري",
+      "contrast": "تباين عالٍ",
+      "colorFilter": "مرشّح الألوان",
+      "reducedMotion": "تقليل الحركة",
+      "system": "النظام",
+      "subtitles": "الترجمة",
+      "subtitleSize": "حجم الترجمة",
+      "subtitleBackground": "خلفية الترجمة",
+      "filters": {
+        "none": "بدون",
+        "protanopia": "عمى الأحمر",
+        "deuteranopia": "عمى الأخضر",
+        "tritanopia": "عمى الأزرق",
+        "grayscale": "تدرّج رمادي"
+      }
+    },
+    "pause": {
+      "title": "إيقاف مؤقت",
+      "resume": "متابعة",
+      "settings": "الإعدادات",
+      "save": "حفظ",
+      "load": "تحميل",
+      "title_screen": "الشاشة الرئيسية",
+      "quit": "خروج",
+      "confirmTitle": "العودة إلى الشاشة الرئيسية؟ سيضيع التقدّم غير المحفوظ.",
+      "confirmQuit": "الخروج من اللعبة؟ سيضيع التقدّم غير المحفوظ."
+    },
+    "slots": {
+      "save": "حفظ",
+      "load": "تحميل",
+      "empty": "فارغ",
+      "slot": "الخانة {n}",
+      "overwrite": "استبدال هذا الحفظ؟",
+      "confirmLoad": "تحميل هذا الحفظ؟ سيضيع التقدّم غير المحفوظ.",
+      "delete": "حذف هذا الحفظ؟",
+      "saved": "تم الحفظ",
+      "deleteHint": "حذف",
+      "failed": "تعذّر الإكمال: {error}"
+    },
+    "dialogue": {
+      "auto": "تلقائي",
+      "skip": "تخطٍّ",
+      "log": "السجل",
+      "save": "حفظ",
+      "load": "تحميل",
+      "menu": "القائمة"
+    },
+    "backlog": { "title": "السجل" },
+    "cutscene": { "hold": "اضغط مطولًا للتخطي", "skip": "تخطٍّ" }
+  }
+}

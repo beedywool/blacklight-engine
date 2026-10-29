@@ -1,6 +1,17 @@
-import { computed, inject, onBeforeUnmount, shallowRef, type ComputedRef, type Ref } from 'vue';
+import {
+  computed,
+  inject,
+  onBeforeUnmount,
+  onMounted,
+  shallowRef,
+  type ComputedRef,
+  type Ref,
+} from 'vue';
+import type { Filter } from 'pixi.js';
 import type { Device, Game } from '@blacklight/core';
 import { FOCUS_ATTR, GROUP_ATTR } from './focus';
+import type { FxName } from './fx/filters';
+import type { FxHandle, FxOptions } from './fx/fx-layer';
 import { padFamily, type PadFamily } from './prompts';
 import type { ScreenEntry, UiRuntime, UiStack } from './runtime';
 import { Timeline } from './timeline';
@@ -178,4 +189,28 @@ export function useTimeline(clock: 'ui' | 'game' = 'ui'): Timeline {
   const timeline = new Timeline(game, clock);
   onBeforeUnmount(() => timeline.stop('freeze'));
   return timeline;
+}
+
+/**
+ * Adds an FX layer effect while this component is mounted: it fades in when the screen opens and
+ * out when it closes (a blurred game behind a pause menu, a glitch behind a corrupted save screen).
+ *
+ * @example
+ * ```ts
+ * useFx('blur', { strength: 0.6, fade: 250 });
+ * ```
+ */
+export function useFx(
+  effect: FxName | Filter,
+  options: FxOptions = {},
+): { handle: FxHandle | undefined } {
+  const runtime = useUiRuntime();
+  const state: { handle: FxHandle | undefined } = { handle: undefined };
+  onMounted(() => {
+    state.handle = runtime.fx.add(effect, { fade: 250, ...options });
+  });
+  onBeforeUnmount(() => {
+    void state.handle?.remove(options.fade ?? 200);
+  });
+  return state;
 }

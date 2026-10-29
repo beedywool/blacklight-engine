@@ -1,0 +1,44 @@
+{
+  "title": {
+    "name": "NEON RAIN",
+    "subtitle": "A Blacklight Engine visual novel",
+    "new": "NEW GAME",
+    "continue": "CONTINUE",
+    "gallery": "GALLERY",
+    "settings": "SETTINGS",
+    "lantern": "Lantern",
+    "lanternHint": "Click the lantern"
+  },
+  "name": {
+    "title": "YOUR NAME",
+    "label": "NAME",
+    "start": "START",
+    "default": "Aoi"
+  },
+  "gallery": {
+    "title": "GALLERY",
+    "locked": "LOCKED",
+    "unlocked": "{count} of {total} unlocked",
+    "street": "Old district",
+    "rooftop": "Rooftop light",
+    "night": "After the rain"
+  },
+  "story": {
+    "end": "THE END",
+    "chapter": "Chapter 1"
+  },
+  "speakers": {
+    "mira": "Mira",
+    "ren": "Ren"
+  },
+  "subtitles": {
+    "file": "intro-en"
+  },
+  "actions": {
+    "confirm": "CONFIRM",
+    "back": "BACK",
+    "pause": "MENU",
+    "jump": "JUMP",
+    "action": "ACTION"
+  }
+}

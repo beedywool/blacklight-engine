@@ -269,6 +269,24 @@ The global stack has the same methods as a scene stack. It finds scene-local scr
 | `ticks`                    | Event bus emitting `step` each time the UI has read input.                       |
 | `element`                  | The layer's root element.                                                        |
 
+## More
+
+| Page                                | Covers                                                                 |
+| ----------------------------------- | ---------------------------------------------------------------------- |
+| [Transitions](./ui-transitions)     | `iris`, `ink`, `shatter`, `slices`, `wipe`… between screens and scenes |
+| [Rich text](./ui-rich-text)         | Color, size, shake, wave, icons, input glyphs, typewriter              |
+| [Dialogue](./ui-dialogue)           | Ink stories, dialogue box, choices, backlog, auto and skip, saves      |
+| [FX layer](./ui-fx)                 | Shaders on the game and on components (`<PixiRender>`)                 |
+| [World-anchored UI](./ui-world)     | Name tags following objects, damage numbers                            |
+| [Localization](./ui-localization)   | `locales/`, plurals, CJK, right to left, font subsetting               |
+| [Accessibility](./ui-accessibility) | Text size, contrast, color filters, reduced motion, subtitles          |
+| [Ready-made screens](./ui-screens)  | Settings, pause menu, save/load slots                                  |
+| [Video](./ui-video)                 | Background videos, cutscenes, subtitles                                |
+
+## Inspector
+
+In dev builds (`blacklight dev`), F9 opens the UI inspector in the top-right corner of the game: the component under the pointer with its chain of parent components, props and state, an outline around it, the focused element and the screen it belongs to, and the screen stack (component, id, mode, owner scene). The CLI's generated entry installs it only in dev, from the `@blacklight/ui/inspector` entry, so release builds do not contain it. Without the CLI, call `installInspector(game, { key })` from that entry yourself; it returns `{ toggle, destroy }`. Component names and state come from Vue's development build, so the inspector shows nothing useful in a production build of Vue.
+
 ## Limits
 
 - The UI is HTML over the canvas: shaders and Pixi filters cannot read or distort it (see [accepted limitations](./limitations#shaders-cannot-read-the-ui)).

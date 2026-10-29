@@ -115,6 +115,8 @@ await this.goto('results', undefined, { transition: wipe });
 
 The container is emptied after the transition. Drawing uses Pixi directly: add `pixi.js` to the game's dependencies, at the version `@blacklight/core` uses, to import it.
 
+A transition can also be registered under a name in `game.transitions` (a `Map`) and used by name: `goto('results', undefined, { transition: 'wipe' })`. `@blacklight/ui` registers its whole [transition library](./ui-transitions) there (`iris`, `ink`, `shatter`, `slices`, `wipe`, `zoom`, `distort`…), drawn over the canvas and the screens; an unknown name throws with the closest known names.
+
 ### Loading
 
 While a scene loads after the first one, a thin progress bar is drawn at the bottom of the screen, and `game.events` emits `loading` with `{ scene, progress }`. `game.preload(name)` loads a scene ahead of time, so the next `goto` to it starts at once.
