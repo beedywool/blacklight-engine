@@ -85,15 +85,16 @@ test('hot reload keeps the state of scenes, objects and screens', async ({ page 
     (scene.find('Hero') as unknown as { hp: number }).hp = 2;
   });
   const before = await read();
-  expect(before).toMatchObject({ x: 105, ticks: 30, rate: 1, coins: 1, hp: 2 });
+  // `ticks` counts every step since create(), including those before the test paused the game.
+  expect(before).toMatchObject({ x: 105, rate: 1, coins: 1, hp: 2 });
 
   // Scene module: rebuilt from the new class, state restored.
   edit('scenes/arena/arena.scene.ts', 'return 1;', 'return 100;');
   await expect.poll(async () => (await read()).rate, { timeout: 15_000 }).toBe(100);
   const afterScene = await read();
-  expect(afterScene).toMatchObject({ x: 105, ticks: 30, coins: 1, hp: 2, marker: 1 });
+  expect(afterScene).toMatchObject({ x: 105, ticks: before.ticks, coins: 1, hp: 2, marker: 1 });
   await page.evaluate(() => window.blacklight.step(1));
-  expect((await read()).ticks).toBe(130);
+  expect((await read()).ticks).toBe(before.ticks + 100);
 
   // Object module: live instance patched, same object, same position.
   await page.evaluate(() => {
