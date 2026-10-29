@@ -87,6 +87,14 @@ export default defineConfig({
         ],
       },
       {
+        text: 'Desktop and release',
+        items: [
+          { text: 'Desktop and Steam', link: '/guide/desktop' },
+          { text: 'Saves', link: '/guide/saves' },
+          { text: 'Production hardening', link: '/guide/security' },
+        ],
+      },
+      {
         text: 'Online',
         items: [
           { text: 'Networking', link: '/guide/networking' },
