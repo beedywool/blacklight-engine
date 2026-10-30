@@ -22,9 +22,13 @@ import type { Tween, TweenOptions } from '../tween';
 
 /** Properties accepted by `spawn(Class, props)`: any public field of the object. */
 export type SpawnProps<T> = {
-  [K in keyof T as T[K] extends (...args: never[]) => unknown ? never : K]?: T[K] extends Vector2
-    ? { x: number; y: number }
-    : T[K];
+  [
+    K in keyof T as T[K] extends (...args: never[]) => unknown
+      ? never
+      : K extends 'scale'
+        ? never
+        : K
+  ]?: T[K] extends Vector2 ? { x: number; y: number } : T[K];
 } & {
   /** Scene layer to add the object to. */
   layer?: string;
