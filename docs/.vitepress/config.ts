@@ -115,6 +115,15 @@ export default defineConfig({
         ],
       },
       {
+        text: 'Deployment',
+        items: [
+          { text: 'Web games (PWA)', link: '/guide/deploy-web' },
+          { text: 'Docs site and playground', link: '/guide/deploy-docs' },
+          { text: 'Module registry', link: '/guide/deploy-registry' },
+          { text: 'Servers', link: '/guide/deploy-server' },
+        ],
+      },
+      {
         text: 'Reference',
         items: [{ text: 'Accepted limitations', link: '/guide/limitations' }],
       },
