@@ -24,21 +24,97 @@ function pages(dir = docs): string[] {
   });
 }
 
-/** `src` of every `<LiveExample>` by page URL. */
+/** URL of a docs page from its file. */
+function pageUrl(file: string): string {
+  return `/${relative(docs, file)
+    .replace(/\\/g, '/')
+    .replace(/(index)?\.md$/, '')}`;
+}
+
+/** `src` of every `<LiveExample>` and `<BlExercise>` (both draw one live example) by page URL. */
 function examplesByPage(): Map<string, string[]> {
   const result = new Map<string, string[]>();
   for (const file of pages()) {
-    const sources = [...readFileSync(file, 'utf8').matchAll(/<LiveExample\s[^>]*src="([^"]+)"/g)];
+    const sources = [
+      ...readFileSync(file, 'utf8').matchAll(/<(?:LiveExample|BlExercise)\s[^>]*src="([^"]+)"/g),
+    ];
     if (!sources.length) continue;
-    const url = `/${relative(docs, file)
-      .replace(/\\/g, '/')
-      .replace(/(index)?\.md$/, '')}`;
     result.set(
-      url,
+      pageUrl(file),
       sources.map((match) => match[1]!),
     );
   }
   return result;
+}
+
+/** `src` of every `<BlExercise>` by page URL. */
+function exercisesByPage(): Map<string, string[]> {
+  const result = new Map<string, string[]>();
+  for (const file of pages()) {
+    const sources = [...readFileSync(file, 'utf8').matchAll(/<BlExercise\s[^>]*src="([^"]+)"/g)];
+    if (sources.length)
+      result.set(
+        pageUrl(file),
+        sources.map((match) => match[1]!),
+      );
+  }
+  return result;
+}
+
+/**
+ * Tutorial exercises from the files: `tutorials/<topic>/<n>-<name>.ts` or a folder of that name
+ * holding a `main.ts`, each with a `.solution` twin. Other files there (checks) are helpers.
+ */
+function tutorialFiles(): { starts: string[]; solutions: string[] } {
+  const starts: string[] = [];
+  const solutions: string[] = [];
+  const root = join(examples, 'tutorials');
+  for (const topic of readdirSync(root)) {
+    const dir = join(root, topic);
+    if (!statSync(dir).isDirectory()) continue;
+    for (const name of readdirSync(dir)) {
+      const id = /^(\d+-[\w-]+?)(\.solution)?(\.ts)?$/.exec(name);
+      if (!id || (!id[3] && !existsSync(join(dir, name, 'main.ts')))) continue;
+      (id[2] ? solutions : starts).push(`tutorials/${topic}/${id[1]}${id[2] ?? ''}`);
+    }
+  }
+  return { starts: starts.sort(), solutions: solutions.sort() };
+}
+
+/**
+ * Lines of `after` that are not in `before` (longest common subsequence), blank lines left out,
+ * as a VitePress highlight list: `{3,7-9}`.
+ */
+function changedLines(before: string, after: string): string {
+  const a = before.split('\n');
+  const b = after.split('\n');
+  const common = Array.from({ length: a.length + 1 }, () =>
+    new Array<number>(b.length + 1).fill(0),
+  );
+  for (let i = a.length - 1; i >= 0; i--)
+    for (let j = b.length - 1; j >= 0; j--)
+      common[i]![j] =
+        a[i] === b[j]
+          ? common[i + 1]![j + 1]! + 1
+          : Math.max(common[i + 1]![j]!, common[i]![j + 1]!);
+  const added: number[] = [];
+  for (let i = 0, j = 0; j < b.length;) {
+    if (i < a.length && a[i] === b[j]) {
+      i++;
+      j++;
+    } else if (i < a.length && common[i + 1]![j]! >= common[i]![j + 1]!) i++;
+    else {
+      if (b[j]!.trim()) added.push(j + 1);
+      j++;
+    }
+  }
+  const ranges: [number, number][] = [];
+  for (const line of added) {
+    const last = ranges.at(-1);
+    if (last && last[1] === line - 1) last[1] = line;
+    else ranges.push([line, line]);
+  }
+  return `{${ranges.map(([from, to]) => (from === to ? `${from}` : `${from}-${to}`)).join(',')}}`;
 }
 
 /** Example ids from the files: `group/name.ts` and folders `group/name/` holding a `main.ts`. */
@@ -46,14 +122,17 @@ function exampleFiles(): string[] {
   const ids: string[] = [];
   for (const group of readdirSync(examples)) {
     const dir = join(examples, group);
-    if (['assets', 'playground', 'getting-started'].includes(group) || !statSync(dir).isDirectory())
+    if (
+      ['assets', 'playground', 'getting-started', 'tutorials'].includes(group) ||
+      !statSync(dir).isDirectory()
+    )
       continue;
     for (const name of readdirSync(dir)) {
       if (name.endsWith('.ts')) ids.push(`${group}/${name.slice(0, -3)}`);
       else if (existsSync(join(dir, name, 'main.ts'))) ids.push(`${group}/${name}`);
     }
   }
-  return ids.sort();
+  return [...ids, ...tutorialFiles().starts].sort();
 }
 
 /**
@@ -194,6 +273,120 @@ test('a broken example fails the check', async ({ page }) => {
   await live.getByRole('button', { name: 'Reset' }).click();
   await expect(live).not.toHaveAttribute('data-run', run);
   expect(await checkExample(live, consoleErrors)).toEqual([]);
+});
+
+/** Files of an example id, relative to it: `main.ts` for a single file. */
+function exampleSources(id: string): Map<string, string> {
+  const files = new Map<string, string>();
+  if (existsSync(join(examples, `${id}.ts`))) {
+    files.set('main.ts', readFileSync(join(examples, `${id}.ts`), 'utf8'));
+    return files;
+  }
+  const walk = (dir: string) => {
+    for (const name of readdirSync(dir)) {
+      const path = join(dir, name);
+      if (statSync(path).isDirectory()) walk(path);
+      else if (/\.(ts|json)$/.test(name))
+        files.set(
+          relative(join(examples, id), path).replace(/\\/g, '/'),
+          readFileSync(path, 'utf8'),
+        );
+    }
+  };
+  walk(join(examples, id));
+  return files;
+}
+
+test('every exercise has a solution, shown on its page with the changed lines highlighted', () => {
+  const { starts, solutions } = tutorialFiles();
+  const exercises = [...exercisesByPage()].flatMap(([url, ids]) => ids.map((id) => ({ url, id })));
+  expect(exercises.map(({ id }) => id).sort()).toEqual(starts);
+  expect(starts.map((id) => `${id}.solution`)).toEqual(solutions);
+  expect(starts.length).toBeGreaterThanOrEqual(20);
+  const problems: string[] = [];
+  for (const { url, id } of exercises) {
+    const page = readFileSync(join(docs, `${url.slice(1)}.md`), 'utf8');
+    const shown = new Map(
+      [...page.matchAll(/^<<< @\/examples\/(\S+?)(\{[^}]*\})?$/gm)].map((m) => [
+        m[1]!,
+        m[2] ?? '{}',
+      ]),
+    );
+    const start = exampleSources(id);
+    const solution = exampleSources(`${id}.solution`);
+    expect([...solution.keys()].sort(), id).toEqual([...start.keys()].sort());
+    let changed = 0;
+    for (const [file, text] of solution) {
+      if (text === start.get(file)) continue;
+      changed++;
+      const path =
+        file === 'main.ts' && existsSync(join(examples, `${id}.ts`))
+          ? `${id}.solution.ts`
+          : `${id}.solution/${file}`;
+      const lines = changedLines(start.get(file)!, text);
+      if (!shown.has(path))
+        problems.push(`${url}: ${path} is not shown (<<< @/examples/${path}${lines})`);
+      else if (shown.get(path) !== lines)
+        problems.push(`${url}: ${path} highlights ${shown.get(path)}, changed lines are ${lines}`);
+    }
+    if (!changed) problems.push(`${id}: the solution is the same as the start`);
+  }
+  expect(problems).toEqual([]);
+});
+
+/** Clicks the preview of a live example and holds each key for a moment. */
+async function pressKeys(page: Page, live: Locator, keys: string[]): Promise<void> {
+  await live.locator('.bl-live__preview iframe').click();
+  for (const key of keys) {
+    await page.keyboard.down(key);
+    await page.waitForTimeout(400);
+    await page.keyboard.up(key);
+  }
+}
+
+test('every exercise solution runs, and each check passes on the solution, not on the start', async ({
+  page,
+}) => {
+  test.setTimeout(900_000);
+  const consoleErrors = watchConsole(page);
+  const failures: string[] = [];
+  let checked = 0;
+  for (const [url, ids] of exercisesByPage()) {
+    await page.goto(`${site}${url}`);
+    const exercises = page.locator('.bl-exercise');
+    await expect(exercises).toHaveCount(ids.length, { timeout: 30_000 });
+    for (let i = 0; i < ids.length; i++) {
+      const live = exercises.nth(i).locator('.bl-live');
+      const fail = (problem: string) => failures.push(`${url} ${ids[i]}: ${problem}`);
+      const checks = (await live.getAttribute('data-check')) === 'true';
+      const keys = (await live.getAttribute('data-keys'))?.split(' ') ?? [];
+      // The start is covered by "every live example runs…"; here it must not pass its check.
+      await live.scrollIntoViewIfNeeded();
+      await expect(live).toHaveAttribute('data-status', /running|error/, { timeout: 45_000 });
+      if (checks) {
+        await pressKeys(page, live, keys);
+        await page.waitForTimeout(1_000);
+        if ((await live.getAttribute('data-done')) !== 'false') fail('the start passes the check');
+      }
+      const run = (await live.getAttribute('data-run')) ?? '0';
+      await live.getByRole('button', { name: 'Solution' }).click();
+      await expect(live).not.toHaveAttribute('data-run', run, { timeout: 10_000 });
+      await expect(live).toHaveAttribute('data-solution', 'true');
+      for (const problem of await checkExample(live, consoleErrors)) fail(`solution ${problem}`);
+      if (checks) {
+        const deadline = Date.now() + 15_000;
+        while ((await live.getAttribute('data-done')) !== 'true' && Date.now() < deadline) {
+          if (keys.length) await pressKeys(page, live, keys);
+          await page.waitForTimeout(250);
+        }
+        if ((await live.getAttribute('data-done')) !== 'true') fail('the solution fails the check');
+        else await expect(exercises.nth(i).locator('.bl-exercise__status')).toContainText('Done');
+      }
+      checked++;
+    }
+  }
+  expect(failures).toEqual([]);
+  expect(checked).toBeGreaterThanOrEqual(20);
 });
 
 test('a type error in an example fails pnpm typecheck', () => {

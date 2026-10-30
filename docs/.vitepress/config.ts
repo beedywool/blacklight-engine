@@ -49,6 +49,13 @@ const guide: DefaultTheme.SidebarItem[] = [
     ],
   },
   {
+    text: 'Tutorials',
+    items: [
+      { text: 'How the tutorials work', link: '/tutorials/' },
+      { text: 'Camera', link: '/tutorials/camera' },
+    ],
+  },
+  {
     text: 'Essentials',
     items: [
       { text: 'Project layout', link: '/guide/project-layout' },
@@ -199,6 +206,7 @@ export default defineConfig({
     logo: { src: '/logo_bulb_only.png', alt: '' },
     nav: [
       { text: 'Guide', link: '/guide/getting-started' },
+      { text: 'Tutorials', link: '/tutorials/' },
       { text: 'Recipes', link: '/recipes/' },
       { text: 'API', link: '/api/' },
       { text: 'Playground', link: '/playground' },
@@ -208,6 +216,7 @@ export default defineConfig({
       '/guide/': guide,
       '/behaviors/': guide,
       '/recipes/': guide,
+      '/tutorials/': guide,
       '/api/': apiSidebar(),
     },
     search: { provider: 'local' },

@@ -2,7 +2,9 @@
 // <LiveExample src="behaviors/platformer" />: the example's code in an editor next to the real
 // engine running it. Every edit re-runs the preview after a short pause in typing.
 import { computed, onBeforeUnmount, onMounted, ref, shallowRef } from 'vue';
+import type { Game } from '@blacklight/core';
 import type { ProjectFiles, RenderReport } from '../../../runner/protocol';
+import type { Check } from '../../../examples/tutorials/check';
 import { loadExample } from '../examples';
 import CodePane from './CodePane.vue';
 import RunnerFrame from './RunnerFrame.vue';
@@ -12,9 +14,14 @@ const props = withDefaults(
     src: string;
     /** One line under the title: what to try in the preview. */
     hint?: string;
+    /** Example loaded by the "Solution" button (exercises). */
+    solution?: string;
+    /** Polled while the preview runs; `done` is emitted once it passes. */
+    check?: Check;
   }>(),
-  { hint: '' },
+  { hint: '', solution: undefined, check: undefined },
 );
+const emit = defineEmits<{ done: [done: boolean] }>();
 
 const DEBOUNCE_MS = 600;
 const root = ref<HTMLElement | null>(null);
@@ -28,6 +35,11 @@ const runs = ref(0);
 const status = ref<'idle' | 'loading' | 'running' | 'error'>('idle');
 const error = ref('');
 const report = ref<RenderReport>();
+const runner = ref<InstanceType<typeof RunnerFrame> | null>(null);
+/** The files shown come from the solution (until Reset or an edit). */
+const showingSolution = ref(false);
+const done = ref(false);
+let poll: ReturnType<typeof setInterval> | undefined;
 /** Runs started so far, for tests waiting for the next one. */
 const started = ref(0);
 const changed = computed(
@@ -41,6 +53,7 @@ let observer: IntersectionObserver | undefined;
 
 function onChange(path: string, text: string) {
   if (!files.value || files.value[path] === text) return;
+  showingSolution.value = false;
   files.value = { ...files.value, [path]: text };
   clearTimeout(timer);
   timer = setTimeout(() => (running.value = files.value), DEBOUNCE_MS);
@@ -57,11 +70,48 @@ function onStatus(next: 'loading' | 'running' | 'error', detail?: RenderReport |
   }
   if (next === 'error' && !error.value) error.value = String(detail);
   if (next === 'running') report.value = detail as RenderReport;
+  watchCheck();
+}
+
+function setDone(value: boolean) {
+  if (done.value === value) return;
+  done.value = value;
+  emit('done', value);
+}
+
+/** Polls the check while the preview runs; a run that passed it once stays done. */
+function watchCheck() {
+  clearInterval(poll);
+  poll = undefined;
+  if (status.value === 'loading') setDone(false);
+  if (!props.check || status.value !== 'running' || done.value) return;
+  poll = setInterval(() => {
+    const window = runner.value?.window() as (Window & { blacklight?: Game }) | undefined;
+    let passed = false;
+    try {
+      passed = !!window?.blacklight && props.check!.done(window.blacklight, window.document);
+    } catch {
+      // The reader's code may leave the game half built: not done yet.
+    }
+    if (!passed) return;
+    setDone(true);
+    clearInterval(poll);
+  }, 250);
+}
+
+async function showSolution() {
+  if (!props.solution) return;
+  const example = await loadExample(props.solution);
+  files.value = example.files;
+  running.value = example.files;
+  if (!example.editable.includes(active.value)) active.value = example.editable[0]!;
+  showingSolution.value = true;
 }
 
 function reset() {
   files.value = original.value;
   running.value = original.value;
+  showingSolution.value = false;
 }
 
 onMounted(async () => {
@@ -77,7 +127,10 @@ onMounted(async () => {
   observer = new IntersectionObserver(
     ([entry]) => {
       visible.value = entry!.isIntersecting;
-      if (!entry!.isIntersecting) status.value = 'idle';
+      if (!entry!.isIntersecting) {
+        status.value = 'idle';
+        watchCheck();
+      }
     },
     { rootMargin: '400px 0px' },
   );
@@ -86,6 +139,7 @@ onMounted(async () => {
 onBeforeUnmount(() => {
   observer?.disconnect();
   clearTimeout(timer);
+  clearInterval(poll);
 });
 </script>
 
@@ -98,6 +152,10 @@ onBeforeUnmount(() => {
     :data-lit="report?.lit"
     :data-error="error || undefined"
     :data-run="started"
+    :data-solution="showingSolution || undefined"
+    :data-check="check ? 'true' : undefined"
+    :data-done="check ? String(done) : undefined"
+    :data-keys="check?.keys?.join(' ')"
   >
     <div class="bl-live__bar">
       <div class="bl-live__tabs" role="tablist">
@@ -116,6 +174,14 @@ onBeforeUnmount(() => {
       <span class="bl-live__status" :class="`is-${status}`">{{
         status === 'idle' ? 'paused' : status
       }}</span>
+      <button
+        v-if="solution && !showingSolution"
+        type="button"
+        class="bl-live__button"
+        @click="showSolution"
+      >
+        Solution
+      </button>
       <button v-if="changed" type="button" class="bl-live__button" @click="reset">Reset</button>
       <button type="button" class="bl-live__button" @click="runs++">Run again</button>
     </div>
@@ -126,6 +192,7 @@ onBeforeUnmount(() => {
       <div class="bl-live__preview">
         <RunnerFrame
           v-if="visible && running"
+          ref="runner"
           :files="running"
           mode="example"
           :run="runs"

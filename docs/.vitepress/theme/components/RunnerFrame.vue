@@ -52,6 +52,8 @@ onMounted(() => {
 });
 onBeforeUnmount(() => removeEventListener('message', onMessage));
 watch(() => [props.files, props.run], restart);
+// Same origin: the page reads the running game for exercise checks.
+defineExpose({ window: () => frame.value?.contentWindow ?? undefined });
 </script>
 
 <template>
