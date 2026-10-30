@@ -159,3 +159,29 @@ Assets:
 | electron-builder      | 26.18.1 | MIT          | @blacklight/native/build (installers)             |
 | @electron/fuses       | 2.1.3   | MIT          | @blacklight/native/build (fuses, verification)    |
 | javascript-obfuscator | 5.9.0   | BSD-2-Clause | @blacklight/cli (release obfuscation, build time) |
+
+## Documentation site: live examples and API reference (phase 4a, not inside games)
+
+| Package                                                                                                                                                              | Version | License    | Used by                                        |
+| -------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- | ---------- | ---------------------------------------------- |
+| codemirror                                                                                                                                                           | 6.0.2   | MIT        | docs live examples (editor)                    |
+| @codemirror/state                                                                                                                                                    | 6.7.6   | MIT        | codemirror                                     |
+| @codemirror/view                                                                                                                                                     | 6.43.15 | MIT        | codemirror                                     |
+| @codemirror/commands                                                                                                                                                 | 6.11.1  | MIT        | codemirror                                     |
+| @codemirror/language                                                                                                                                                 | 6.13.1  | MIT        | codemirror                                     |
+| @codemirror/lang-javascript                                                                                                                                          | 6.2.5   | MIT        | codemirror (TypeScript mode)                   |
+| @codemirror/lang-json                                                                                                                                                | 6.0.2   | MIT        | codemirror (JSON mode)                         |
+| @codemirror/autocomplete                                                                                                                                             | 6.20.4  | MIT        | codemirror                                     |
+| @codemirror/lint                                                                                                                                                     | 6.9.7   | MIT        | codemirror                                     |
+| @codemirror/search                                                                                                                                                   | 6.7.2   | MIT        | codemirror                                     |
+| @lezer/common, lr, highlight, javascript, json                                                                                                                       | 1.x     | MIT        | codemirror parsers                             |
+| style-mod                                                                                                                                                            | 4.1.4   | MIT        | codemirror                                     |
+| w3c-keyname                                                                                                                                                          | 2.2.8   | MIT        | codemirror                                     |
+| crelt                                                                                                                                                                | 1.0.7   | MIT        | codemirror                                     |
+| @marijn/find-cluster-break                                                                                                                                           | 1.0.4   | MIT        | codemirror                                     |
+| sucrase                                                                                                                                                              | 3.35.1  | MIT        | docs runner (strips TypeScript in the browser) |
+| lines-and-columns                                                                                                                                                    | 1.2.4   | MIT        | sucrase                                        |
+| typedoc                                                                                                                                                              | 0.28.20 | Apache-2.0 | API reference (build time)                     |
+| typedoc-plugin-markdown                                                                                                                                              | 4.14.1  | MIT        | API reference (build time)                     |
+| typedoc-vitepress-theme                                                                                                                                              | 1.1.4   | MIT        | API reference (build time)                     |
+| Example art and sounds (`docs/examples/assets`, generated by `docs/scripts/generate-example-assets.mjs`; video from `e2e/fixtures/generate-visual-novel-assets.mjs`) | —       | CC0        | docs examples, playground, getting started     |

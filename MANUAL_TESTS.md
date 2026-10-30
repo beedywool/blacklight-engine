@@ -237,3 +237,11 @@ With an Xbox Series, a DualSense, a Switch Pro and a generic USB pad, in the des
 ## Deep links on desktop
 
 1. With the deb installed (Linux) or the app installed (Windows, macOS), open `dev.blacklight.fixture.desktop:/oauth/callback?code=1` from a browser. Expected: the running game receives `deeplink` with that URL (the OIDC login of the accounts module completes the same way).
+
+## Documentation site (phase 4a, any desktop browser and a phone)
+
+1. `pnpm build && pnpm docs:build && pnpm --filter blacklight-docs preview`, open `http://localhost:4173/behaviors/platformer`. Expected: the preview starts when scrolled into view; after a click on it, arrows and Space move and jump the character.
+2. Change `jumpStrength` in the editor. Expected: the preview restarts within a second with the new jump.
+3. Open `/playground`, edit a file, copy the address bar into another browser. Expected: the same files and the same game.
+4. Open `/guide/ui-widgets` on a phone. Expected: editor under each preview, previews readable, taps reach the widgets.
+5. Serve `docs/.vitepress/dist` behind the production CSP (see the deployment guide) and open a page with examples. Expected: no CSP violation in the console; the runner page carries its own policy (`blob:` scripts).
