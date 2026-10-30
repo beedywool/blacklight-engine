@@ -15,6 +15,7 @@ import { blacklightModules, gameModulesTypes } from './modules';
 import { fontSubsetting } from './fonts';
 import { ink } from './ink';
 import { loadGameConfig, scanAssets, typesFile } from './project';
+import { pwa } from './pwa';
 import { blacklightTooling } from './tooling';
 
 /** Import aliases available in every game (SPEC §6.1). */
@@ -291,6 +292,11 @@ export interface ViteConfigOptions {
   host?: string | boolean;
   open?: boolean;
   strictPort?: boolean;
+  /**
+   * Make the build a Progressive Web App (manifest, icons, offline service worker). Only the web
+   * target sets it: desktop and mobile builds already have their files on the device.
+   */
+  pwa?: boolean;
 }
 
 /** Full Vite configuration for a game; the CLI passes it to Vite's `createServer` / `build`. */
@@ -313,6 +319,7 @@ export function createViteConfig(gameRoot: string, options: ViteConfigOptions = 
       ink(),
       fontSubsetting({ root }),
       hardening({ root }),
+      ...(options.pwa ? [pwa({ root })] : []),
     ],
     resolve: {
       // One copy of each, even when engine packages are linked from a checkout.
