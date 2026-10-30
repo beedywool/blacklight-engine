@@ -124,13 +124,13 @@ onUiStep(
 }
 .select__players {
   position: absolute;
-  left: 640px;
+  right: 100px;
   top: 70px;
   display: flex;
   align-items: center;
   gap: 8px;
   font: 44px var(--bl-font-display);
-  color: #ffd60a;
+  color: #fff;
 }
 .select__cards {
   position: absolute;

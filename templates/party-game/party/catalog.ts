@@ -17,7 +17,7 @@ export interface MiniGameInfo {
   minPlayers: number;
   maxPlayers: number;
   settings: readonly [MiniGameSetting, MiniGameSetting];
-  /** Card art in `assets/cards/`. */
+  /** Card art (`assets/cards/<scene>.svg`). */
   art: string;
 }
 
@@ -35,7 +35,7 @@ export const MINI_GAMES = [
       { label: 'ARENA', options: ['OPEN', 'PILLARS', 'CROSS'] },
       { label: 'ENEMIES', options: ['1', '2', '3'], initial: 1 },
     ],
-    art: 'cards/survival-vs',
+    art: '@assets/cards/survival-vs',
   },
   {
     scene: 'air-hockey',
@@ -47,7 +47,7 @@ export const MINI_GAMES = [
       { label: 'TEAMS', options: ['ALTERNATE', 'HALVES', 'ONE VS ALL'] },
       { label: 'GOALS TO WIN', options: ['3', '5', '7', '10'], initial: 1 },
     ],
-    art: 'cards/air-hockey',
+    art: '@assets/cards/air-hockey',
   },
   {
     scene: 'fifty-fifty',
@@ -59,7 +59,7 @@ export const MINI_GAMES = [
       { label: 'MODE', options: ['LAST STANDING', 'ALL OUT'] },
       { label: 'LIVES', options: ['1', '2', '3'], initial: 1 },
     ],
-    art: 'cards/fifty-fifty',
+    art: '@assets/cards/fifty-fifty',
   },
   {
     scene: 'obstacles',
@@ -71,7 +71,7 @@ export const MINI_GAMES = [
       { label: 'START SPEED', options: ['NORMAL', 'FAST'] },
       { label: 'GAPS', options: ['WIDE', 'NARROW'] },
     ],
-    art: 'cards/obstacles',
+    art: '@assets/cards/obstacles',
   },
   {
     scene: 'hide-and-seek',
@@ -83,7 +83,7 @@ export const MINI_GAMES = [
       { label: 'SEEKER', options: ['RANDOM', 'PLAYER 1'] },
       { label: 'HIDING TIME', options: ['15 S', '10 S', '5 S'] },
     ],
-    art: 'cards/hide-and-seek',
+    art: '@assets/cards/hide-and-seek',
   },
   {
     scene: 'push-push',
@@ -95,7 +95,7 @@ export const MINI_GAMES = [
       { label: 'RING', options: ['LARGE', 'SMALL'] },
       { label: 'TIME LIMIT', options: ['60 S', '30 S', '90 S'] },
     ],
-    art: 'cards/push-push',
+    art: '@assets/cards/push-push',
   },
 ] as const satisfies readonly MiniGameInfo[];
 
