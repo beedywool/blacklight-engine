@@ -171,6 +171,7 @@ const guide: DefaultTheme.SidebarItem[] = [
     items: [
       { text: 'API reference', link: '/api/' },
       { text: 'Playground', link: '/playground' },
+      { text: 'Benchmarks', link: '/benchmarks' },
       { text: 'Accepted limitations', link: '/guide/limitations' },
     ],
   },
