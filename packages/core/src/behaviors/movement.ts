@@ -381,7 +381,15 @@ export class SineWave extends Behavior<SineOptions> {
   }
 }
 
-/** Turns `object.rotation` toward an angle at a maximum speed (degrees/s); helper for turrets. */
+/**
+ * Turns `object.rotation` toward `angle` (radians, like `rotation`) at most `degreesPerSecond`;
+ * helper for turrets.
+ *
+ * @example
+ * ```ts
+ * turnTowards(this, Math.atan2(target.y - this.y, target.x - this.x), 180, dt);
+ * ```
+ */
 export function turnTowards(
   object: GameObject,
   angle: number,

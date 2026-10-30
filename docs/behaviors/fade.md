@@ -8,14 +8,14 @@ this.spawn(DamageNumber, { x, y, text: '12' }).addBehavior(
 );
 ```
 
-| Option    | Default | Meaning                                  |
-| --------- | ------- | ---------------------------------------- |
-| `fadeIn`  | none    | Fade in over this many ms when attached. |
-| `wait`    | `0`     | Then wait this long, ms.                 |
-| `fadeOut` | none    | Then fade out over this many ms.         |
-| `destroy` | `true`  | Destroy the object once faded out.       |
+| Option    | Default | Meaning                                                                     |
+| --------- | ------- | --------------------------------------------------------------------------- |
+| `fadeIn`  | none    | Fade in over this many ms when attached.                                    |
+| `wait`    | `0`     | Then wait this long, ms.                                                    |
+| `fadeOut` | none    | Then fade out over this many ms.                                            |
+| `destroy` | `true`  | Destroy the object once faded out; `false` keeps it for a later `fadeIn()`. |
 
-`fadeOut(ms)` starts fading out now (300 ms when neither the argument nor the option gives a duration).
+`fadeOut(ms)` starts fading out now (300 ms when neither the argument nor the option gives a duration). `fadeIn(ms)` starts fading in now from the current alpha and cancels a fade out; with `destroy: false` it brings back an object that faded out.
 
 ## Example
 

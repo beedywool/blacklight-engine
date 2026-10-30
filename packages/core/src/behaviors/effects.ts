@@ -45,7 +45,7 @@ export interface FadeOptions {
   /** Then wait this long (ms) and fade out over `fadeOut` ms. */
   wait?: number;
   fadeOut?: number;
-  /** Destroy the object once faded out. @defaultValue `true` */
+  /** Destroy the object once faded out; `false` keeps it, invisible, for a later `fadeIn()`. @defaultValue `true` */
   destroy?: boolean;
 }
 
@@ -54,6 +54,8 @@ export class Fade extends Behavior<FadeOptions> {
   readonly name = 'fade';
   private time = 0;
   private outAt: number | undefined;
+  /** Alpha the current fade in starts from (0 when attached, the current alpha after `fadeIn()`). */
+  private inFrom = 0;
 
   override attach(object: GameObject): void {
     super.attach(object);
@@ -68,6 +70,22 @@ export class Fade extends Behavior<FadeOptions> {
     this.outAt = this.time;
   }
 
+  /**
+   * Starts fading in now, from the current alpha; cancels a fade out in progress. With
+   * `destroy: false`, brings back an object that faded out.
+   *
+   * @example
+   * ```ts
+   * ghost.behavior(Fade)?.fadeIn(200);
+   * ```
+   */
+  fadeIn(duration = this.options.fadeIn ?? 300): void {
+    this.options.fadeIn = duration;
+    this.inFrom = this.object.alpha;
+    this.time = 0;
+    this.outAt = undefined;
+  }
+
   override update(object: GameObject, dt: number): void {
     this.time += dt * 1000;
     const { fadeIn = 0, fadeOut = 0 } = this.options;
@@ -76,7 +94,9 @@ export class Fade extends Behavior<FadeOptions> {
       object.alpha = Math.max(0, 1 - t);
       if (t >= 1 && this.options.destroy !== false) object.destroy();
     } else if (fadeIn > 0 && this.time <= fadeIn) {
-      object.alpha = Math.min(1, this.time / fadeIn);
+      object.alpha = Math.min(1, this.inFrom + ((1 - this.inFrom) * this.time) / fadeIn);
+    } else if (fadeIn > 0 && object.alpha < 1) {
+      object.alpha = 1;
     }
   }
 }

@@ -121,6 +121,30 @@ describe('more behaviors', () => {
     expect(Fade).toBeDefined();
   });
 
+  it('fade out without destroy, then fade back in', () => {
+    const scene = testScene();
+    const ghost = scene.spawn(
+      class extends Box {
+        static override behaviors = [behaviors.fade({ destroy: false })];
+      },
+    );
+    const fade = ghost.behavior(Fade)!;
+    fade.fadeOut(100);
+    scene.tick(10);
+    expect(ghost.alive).toBe(true);
+    expect(ghost.alpha).toBe(0);
+    fade.fadeIn(100);
+    scene.tick(3);
+    expect(ghost.alpha).toBeGreaterThan(0);
+    expect(ghost.alpha).toBeLessThan(1);
+    scene.tick(10);
+    expect(ghost.alpha).toBe(1);
+    // A fade out can follow again.
+    fade.fadeOut(100);
+    scene.tick(10);
+    expect(ghost.alpha).toBe(0);
+  });
+
   it('pointer clicks and drag and drop snaps to a grid', () => {
     const scene = testScene();
     const click = vi.fn();
