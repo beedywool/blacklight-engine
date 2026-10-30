@@ -5,6 +5,9 @@ import { UPDATE_PRIORITY } from 'pixi.js';
 export const WARMUP_MS = 2000;
 /** Length of the measured window. */
 export const MEASURE_MS = 5000;
+/** Bursts of back-to-back frames in the throughput measure, and the target length of one. */
+const BURSTS = 20;
+const BURST_MS = 40;
 
 /** What one run of the benchmark reports (`window.blacklightBench`, `data-bench` on the mount). */
 export interface BenchResult {
@@ -27,9 +30,28 @@ export interface BenchResult {
    * Pixi draw, Motion, Vue updates) and the browser's style, layout and paint of the UI.
    */
   frameWorkMs: number;
+  /** Median frame: unlike the mean, a frame delayed by another process does not move it. */
+  frameWorkP50Ms: number;
   frameWorkP99Ms: number;
   /** Game's own ticker work per frame: fixed steps, objects, animations, Pixi's draw calls. */
   gameMs: number;
+  gameP50Ms: number;
+  /**
+   * Throughput: main-thread time of one frame run back to back with others (a game step, the
+   * scene's draw, Pixi's render, the UI timeline seek and the style and layout it causes), median
+   * of {@link BURSTS} bursts. Not gated: it moves with the CPU's speed of the moment.
+   */
+  stepMs: number;
+  /** Median time of the calibration loop, a fixed piece of JavaScript timed next to each burst. */
+  calibrationMs: number;
+  /**
+   * `stepMs` divided by the calibration loop timed just before and after the same burst (median
+   * over the bursts). A desktop's CPU changes speed by up to 1.5× from one second to the next
+   * (boost, power profile, other programs on the same core); both timings change together, so
+   * the ratio stays put while a slower engine still raises it. This is what the regression check
+   * relies on.
+   */
+  stepRelative: number;
   /** JS heap after a garbage collection when the page can trigger one (`--js-flags=--expose-gc`). */
   heapMb: number | null;
   /** `performance.measureUserAgentSpecificMemory()`, only in cross-origin isolated pages. */
@@ -53,6 +75,28 @@ const mean = (list: number[]) => list.reduce((a, b) => a + b, 0) / list.length;
 const percentile = (list: number[], p: number) =>
   [...list].sort((a, b) => a - b)[Math.min(list.length - 1, Math.floor(list.length * p))]!;
 const round = (value: number) => Math.round(value * 100) / 100;
+
+// Calibration loop: game-like JavaScript (object fields, branches, math) that never changes with the
+// engine, about 1 ms long. Timing it next to the engine tells how fast the CPU runs at that moment.
+const particles = Array.from({ length: 4000 }, (_, i) => ({
+  x: i % 1000,
+  y: i,
+  vx: 1,
+  vy: -1,
+  a: 0,
+}));
+const weights = new Float32Array(16).fill(1.0001);
+function calibrate(): number {
+  const start = performance.now();
+  for (let pass = 0; pass < 20; pass++)
+    for (const p of particles) {
+      p.x += p.vx * 0.016;
+      p.y += p.vy * 0.016;
+      if (p.x > 1000 || p.x < 0) p.vx = -p.vx;
+      p.a = Math.sin(p.x) * weights[(p.y | 0) & 15]!;
+    }
+  return performance.now() - start;
+}
 
 /**
  * NF-01 benchmark: 300 animated sprites crossing the screen under an animated UI screen (Motion
@@ -93,6 +137,49 @@ export default class Bench extends Scene {
       const until = performance.now() + this.burnMs;
       while (performance.now() < until);
     }
+  }
+
+  /** Bursts of frames run back to back, each between two runs of the calibration loop. */
+  private async throughput(): Promise<{ step: number[]; calibration: number[]; ratio: number[] }> {
+    const game = this.game;
+    const frame = () => {
+      game.step(1);
+      game.app.render();
+      // Applies the UI's new animated values now (style and layout), as a displayed frame would.
+      document.body.getBoundingClientRect();
+    };
+    const burst = (frames: number) => {
+      const start = performance.now();
+      for (let i = 0; i < frames; i++) frame();
+      return (performance.now() - start) / frames;
+    };
+    const nextFrame = () => new Promise((resolve) => requestAnimationFrame(resolve));
+    game.pause();
+    // Sizes the bursts so each lasts about BURST_MS whatever the machine, and so the GPU catches
+    // up with the burst's frames in about 100 ms: without a GPU (SwiftShader, CI runners) every
+    // frame takes the GPU process tens of milliseconds, which the next frame waits for.
+    const perFrame = burst(10);
+    const drainStart = performance.now();
+    // The backlog shows on the second frame after the burst.
+    await nextFrame();
+    await nextFrame();
+    const drain = (performance.now() - drainStart) / 10;
+    let frames = Math.min(500, Math.max(5, Math.round(Math.min(BURST_MS / perFrame, 100 / drain))));
+    const result = { step: [] as number[], calibration: [] as number[], ratio: [] as number[] };
+    for (let i = 0; i < BURSTS; i++) {
+      const waitStart = performance.now();
+      await nextFrame();
+      const wait = performance.now() - waitStart;
+      if (wait > 200) frames = Math.max(5, Math.round((frames * 100) / wait));
+      const before = calibrate();
+      const step = burst(frames);
+      const calibration = (before + calibrate()) / 2;
+      result.step.push(step);
+      result.calibration.push(calibration);
+      result.ratio.push(step / calibration);
+    }
+    game.resume();
+    return result;
   }
 
   private async measure(sprites: number) {
@@ -144,6 +231,7 @@ export default class Bench extends Scene {
     finished = true;
     channel.port1.close();
     if (intervals.length === 0) throw new Error('The benchmark saw no frame: is the tab hidden?');
+    const bursts = await this.throughput();
 
     const slowest = [...intervals]
       .sort((a, b) => b - a)
@@ -152,7 +240,14 @@ export default class Bench extends Scene {
     const heap = performance.memory?.usedJSHeapSize;
     let memory: number | undefined;
     if (crossOriginIsolated && performance.measureUserAgentSpecificMemory)
-      memory = (await performance.measureUserAgentSpecificMemory()).bytes;
+      // Chromium also refuses it in some builds (headless shell): the heap figure remains.
+      memory = await Promise.race([
+        performance.measureUserAgentSpecificMemory().then(
+          (m) => m.bytes,
+          () => undefined,
+        ),
+        new Promise<undefined>((resolve) => setTimeout(resolve, 10_000)),
+      ]);
     const mb = (bytes: number | undefined) => (bytes === undefined ? null : round(bytes / 2 ** 20));
     const result: BenchResult = {
       sprites,
@@ -164,8 +259,13 @@ export default class Bench extends Scene {
       frameMs: round(mean(intervals)),
       p99FrameMs: round(percentile(intervals, 0.99)),
       frameWorkMs: round(mean(work)),
+      frameWorkP50Ms: round(percentile(work, 0.5)),
       frameWorkP99Ms: round(percentile(work, 0.99)),
       gameMs: round(mean(game)),
+      gameP50Ms: round(percentile(game, 0.5)),
+      stepMs: Math.round(percentile(bursts.step, 0.5) * 1000) / 1000,
+      calibrationMs: Math.round(percentile(bursts.calibration, 0.5) * 1000) / 1000,
+      stepRelative: Math.round(percentile(bursts.ratio, 0.5) * 10000) / 10000,
       heapMb: mb(heap),
       memoryMb: mb(memory),
     };

@@ -10,7 +10,8 @@ const health = ref(100);
 const score = ref(0);
 let alive = true;
 
-const loop = useTimeline()
+// On the game clock: the timeline also advances in the scene's back-to-back throughput frames.
+const loop = useTimeline('game')
   .to('.hud__card', { x: [-320, 0], opacity: [0, 1] }, { duration: 0.35, ease: 'backOut' })
   .to(ring, { rotate: [0, 180], scale: [1, 1.25] }, { at: '<', duration: 0.7 })
   .label('hold')
