@@ -136,9 +136,10 @@ Tooling (`@blacklight/cli`, build time only, never inside games):
 
 Assets:
 
-| Asset                                                                        | License | Origin                                                                        |
-| ---------------------------------------------------------------------------- | ------- | ----------------------------------------------------------------------------- |
-| templates/visual-novel portraits, gallery images, sounds, music, intro video | CC0     | Generated for the template by `e2e/fixtures/generate-visual-novel-assets.mjs` |
+| Asset                                                                        | License        | Origin                                                                                                                               |
+| ---------------------------------------------------------------------------- | -------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| templates/visual-novel portraits, gallery images, sounds, music, intro video | CC0            | Generated for the template by `e2e/fixtures/generate-visual-novel-assets.mjs`                                                        |
+| templates/party-game mini-game cards (SVG) and sound effects (WAV)           | CC0 (original) | Generated for the template by `e2e/fixtures/generate-party-game-assets.mjs`; skins and arenas are drawn in code (Pixi graphics, SVG) |
 
 ## Desktop app (phase 3c: inside desktop builds)
 

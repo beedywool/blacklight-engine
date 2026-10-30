@@ -900,6 +900,43 @@ importers:
         specifier: 6.0.3
         version: 6.0.3
 
+  templates/party-game:
+    dependencies:
+      '@blacklight/core':
+        specifier: workspace:*
+        version: link:../../packages/core
+      '@blacklight/module-accounts-oidc':
+        specifier: workspace:*
+        version: link:../../packages/modules/accounts-oidc
+      '@blacklight/module-http':
+        specifier: workspace:*
+        version: link:../../packages/modules/http
+      '@blacklight/native':
+        specifier: workspace:*
+        version: link:../../packages/native
+      '@blacklight/net':
+        specifier: workspace:*
+        version: link:../../packages/net
+      '@blacklight/ui':
+        specifier: workspace:*
+        version: link:../../packages/ui
+      vue:
+        specifier: 3.5.44
+        version: 3.5.44(typescript@6.0.3)
+    devDependencies:
+      '@blacklight/cli':
+        specifier: workspace:*
+        version: link:../../packages/cli
+      typescript:
+        specifier: 6.0.3
+        version: 6.0.3
+      vitest:
+        specifier: 5.0.5
+        version: 5.0.5(@types/node@24.19.2)(@vitest/coverage-v8@5.0.5)(happy-dom@21.0.4)(vite@8.3.5(@types/node@24.19.2)(esbuild@0.28.2)(jiti@2.7.0)(yaml@2.9.1))
+      vue-tsc:
+        specifier: 3.3.14
+        version: 3.3.14(typescript@6.0.3)
+
   templates/persona-menu:
     dependencies:
       '@blacklight/core':

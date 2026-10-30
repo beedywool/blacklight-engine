@@ -193,6 +193,16 @@ Run `pnpm --filter blacklight-template-visual-novel dev` and open the printed UR
 9. VIDEO › FULL SCREEN toggles the browser's full screen and back.
 10. In dev, press F9 and point at menu items and the dialogue box. Expected: the inspector names the component (MenuList, DialogueBox), its props and state, and the focused element.
 
+## Party game (templates/party-game)
+
+Run `pnpm --filter blacklight-template-party-game dev` and open the printed URL.
+
+1. Four real gamepads (Xbox, PlayStation, Switch Pro, generic) plus the keyboard: LOCAL PARTY, then press A (cross, B on Switch) on each pad. Expected: players 2–4 join in order, each pad moves only its own card (D-pad: profile and skin), B on a joined pad leaves, the keyboard stays player 1.
+2. Play every mini-game with those players. Expected: each pad steers its own character, Y (triangle, X on Switch) puts the shield on its owner only, Start (options, +) on any pad pauses the game and the pause menu is navigable from any pad; in Survival VS a hit rumbles the pad of the player hit.
+3. Hide and Seek with a mouse: in the guess stage click a hider standing in the open. Expected: the crosshair jumps there and the hider is found; clicking a block is refused.
+4. TITLE › SIGN IN with BlackLight SSO (client `party-night` registered with the page URL). Expected: the SSO page opens, after consent the title shows SIGN OUT with the account name, and the join screen offers `★ <name>` to one player at a time.
+5. Two machines on the same network: run a relay on one (`pnpm exec blacklight-relay` or the desktop app's LAN relay), ONLINE on both with its address, HOST A ROOM / JOIN with the code, READY!, START. Expected: both play the same Push-Push (then each other mini-game) to the end with identical scores on both screens.
+
 ## Desktop app (phase 3c): Windows 10+, macOS 12+, Ubuntu 22.04+
 
 Build the fixture on each OS: `pnpm build && pnpm --dir e2e/fixtures/desktop exec blacklight build --target <win|mac|linux>`, install the package from `e2e/fixtures/desktop/release/<os>/`.
