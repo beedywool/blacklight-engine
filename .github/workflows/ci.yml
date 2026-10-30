@@ -24,6 +24,11 @@ jobs:
       - run: pnpm lint
       - run: pnpm typecheck
       - run: pnpm test
+      # PF-09: the build workflow create-blacklight writes into every game (and this file).
+      - if: runner.os == 'Linux'
+        run: |
+          bash <(curl -sSfL https://raw.githubusercontent.com/rhysd/actionlint/v1.7.7/scripts/download-actionlint.bash) 1.7.7
+          ./actionlint -color packages/create/shared/_github/workflows/build.yml .github/workflows/ci.yml
       - run: pnpm --filter blacklight-template-empty build
       - run: pnpm --filter blacklight-template-persona-menu typecheck
       - run: pnpm docs:build

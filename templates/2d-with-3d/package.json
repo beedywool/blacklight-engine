@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@blacklight/core": "workspace:*",
+    "@blacklight/native": "workspace:*",
     "@blacklight/three": "workspace:*",
     "@blacklight/ui": "workspace:*",
     "pixi.js": "8.22.0",

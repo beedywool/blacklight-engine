@@ -10,7 +10,8 @@
     "typecheck": "blacklight types && tsc --noEmit"
   },
   "dependencies": {
-    "@blacklight/core": "workspace:*"
+    "@blacklight/core": "workspace:*",
+    "@blacklight/native": "workspace:*"
   },
   "devDependencies": {
     "@blacklight/cli": "workspace:*",
