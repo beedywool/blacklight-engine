@@ -1,10 +1,10 @@
-// Benchmark results (e2e/bench.spec.ts): medians of several runs, comparison with the committed
-// baseline (e2e/bench-baseline.json), and the command that copies results into that baseline.
+// Benchmark results (e2e/bench.spec.ts): the best and the median of several runs, comparison with
+// the committed baseline (e2e/bench-baseline.json), and the command that copies results into it.
 //
 //   node scripts/bench.mjs update bench-results/*.json
 //
 // takes result files (written by `pnpm bench`, or downloaded from the CI artifact
-// `bench-results-<os>`) and stores their medians as the baseline of the runner they came from.
+// `bench-results-<os>`) and stores them as the baseline of the runner they came from.
 import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
@@ -14,18 +14,25 @@ export const TOLERANCE = 0.1;
 export const BASELINE_FILE = join(import.meta.dirname, '../e2e/bench-baseline.json');
 
 /**
- * Metrics the check compares, and which way is better. Metrics left out here (frame interval
- * percentiles, `memoryMb`) are recorded in the results but not gated; see e2e/bench.spec.ts.
+ * Metrics the check compares, and which way is better. The others (frame work and game time of
+ * displayed frames, frame interval percentiles, `memoryMb`) are recorded but not gated: on a
+ * desktop in use they move by 20 to 30 % with the CPU's speed of the moment; see e2e/bench.spec.ts.
  * @type {Record<string, 'higher' | 'lower'>}
  */
 export const GATED = {
   fps: 'higher',
   low1Fps: 'higher',
-  frameWorkMs: 'lower',
-  mainThreadMs: 'lower',
-  gameMs: 'lower',
+  stepRelative: 'lower',
   heapMb: 'lower',
 };
+
+/**
+ * Frame rates count only where the baseline kept up with the display. Below that (no GPU: SwiftShader
+ * draws on the CPU, 20 to 30 fps at 1080p) they measure the software renderer, change in steps of
+ * whole vsync intervals (20 to 17.1 fps is -14 %) and are recorded without being compared.
+ */
+export const DISPLAY_BOUND_FPS = 55;
+const FRAME_RATES = new Set(['fps', 'low1Fps']);
 
 /** @param {number[]} values */
 export function median(values) {
@@ -44,13 +51,30 @@ export function summarize(runs) {
   const result = {};
   for (const key of Object.keys(runs[0] ?? {})) {
     const values = runs.map((run) => run[key]).filter((value) => typeof value === 'number');
-    if (values.length === runs.length) result[key] = Math.round(median(values) * 100) / 100;
+    if (values.length === runs.length) result[key] = Number(median(values).toPrecision(4));
   }
   return result;
 }
 
 /**
- * Compares medians with a baseline. A metric regresses when it is worse than the baseline by more
+ * Best value of each gated metric over several runs (lowest time, highest frame rate). Another
+ * program can only slow a run down, so the best run is the one closest to the engine's own cost.
+ * @param {Record<string, unknown>[]} runs
+ * @returns {Record<string, number>}
+ */
+export function best(runs) {
+  /** @type {Record<string, number>} */
+  const result = {};
+  for (const [key, better] of Object.entries(GATED)) {
+    const values = runs.map((run) => run[key]).filter((value) => typeof value === 'number');
+    if (values.length === 0) continue;
+    result[key] = better === 'lower' ? Math.min(...values) : Math.max(...values);
+  }
+  return result;
+}
+
+/**
+ * Compares the best values of a run set with the baseline's. A metric regresses when it is worse than the baseline by more
  * than `tolerance` (a share of the baseline value).
  * @param {Record<string, number>} baseline
  * @param {Record<string, number>} current
@@ -61,6 +85,7 @@ export function compare(baseline, current, tolerance = TOLERANCE) {
     .filter(
       ([metric]) => typeof baseline[metric] === 'number' && typeof current[metric] === 'number',
     )
+    .filter(([metric]) => !FRAME_RATES.has(metric) || baseline.fps >= DISPLAY_BOUND_FPS)
     .map(([metric, better]) => {
       const before = baseline[metric];
       const after = current[metric];
@@ -81,8 +106,9 @@ export function formatComparison(rows) {
 }
 
 /**
- * @typedef {{ runner: string, profile: string, gpu: string, date: string, median: Record<string, number> }} BenchFile
- * @typedef {Record<string, Record<string, { gpu: string, date: string, median: Record<string, number> }>>} Baseline
+ * @typedef {{ gpu: string, date: string, best: Record<string, number>, median: Record<string, number> }} BaselineEntry
+ * @typedef {BaselineEntry & { runner: string, profile: string }} BenchFile
+ * @typedef {Record<string, Record<string, BaselineEntry>>} Baseline
  */
 
 /** @returns {Baseline} */
@@ -100,9 +126,9 @@ export function readBaseline(file = BASELINE_FILE) {
  */
 export function updateBaseline(results, file = BASELINE_FILE) {
   const baseline = readBaseline(file);
-  for (const { runner, profile, gpu, date, median: values } of results) {
+  for (const { runner, profile, gpu, date, best: bestValues, median: values } of results) {
     baseline[runner] ??= {};
-    baseline[runner][profile] = { gpu, date, median: values };
+    baseline[runner][profile] = { gpu, date, best: bestValues, median: values };
   }
   const sorted = Object.fromEntries(
     Object.keys(baseline)
