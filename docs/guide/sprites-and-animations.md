@@ -28,6 +28,10 @@ The sheet of every object class a scene can spawn is loaded before the scene sta
 
 <LiveExample src="concepts/sprites" hint="Arrows or WASD: the hero plays `run` while moving, `idle` otherwise, and counts its steps." />
 
+::: tip Tutorial
+The [sprites tutorial](../tutorials/sprites) has exercises to do in the page: play an animation, mirror a sprite, add an animation to `.anim.json`.
+:::
+
 ## Frame sources
 
 The engine looks for frames in this order:

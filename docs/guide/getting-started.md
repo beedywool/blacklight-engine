@@ -144,6 +144,7 @@ The web build uses relative URLs, so `dist/` works from any path on a web server
 - [Sprites and animations](./sprites-and-animations): Aseprite sheets, frame events, hitboxes, directional animations.
 - [Behaviors](./behaviors): platformer, grid movement, pointer drag and the 16 others, each with a live example.
 - [UI layer](./ui) and [Widgets](./ui-widgets): screens, focus, sliders, tabs, gauges.
+- [Tutorials](../tutorials/): short explanations followed by exercises to do in the page, from scenes to transitions.
 - The [playground](/playground): a project like this one, editable in the browser.
 
 ## Limits

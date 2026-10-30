@@ -13,6 +13,10 @@ await this.goto('chapter2', undefined, { transition: 'iris' });
 await uiOf(this.game).cover('ink', () => this.showBackground('night'));
 ```
 
+::: tip Tutorial
+The [transitions tutorial](../tutorials/transitions) has exercises to do in the page: change scenes and open screens under transitions, write your own.
+:::
+
 ## Effects
 
 | Name          | As a screen (enter / leave)                                              | As a cover (scenes, `cover`)                       | Duration (in) |

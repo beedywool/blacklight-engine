@@ -28,6 +28,10 @@ Behaviors update at every fixed step, in order, before the object's `update()`. 
 
 Each ready-made behavior has its own page with its options and a live example you can edit.
 
+::: tip Tutorial
+The [behaviors tutorial](../tutorials/behaviors) has exercises to do in the page: set options, combine behaviors, turn one off, write your own.
+:::
+
 ## Ready-made behaviors
 
 | Behavior                                                                                             | What it does                                                                                                                                                                              |

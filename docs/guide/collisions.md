@@ -4,6 +4,10 @@ Each scene has a collision world. It finds overlaps between objects once per fix
 
 <LiveExample src="concepts/collisions" hint="Arrows or WASD: walls stop the square, coins vanish on contact, the red ray stops at the first wall." />
 
+::: tip Tutorial
+The [collisions tutorial](../tutorials/collisions) has exercises to do in the page: pick up coins, make a wall solid, add hazards.
+:::
+
 ## Hitboxes
 
 An object collides only when it has a hitbox. `GameObject`, `Text`, `Container` and the other plain objects default to `'none'`; `Sprite` and `Graphics` default to `'auto'`.

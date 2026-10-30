@@ -46,6 +46,10 @@ The menu above works with a gamepad, a keyboard, a mouse and touch without furth
 
 <LiveExample src="concepts/screens" hint="The HUD is opened by the scene; Escape pushes the menu (Enter picks, Escape goes back)." />
 
+::: tip Tutorial
+The [UI tutorial](../tutorials/ui) has exercises to do in the page: push a menu, add a slider, show a gauge in the HUD.
+:::
+
 ## Install
 
 ```sh

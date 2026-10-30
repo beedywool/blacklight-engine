@@ -32,6 +32,10 @@ export default class Level extends Scene {
 
 <LiveExample src="concepts/scenes" hint="Click the preview, press Enter to start a level, Escape to open the pause overlay over it." />
 
+::: tip Tutorial
+The [scenes tutorial](../tutorials/scenes) has exercises to do in the page: start a scene from a timer, pass parameters, open an overlay.
+:::
+
 ## Lifecycle
 
 | Method           | When                                                                                                                                                                                           |

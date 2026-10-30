@@ -19,6 +19,10 @@ const subtitles = ref(true);
 
 The layout components (`Anchor`, `Skew`, `Slant`, `Mask`, `NineSlice`) are described in [Style, layout and motion](./ui-style#shapes); `FocusGroup` and `InputPrompt` in [Focus and input prompts](./ui-focus).
 
+::: tip Tutorial
+The [UI tutorial](../tutorials/ui) has exercises to do in the page: push a menu, add a slider, show a gauge in the HUD.
+:::
+
 ## Button
 
 A focusable `<button>` in the theme's display font, skewed by the theme.

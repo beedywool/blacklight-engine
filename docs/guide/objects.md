@@ -27,6 +27,10 @@ export default class Hero extends Sprite {
 
 <LiveExample src="concepts/objects" hint="Objects: a container with children, layers and z-order, alpha, tint and a Pixi filter." />
 
+::: tip Tutorial
+The [objects tutorial](../tutorials/objects) has exercises to do in the page: spawn with properties, update every step, attach children.
+:::
+
 ## Spawning
 
 ```ts

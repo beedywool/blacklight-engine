@@ -18,6 +18,10 @@ this.spawn(Text, { layer: 'hud', x: 32, y: 32, text: 'Score 0' });
 
 <LiveExample src="concepts/camera" hint="Arrows move through a world wider than the screen; Q and E zoom, Space shakes the camera." />
 
+::: tip Tutorial
+The [camera tutorial](../tutorials/camera) has exercises to do in the page: follow a player, smooth the follow, zoom and shake.
+:::
+
 ## Following
 
 `follow(target, options)` moves the camera towards `target` every step until `unfollow()`. The target is any object with `x` and `y`; a destroyed object stops being followed.
