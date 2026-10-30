@@ -12,3 +12,5 @@ packages/vscode/dist-webview/
 packages/vscode/dist-test/
 packages/vscode/schema/
 packages/vscode/.vscode-test/
+docs/public/runner/
+docs/api/
