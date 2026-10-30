@@ -1,0 +1,9 @@
+{
+  "source": "@assets/hero@16x16.png",
+  "default": "idle",
+  "animations": {
+    "idle": { "frames": [0, 1], "fps": 2 },
+    "run": { "frames": { "from": 2, "to": 5 }, "fps": 10 },
+    "jump": { "frames": [3], "fps": 1 }
+  }
+}
