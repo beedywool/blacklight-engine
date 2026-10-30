@@ -52,7 +52,15 @@ const guide: DefaultTheme.SidebarItem[] = [
     text: 'Tutorials',
     items: [
       { text: 'How the tutorials work', link: '/tutorials/' },
+      { text: 'Scenes', link: '/tutorials/scenes' },
+      { text: 'Objects', link: '/tutorials/objects' },
+      { text: 'Behaviors', link: '/tutorials/behaviors' },
+      { text: 'Sprites and animations', link: '/tutorials/sprites' },
+      { text: 'Input', link: '/tutorials/input' },
+      { text: 'Collisions', link: '/tutorials/collisions' },
       { text: 'Camera', link: '/tutorials/camera' },
+      { text: 'UI screens and widgets', link: '/tutorials/ui' },
+      { text: 'Transitions', link: '/tutorials/transitions' },
     ],
   },
   {

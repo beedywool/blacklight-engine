@@ -1,6 +1,6 @@
 # Tutorials
 
-Each tutorial explains one part of the engine in a few paragraphs, then gives you exercises to do in the page: a running example, its code in an editor next to it, and a task that changes the code. The preview restarts a moment after you stop typing, so you see the effect of each change at once. Do them in order; each exercise starts from the code the previous one ended with.
+Each tutorial explains one part of the engine in a few paragraphs, then gives you exercises to do in the page: a running example, its code in an editor next to it, and a task that changes the code. The preview restarts a moment after you stop typing, so you see the effect of each change at once. The tutorials can be read in any order; the table below follows the order of the guide. Inside a tutorial, do the exercises in order: each one starts from the code the previous one ended with.
 
 An exercise has four parts:
 
