@@ -1,0 +1,132 @@
+# Builds the game for every target on each push and pull request (written by create-blacklight).
+# Each job uploads its files as an artifact of the run. Signing is optional: add the secrets
+# named below in the repository settings (Settings → Secrets and variables → Actions) and the
+# builds are signed; without them they are unsigned, which is enough to test them.
+name: Build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  web:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec blacklight build --target web
+      - uses: actions/upload-artifact@v5
+        with:
+          name: web
+          path: dist/
+
+  # Windows (NSIS installer + portable), macOS (x64 + arm64, dmg + zip), Linux (AppImage + deb).
+  # Each OS builds on its own runner: V8 bytecode and the SDL gamepad library match the machine.
+  desktop:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            target: win
+          - os: macos-latest
+            target: mac
+          - os: ubuntu-latest
+            target: linux
+    runs-on: ${{ matrix.os }}
+    env:
+      # Windows: a .pfx (base64) and its password. macOS: a Developer ID .p12 (base64) and its
+      # password, then notarization with an App Store Connect API key or an Apple ID.
+      WIN_CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
+      WIN_CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
+      CSC_LINK: ${{ secrets.CSC_LINK }}
+      CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+      APPLE_ID: ${{ secrets.APPLE_ID }}
+      APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+      APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      # The main process is compiled to V8 bytecode inside Electron, which needs a display on Linux.
+      - if: runner.os == 'Linux'
+        run: xvfb-run -a pnpm exec blacklight build --target linux
+      - if: runner.os != 'Linux'
+        run: pnpm exec blacklight build --target ${{ matrix.target }}
+      - uses: actions/upload-artifact@v5
+        with:
+          name: desktop-${{ matrix.target }}
+          path: |
+            release/${{ matrix.target }}/*.exe
+            release/${{ matrix.target }}/*.dmg
+            release/${{ matrix.target }}/*.zip
+            release/${{ matrix.target }}/*.AppImage
+            release/${{ matrix.target }}/*.deb
+
+  # Debug APK, or a signed release APK when the keystore secrets exist.
+  android:
+    runs-on: ubuntu-latest
+    env:
+      ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+      ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+      ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+      ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: pnpm
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 21
+      - uses: gradle/actions/setup-gradle@v5
+      - run: pnpm install --frozen-lockfile
+      - name: Build
+        shell: bash
+        run: |
+          if [ -n "$ANDROID_KEYSTORE_BASE64" ]; then
+            echo "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/release.jks"
+            ANDROID_KEYSTORE="$RUNNER_TEMP/release.jks" pnpm exec blacklight build --target android --release
+          else
+            pnpm exec blacklight build --target android
+          fi
+      - uses: actions/upload-artifact@v5
+        with:
+          name: android
+          path: release/android/
+
+  # iOS Simulator build (no signing). Release builds for the App Store need a Mac with the
+  # team's certificates: `blacklight build --target ios --release` with APPLE_TEAM_ID set.
+  ios:
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec blacklight build --target ios
+      - uses: actions/upload-artifact@v5
+        with:
+          name: ios
+          path: release/ios/

@@ -1,4 +1,12 @@
-import { cpSync, existsSync, readFileSync, readdirSync, renameSync, writeFileSync } from 'node:fs';
+import {
+  cpSync,
+  existsSync,
+  readFileSync,
+  readdirSync,
+  renameSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
 import { basename, join, resolve } from 'node:path';
 
 export interface ScaffoldOptions {
@@ -17,6 +25,28 @@ export interface ScaffoldOptions {
   link?: string;
   /** Write into a folder that is not empty. */
   force?: boolean;
+  /**
+   * Files every project gets whatever the template (the build workflow, pnpm settings), copied
+   * after the template without replacing its own files.
+   */
+  sharedDir?: string;
+  /** `packageManager` written into package.json. @defaultValue {@link DEFAULT_PACKAGE_MANAGER} */
+  packageManager?: string;
+}
+
+/** pnpm version written into new projects when the scaffolder does not run under pnpm. */
+export const DEFAULT_PACKAGE_MANAGER = 'pnpm@12.16.1';
+
+/**
+ * Files published with a leading underscore because npm drops or ignores the dotted names:
+ * `_gitignore` → `.gitignore`, `_github/` → `.github/`.
+ */
+const DOTTED = ['gitignore', 'github'];
+
+/** The pnpm version running the scaffolder (`pnpm create blacklight`), from npm's user agent. */
+export function packageManagerFromAgent(agent: string | undefined): string | undefined {
+  const match = /^pnpm\/(\d+\.\d+\.\d+)/.exec(agent ?? '');
+  return match ? `pnpm@${match[1]}` : undefined;
 }
 
 /** Template names available in `templatesDir`. */
@@ -69,17 +99,28 @@ export function scaffold(options: ScaffoldOptions): string {
     recursive: true,
     filter: (src) => !skip.test(src.slice(source.length)),
   });
-  // npm drops .gitignore from published packages, so templates ship it as _gitignore.
-  if (existsSync(join(target, '_gitignore')))
-    renameSync(join(target, '_gitignore'), join(target, '.gitignore'));
+  if (options.sharedDir) {
+    cpSync(options.sharedDir, target, { recursive: true, force: false, errorOnExist: false });
+  }
+  for (const name of DOTTED) {
+    const from = join(target, `_${name}`);
+    if (!existsSync(from)) continue;
+    const to = join(target, `.${name}`);
+    if (existsSync(to)) cpSync(from, to, { recursive: true, force: false, errorOnExist: false });
+    else renameSync(from, to);
+    rmSync(from, { recursive: true, force: true });
+  }
 
   const manifestPath = join(target, 'package.json');
   const manifest = JSON.parse(readFileSync(manifestPath, 'utf8')) as {
     name: string;
+    packageManager?: string;
     dependencies?: Record<string, string>;
     devDependencies?: Record<string, string>;
   };
   manifest.name = packageName(target);
+  // CI (pnpm/action-setup in the build workflow) installs the pnpm version named here.
+  manifest.packageManager ??= options.packageManager ?? DEFAULT_PACKAGE_MANAGER;
   for (const deps of [manifest.dependencies, manifest.devDependencies]) {
     for (const [name, range] of Object.entries(deps ?? {})) {
       if (range.startsWith('workspace:')) deps![name] = engineDependency(name, options);

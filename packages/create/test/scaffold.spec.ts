@@ -2,7 +2,7 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { listTemplates, packageName, scaffold } from '../src/scaffold';
+import { listTemplates, packageManagerFromAgent, packageName, scaffold } from '../src/scaffold';
 
 let work: string;
 let templatesDir: string;
@@ -69,5 +69,15 @@ describe('helpers', () => {
   it('lists templates and sanitizes names', () => {
     expect(listTemplates(templatesDir)).toEqual(['empty']);
     expect(packageName('/tmp/Super Party!')).toBe('super-party');
+  });
+});
+
+describe('packageManagerFromAgent', () => {
+  it('reads the pnpm version running the scaffolder', () => {
+    expect(packageManagerFromAgent('pnpm/12.16.1 npm/? node/v24.1.0 linux x64')).toBe(
+      'pnpm@12.16.1',
+    );
+    expect(packageManagerFromAgent('npm/10.0.0 node/v24.1.0')).toBeUndefined();
+    expect(packageManagerFromAgent(undefined)).toBeUndefined();
   });
 });
