@@ -1,0 +1,12 @@
+{
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "paths": {
+      "@objects/*": ["./objects/*"],
+      "@ui/*": ["./ui/*"],
+      "@assets/*": ["./assets/*"]
+    }
+  },
+  "include": ["**/*.ts"],
+  "exclude": []
+}
