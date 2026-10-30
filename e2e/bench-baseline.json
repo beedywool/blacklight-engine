@@ -1,0 +1,40 @@
+{
+  "linux-x64 · AMD Ryzen 7 9700X 8-Core Processor · ANGLE (AMD, Vulkan 1.4.354 (AMD Radeon RX 6650 XT (RADV NAVI23) (0x000073EF)), radv)": {
+    "desktop": {
+      "gpu": "ANGLE (AMD, Vulkan 1.4.354 (AMD Radeon RX 6650 XT (RADV NAVI23) (0x000073EF)), radv)",
+      "date": "2026-10-30T19:56:09.428Z",
+      "median": {
+        "sprites": 300,
+        "burnMs": 0,
+        "frames": 299,
+        "fps": 59.8,
+        "low1Fps": 59.52,
+        "frameMs": 16.67,
+        "p99FrameMs": 16.8,
+        "frameWorkMs": 1.19,
+        "frameWorkP99Ms": 2,
+        "gameMs": 0.4,
+        "heapMb": 9.51,
+        "mainThreadMs": 1.17
+      }
+    },
+    "phone": {
+      "gpu": "ANGLE (AMD, Vulkan 1.4.354 (AMD Radeon RX 6650 XT (RADV NAVI23) (0x000073EF)), radv)",
+      "date": "2026-10-30T19:56:46.939Z",
+      "median": {
+        "sprites": 300,
+        "burnMs": 0,
+        "frames": 299,
+        "fps": 59.8,
+        "low1Fps": 59.52,
+        "frameMs": 16.67,
+        "p99FrameMs": 16.8,
+        "frameWorkMs": 1.2,
+        "frameWorkP99Ms": 2,
+        "gameMs": 0.42,
+        "heapMb": 9.52,
+        "mainThreadMs": 1.17
+      }
+    }
+  }
+}

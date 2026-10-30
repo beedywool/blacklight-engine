@@ -14,3 +14,4 @@ e2e/fixtures/*/dist/
 release/
 docs/public/runner/
 docs/api/
+bench-results/

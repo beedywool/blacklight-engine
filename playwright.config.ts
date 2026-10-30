@@ -14,5 +14,9 @@ export default defineConfig({
   expect: { toHaveScreenshot: { maxDiffPixelRatio: 0.01 } },
   // Missing references (a new OS in CI) are written and the test passes; CI uploads them.
   updateSnapshots: 'missing',
-  projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
+  projects: [
+    { name: 'chromium', use: { ...devices['Desktop Chrome'] }, testIgnore: 'bench.spec.ts' },
+    // NF-01 benchmark: timings need an idle machine, so it runs on its own (`pnpm bench`).
+    { name: 'bench', testMatch: 'bench.spec.ts' },
+  ],
 });

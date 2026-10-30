@@ -14,7 +14,8 @@
     "format": "prettier --write .",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
-    "e2e": "playwright test",
+    "e2e": "playwright test --project chromium",
+    "bench": "playwright test --project bench",
     "docs:dev": "pnpm --filter blacklight-docs dev",
     "docs:build": "pnpm --filter blacklight-docs build",
     "changelog": "node scripts/changelog.mjs"
