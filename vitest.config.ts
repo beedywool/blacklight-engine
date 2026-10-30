@@ -8,6 +8,7 @@ export default defineConfig({
       'packages/modules/*',
       'servers/*',
       '!servers/*.yml',
+      'scripts',
     ],
     coverage: {
       provider: 'v8',

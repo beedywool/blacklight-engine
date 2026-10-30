@@ -16,7 +16,8 @@
     "test:coverage": "vitest run --coverage",
     "e2e": "playwright test",
     "docs:dev": "pnpm --filter blacklight-docs dev",
-    "docs:build": "pnpm --filter blacklight-docs build"
+    "docs:build": "pnpm --filter blacklight-docs build",
+    "changelog": "node scripts/changelog.mjs"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",
