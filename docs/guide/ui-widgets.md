@@ -28,6 +28,8 @@ A focusable `<button>` in the theme's display font, skewed by the theme.
 <Button variant="danger" :disabled="!canDelete" @click="remove">DELETE</Button>
 ```
 
+<LiveExample src="widgets/button" hint="Arrows move the focus, Enter or a click presses; DELETE 3 unlocks at 3." />
+
 | Prop        | Default     | Meaning                                                                                                                                  |
 | ----------- | ----------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
 | `variant`   | `'primary'` | `'primary'` (filled), `'secondary'` (transparent with a `muted` outline, filled when focused) or `'danger'` (danger color when focused). |
@@ -55,6 +57,8 @@ const items = [
   <MenuList :items="items" @select="onSelect" />
 </template>
 ```
+
+<LiveExample src="widgets/menu-list" hint="Up and down skip the disabled row; Enter selects." />
 
 | Prop         | Default  | Meaning                                                                  |
 | ------------ | -------- | ------------------------------------------------------------------------ |
@@ -87,6 +91,8 @@ const tab = ref(0);
 </template>
 ```
 
+<LiveExample src="widgets/tabs" hint="Q and E switch tabs wherever the focus is." />
+
 | Prop         | Default  | Meaning                                                         |
 | ------------ | -------- | --------------------------------------------------------------- |
 | `tabs`       | required | Tab labels.                                                     |
@@ -107,6 +113,8 @@ A bar for HP, SP or progress. When the value drops, a trail in the danger color 
 <Gauge :value="hp" :max="maxHp">HP {{ hp }}</Gauge>
 <Gauge :value="sp" :max="maxSp" color="#4aa8ff" :skewed="false" />
 ```
+
+<LiveExample src="widgets/gauge" hint="A hit every second: the red trail shows the loss, then drains." />
 
 | Prop         | Default              | Meaning                                           |
 | ------------ | -------------------- | ------------------------------------------------- |
@@ -129,6 +137,8 @@ A number that counts to its new value instead of jumping, for money, scores and 
 <Counter :value="ratio * 100" :digits="1" locale="fr-FR" />
 ```
 
+<LiveExample src="widgets/counter" hint="The money counts to each new value." />
+
 | Prop       | Default              | Meaning                           |
 | ---------- | -------------------- | --------------------------------- |
 | `value`    | required             | Target value.                     |
@@ -149,6 +159,8 @@ A virtual list: only the visible rows and a few around them are rendered, so a l
   </template>
 </ScrollList>
 ```
+
+<LiveExample src="widgets/scroll-list" hint="10 000 rows; only the visible ones exist in the page." />
 
 | Prop         | Default  | Meaning                                         |
 | ------------ | -------- | ----------------------------------------------- |
@@ -175,6 +187,8 @@ A grid of equal cells, focusable one by one, for items and equipment. `null` ent
 </InventoryGrid>
 ```
 
+<LiveExample src="widgets/inventory-grid" hint="Arrows move between cells; Enter uses an item." />
+
 | Prop       | Default  | Meaning                                  |
 | ---------- | -------- | ---------------------------------------- |
 | `items`    | required | Cells, `null` for an empty one.          |
@@ -199,6 +213,8 @@ A value on a track. `left` and `right` change it by one step instead of moving t
 </Slider>
 ```
 
+<LiveExample src="widgets/slider" hint="Left and right change the focused slider." />
+
 | Prop         | Default  | Meaning                  |
 | ------------ | -------- | ------------------------ |
 | `modelValue` | required | Current value.           |
@@ -221,6 +237,8 @@ An on/off switch. `right` turns it on, `left` off, `confirm` or a click flips it
 <Toggle v-model="subtitles" label="SUBTITLES" />
 <Toggle v-model="vibration" label="VIBRATION" on="YES" off="NO" />
 ```
+
+<LiveExample src="widgets/toggle" hint="Right on, left off, Enter flips." />
 
 | Prop         | Default  | Meaning                |
 | ------------ | -------- | ---------------------- |
@@ -248,6 +266,8 @@ A Persona-style "‹ Option ›" chooser. `left` and `right` cycle through the o
 />
 ```
 
+<LiveExample src="widgets/select" hint="THEME switches the UI theme live." />
+
 | Prop         | Default  | Meaning                                     |
 | ------------ | -------- | ------------------------------------------- |
 | `modelValue` | required | Selected value, compared with `===`.        |
@@ -268,6 +288,8 @@ A text field. With a keyboard the player types in it; with a gamepad, `confirm` 
 ```vue
 <TextInput v-model="name" label="NAME" placeholder="Joker" :max-length="12" @submit="save" />
 ```
+
+<LiveExample src="widgets/text-input" hint="Click the field, type, press Enter." />
 
 | Prop          | Default  | Meaning                |
 | ------------- | -------- | ---------------------- |
@@ -295,6 +317,8 @@ const name = await useUi().modal<string>(VirtualKeyboard, {
 });
 ```
 
+<LiveExample src="widgets/virtual-keyboard" hint="Arrows pick keys, Enter types, Done closes." />
+
 | Prop        | Default | Meaning               |
 | ----------- | ------- | --------------------- |
 | `value`     | `''`    | Initial text.         |
@@ -313,6 +337,8 @@ A bubble shown while its content is hovered or holds the focus.
 </Tooltip>
 ```
 
+<LiveExample src="widgets/tooltip" hint="Hover or focus an item." />
+
 | Prop   | Default  | Meaning                                                    |
 | ------ | -------- | ---------------------------------------------------------- |
 | `text` | required | Tooltip text.                                              |
@@ -330,6 +356,8 @@ import { toast } from '@blacklight/ui';
 toast('Game saved', { kind: 'success' });
 toast('No space left', { kind: 'error', duration: 4000 });
 ```
+
+<LiveExample src="widgets/toasts" hint="A toast every 1.2 s, bottom right." />
 
 | Option     | Default  | Meaning                                                           |
 | ---------- | -------- | ----------------------------------------------------------------- |
@@ -350,6 +378,8 @@ const quit = await useUi().confirm({
   danger: true,
 });
 ```
+
+<LiveExample src="widgets/confirm-dialog" hint="Left and right switch buttons; Enter answers." />
 
 | Prop      | Default     | Meaning                               |
 | --------- | ----------- | ------------------------------------- |
@@ -377,6 +407,8 @@ const orders = ['ATTACK', 'GUARD', 'HEAL', 'FREE'].map((label) => ({ label, valu
   <RadialMenu :items="orders" :radius="220" @select="(order) => screen.close(order)" />
 </template>
 ```
+
+<LiveExample src="widgets/radial-menu" hint="Point with the arrows or the mouse; Enter gives the order." />
 
 | Prop     | Default  | Meaning                                              |
 | -------- | -------- | ---------------------------------------------------- |

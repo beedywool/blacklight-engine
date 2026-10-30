@@ -2,6 +2,8 @@
 
 Each scene has a collision world. It finds overlaps between objects once per fixed step, after every object has moved, and calls `onCollide`, `onCollideEnd` and `onLeave`. Solid objects and solid tiles block objects that move with `move()`, with `velocity` or with a movement behavior. Rigid-body physics (forces, stacking, restitution) is a separate package, `@blacklight/physics`, described at the end.
 
+<LiveExample src="concepts/collisions" hint="Arrows or WASD: walls stop the square, coins vanish on contact, the red ray stops at the first wall." />
+
 ## Hitboxes
 
 An object collides only when it has a hitbox. `GameObject`, `Text`, `Container` and the other plain objects default to `'none'`; `Sprite` and `Graphics` default to `'auto'`.

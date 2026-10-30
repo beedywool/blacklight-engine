@@ -39,6 +39,8 @@ declare module '@blacklight/core' {
 }
 ```
 
+<LiveExample src="concepts/saves" hint="Click to add points. Enter saves to slot 1, Backspace loads it back (also after Run again)." />
+
 ## Configuration
 
 ```ts

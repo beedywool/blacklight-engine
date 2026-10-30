@@ -1,0 +1,6 @@
+{
+  "title": "Localization",
+  "greeting": "Welcome back, {name}.",
+  "coins": { "=0": "No coins", "one": "{count} coin", "other": "{count} coins" },
+  "hint": "Left and right: language · Up and down: coins"
+}

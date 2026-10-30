@@ -14,6 +14,8 @@ override update() {
 
 `scene.audio` looks sound keys up in the scene's folder first, then in `assets/`. `game.audio` is the audio manager itself, with the same `play`, `music` and `stopMusic` plus volumes and events.
 
+<LiveExample src="concepts/audio" hint="Click anywhere: a blip plays from that point (left/right panning), higher when you click higher." />
+
 ## Buses and volumes
 
 ```ts

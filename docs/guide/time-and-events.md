@@ -1,5 +1,7 @@
 # Time and events
 
+<LiveExample src="concepts/time-and-events" hint="Timers drop a block every 400 ms, tweens animate them, an event counts them. Space: slow motion." />
+
 ## Fixed step
 
 Game logic runs in equal steps: `tickRate` per second, 60 by default (see [Configuration](./configuration)). `update()` of scenes, objects and behaviors runs once per step whatever the display rate, so a game behaves the same at 30, 60 or 144 frames per second, and a replay with the same input and seed gives the same result.

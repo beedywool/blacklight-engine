@@ -3,12 +3,34 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vitepress dev",
-    "build": "vitepress build",
-    "preview": "vitepress preview"
+    "dev": "pnpm run prepare:site && vitepress dev",
+    "build": "pnpm run prepare:site && vitepress build",
+    "preview": "vitepress preview",
+    "prepare:site": "node scripts/api.mjs && vite build -c runner/vite.config.ts",
+    "typecheck": "tsc -p examples/tsconfig.json && tsc -p examples/playground/tsconfig.json && vue-tsc -p examples/getting-started/tsconfig.json"
+  },
+  "dependencies": {
+    "@blacklight/core": "workspace:*",
+    "@blacklight/ui": "workspace:*",
+    "pixi.js": "8.22.0",
+    "vue": "3.5.44"
   },
   "devDependencies": {
+    "@codemirror/commands": "6.11.1",
+    "@codemirror/lang-javascript": "6.2.5",
+    "@codemirror/lang-json": "6.0.2",
+    "@codemirror/language": "6.13.1",
+    "@codemirror/state": "6.7.6",
+    "@codemirror/view": "6.43.15",
+    "@lezer/highlight": "1.2.5",
+    "codemirror": "6.0.2",
+    "sucrase": "3.35.1",
+    "typedoc": "0.28.20",
+    "typedoc-plugin-markdown": "4.14.1",
+    "typedoc-vitepress-theme": "1.1.4",
+    "typescript": "6.0.3",
+    "vite": "8.3.5",
     "vitepress": "1.6.4",
-    "vue": "3.5.44"
+    "vue-tsc": "3.3.14"
   }
 }

@@ -26,6 +26,8 @@ export default class Hero extends Sprite {
 
 The sheet of every object class a scene can spawn is loaded before the scene starts, so `spawn` shows the first frame at once.
 
+<LiveExample src="concepts/sprites" hint="Arrows or WASD: the hero plays `run` while moving, `idle` otherwise, and counts its steps." />
+
 ## Frame sources
 
 The engine looks for frames in this order:

@@ -16,6 +16,8 @@ import { RichText } from '@blacklight/ui';
 </template>
 ```
 
+<LiveExample src="concepts/rich-text" hint="Rich text: tags for color, size, wave, shake, pauses and input prompts, typed out. Enter restarts." />
+
 ## Tags
 
 | Tag                    | Effect                                                                                                                       |

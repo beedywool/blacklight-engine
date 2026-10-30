@@ -30,6 +30,8 @@ export default class Level extends Scene {
 }
 ```
 
+<LiveExample src="concepts/scenes" hint="Click the preview, press Enter to start a level, Escape to open the pause overlay over it." />
+
 ## Lifecycle
 
 | Method           | When                                                                                                                                                                                           |
@@ -181,6 +183,8 @@ Each scene has a main camera, `this.camera`, and can add up to three more for sp
 | `this.raycast`, `this.query`, `this.collisions`         | Collision queries; see [Collisions](./collisions).                                                 |
 | `this.stage`                                            | Root display container: the world (moved by the camera) and the HUD.                               |
 | `this.world`, `this.hud`                                | The camera-moved container holding the layers, and the screen-space container.                     |
+
+<LiveExample src="concepts/hosted-scenes" hint="Two copies of the `pong` scene run inside rectangles of this scene, each with its own objects." />
 
 ## Limits
 

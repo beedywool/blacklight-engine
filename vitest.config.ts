@@ -6,8 +6,7 @@ export default defineConfig({
       'packages/*',
       '!packages/modules',
       'packages/modules/*',
-      'servers/*',
-      '!servers/*.yml',
+      'servers/*/vitest.config.ts',
       'scripts',
     ],
     coverage: {

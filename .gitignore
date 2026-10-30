@@ -12,3 +12,5 @@ packages/create/templates/
 e2e/fixtures/*/dist/
 .claude/
 release/
+docs/public/runner/
+docs/api/

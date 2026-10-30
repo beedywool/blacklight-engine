@@ -2,6 +2,8 @@
 
 Every color, font and skew of the built-in components comes from the active theme, as CSS variables on the UI root. Screens use the same variables, so switching the theme restyles the game's own screens too. Shapes (`Skew`, `Slant`, `Mask`, `NineSlice`), anchors, screen transitions and timelines give menus their motion and Persona-style cuts.
 
+<LiveExample src="concepts/style" hint="Persona-style shapes: Skew, Slant and Mask, brought in by a timeline. Enter replays the timeline." />
+
 ## Themes
 
 ```ts

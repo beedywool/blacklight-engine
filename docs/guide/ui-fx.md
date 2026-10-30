@@ -25,6 +25,8 @@ const print = fx.add('halftone', { strength: 0.4, fade: 300 });
 await print.remove(300);
 ```
 
+<LiveExample src="concepts/fx" hint="The FX layer: Enter cycles the lasting effect on the game, Space fires a glitch pulse. The title over the UI goes through a shader too (PixiRender)." />
+
 ## Effects
 
 | Name        | Look                                                                                             |

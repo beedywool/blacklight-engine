@@ -30,6 +30,8 @@ import { t } from '@blacklight/ui';
 </template>
 ```
 
+<LiveExample src="concepts/localization" hint="Left and right switch the language at runtime (Arabic flips the layout); up and down change the plural count." />
+
 ## Messages
 
 Keys are dotted paths into the file (`menu.start`). A message is a string, or an object of plural forms chosen with `Intl.PluralRules` from `values.count`: `zero`, `one`, `two`, `few`, `many`, `other` (required), and exact counts `=0`, `=1`… checked first. `{name}` placeholders take the values passed to `t`; numbers are formatted for the language (`1,200`, `1 200`, `١٬٢٠٠`). An unknown placeholder stays as written.

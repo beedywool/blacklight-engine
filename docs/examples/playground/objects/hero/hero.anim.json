@@ -1,0 +1,9 @@
+{
+  "source": "./hero@16x16.png",
+  "default": "idle",
+  "hitbox": { "type": "box", "x": -5, "y": -4, "width": 10, "height": 12 },
+  "animations": {
+    "idle": { "frames": [0, 1], "fps": 2 },
+    "run": { "frames": { "from": 2, "to": 5 }, "fps": 10 }
+  }
+}

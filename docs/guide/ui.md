@@ -44,6 +44,8 @@ function select(value: string) {
 
 The menu above works with a gamepad, a keyboard, a mouse and touch without further code: directions move the focus between rows, `confirm` clicks the focused row, `back` closes the screen. `templates/persona-menu` is a complete example: title screen, HUD, pause menu, items, party, a radial tactics menu and settings with rebinding.
 
+<LiveExample src="concepts/screens" hint="The HUD is opened by the scene; Escape pushes the menu (Enter picks, Escape goes back)." />
+
 ## Install
 
 ```sh

@@ -268,3 +268,11 @@ Build a template (`pnpm build`) and host `dist/` on an HTTPS server you control 
 1. `pnpm create blacklight my-game --template platformer`, `cd my-game`, `pnpm install`, commit everything including `pnpm-lock.yaml`, push to a new GitHub repository. Expected: the "Build" workflow runs six jobs (web, desktop win / mac / linux, android, ios) and each uploads an artifact.
 2. Download the artifacts. Expected: `web` holds the PWA, `desktop-win` the NSIS installer and portable .exe, `desktop-mac` dmg + zip for x64 and arm64, `desktop-linux` AppImage + deb, `android` a debug APK that installs with `adb install`, `ios` the Simulator `.app`.
 3. Add the signing secrets named in `.github/workflows/build.yml` and run it again (Actions → Build → Run workflow). Expected: signed installers and a release APK.
+
+## Documentation site (phase 4a, any desktop browser and a phone)
+
+1. `pnpm build && pnpm docs:build && pnpm --filter blacklight-docs preview`, open `http://localhost:4173/behaviors/platformer`. Expected: the preview starts when scrolled into view; after a click on it, arrows and Space move and jump the character.
+2. Change `jumpStrength` in the editor. Expected: the preview restarts within a second with the new jump.
+3. Open `/playground`, edit a file, copy the address bar into another browser. Expected: the same files and the same game.
+4. Open `/guide/ui-widgets` on a phone. Expected: editor under each preview, previews readable, taps reach the widgets.
+5. Serve `docs/.vitepress/dist` behind the production CSP (see the deployment guide) and open a page with examples. Expected: no CSP violation in the console; the runner page carries its own policy (`blob:` scripts).
