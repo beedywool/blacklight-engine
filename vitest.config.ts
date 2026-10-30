@@ -2,7 +2,13 @@ import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
   test: {
-    projects: ['packages/*', '!packages/modules', 'packages/modules/*', 'servers/*'],
+    projects: [
+      'packages/*',
+      '!packages/modules',
+      'packages/modules/*',
+      // Folders only: servers/ also holds docker-compose.yml.
+      'servers/*/vitest.config.ts',
+    ],
     coverage: {
       provider: 'v8',
       include: ['packages/*/src/**', 'packages/modules/*/src/**'],
