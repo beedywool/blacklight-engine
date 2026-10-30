@@ -38,17 +38,59 @@ export interface MobileOptions {
   backHold?: number;
 }
 
+/** Taps waiting for the one in progress to end, by player then action. */
+const queued = new WeakMap<object, Map<string, number>>();
+
 /**
- * Presses `action` for player 1 the way a key tap does: down now, up `hold` ms later. The value
- * goes through `virtual`, so menus and game code see one `pressed` whatever the bindings.
+ * Presses `action` for player 1 the way a key tap does: down now, up `hold` ms later (and not
+ * before the game has read it). The value goes through `virtual`, so menus and game code see
+ * one `pressed` whatever the bindings. A tap that comes while the previous one is still down waits
+ * for it, then gets its own press after it has been up for a read: two quick back presses close
+ * two menus.
  */
 export function tapAction(game: Game, action: string, hold = 100): void {
   if (!game.input.hasAction(action)) return;
   const player = game.input.player(1);
-  player.virtual.set(action, 1);
-  setTimeout(() => {
-    if (player.virtual.get(action) === 1) player.virtual.delete(action);
-  }, hold);
+  let waiting = queued.get(player);
+  if (!waiting) queued.set(player, (waiting = new Map()));
+  const pending = waiting.get(action);
+  if (pending !== undefined) {
+    waiting.set(action, pending + 1);
+    return;
+  }
+  // A slow frame can last longer than `hold`: the tap stays down until the input was read.
+  const read = (since: number) => game.input.updates > since;
+  const press = () => {
+    player.virtual.set(action, 1);
+    const since = game.input.updates;
+    const release = () => {
+      if (!read(since)) {
+        setTimeout(release, 16);
+        return;
+      }
+      player.virtual.delete(action);
+      // Up until the input was read again (taps arriving meanwhile wait), and `hold` ms before the
+      // next.
+      const up = game.input.updates;
+      const next = () => {
+        if (!read(up)) {
+          setTimeout(next, 16);
+          return;
+        }
+        const left = waiting.get(action) ?? 0;
+        if (left === 0) {
+          waiting.delete(action);
+          return;
+        }
+        waiting.set(action, left - 1);
+        press();
+      };
+      setTimeout(next, (waiting.get(action) ?? 0) > 0 ? hold : 0);
+    };
+    setTimeout(release, hold);
+  };
+  waiting.set(action, 0);
+  press();
 }
 
 /**

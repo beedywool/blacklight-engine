@@ -86,6 +86,70 @@ describe('mobile() plugin', () => {
     expect(seen).toEqual(['back']);
   });
 
+  it('gives each of two quick back presses its own press', async () => {
+    vi.useFakeTimers();
+    const device = fakeDevice();
+    const game = fakeGame();
+    await mobile({ plugins: device.plugins })(game);
+    let presses = 0;
+    const step = () => {
+      game.input.update();
+      if (game.input.pressed('back')) presses++;
+      vi.advanceTimersByTime(1000 / 60);
+    };
+    device.fire('backButton', { canGoBack: false });
+    step();
+    device.fire('backButton', { canGoBack: false });
+    device.fire('backButton', { canGoBack: false });
+    for (let i = 0; i < 60; i++) step();
+    expect(presses).toBe(3);
+    expect(game.input.player(1).virtual.has('back')).toBe(false);
+  });
+
+  it('keeps a back press down until the game has read it (slow frames)', async () => {
+    vi.useFakeTimers();
+    const device = fakeDevice();
+    const game = fakeGame();
+    await mobile({ plugins: device.plugins })(game);
+    device.fire('backButton', { canGoBack: false });
+    device.fire('backButton', { canGoBack: false });
+    // No frame for 500 ms: both taps are still waiting, the first one down.
+    vi.advanceTimersByTime(500);
+    expect(game.input.player(1).virtual.get('back')).toBe(1);
+    let presses = 0;
+    for (let i = 0; i < 6; i++) {
+      // One slow frame (one input read) every 250 ms.
+      game.input.update();
+      if (game.input.pressed('back')) presses++;
+      vi.advanceTimersByTime(250);
+    }
+    expect(presses).toBe(2);
+    expect(game.input.player(1).virtual.has('back')).toBe(false);
+  });
+
+  it('counts a back press that lands right as the previous one is released', async () => {
+    vi.useFakeTimers();
+    const device = fakeDevice();
+    const game = fakeGame();
+    await mobile({ plugins: device.plugins })(game);
+    let presses = 0;
+    const step = () => {
+      game.input.update();
+      if (game.input.pressed('back')) presses++;
+    };
+    device.fire('backButton', { canGoBack: false });
+    step();
+    // The first tap is released; the second arrives before the input is read again.
+    vi.advanceTimersByTime(100);
+    expect(game.input.player(1).virtual.has('back')).toBe(false);
+    device.fire('backButton', { canGoBack: false });
+    for (let i = 0; i < 30; i++) {
+      step();
+      vi.advanceTimersByTime(1000 / 60);
+    }
+    expect(presses).toBe(2);
+  });
+
   it('stops the game in the background and restores the bars on return', async () => {
     const dispatch = vi.fn();
     vi.stubGlobal('dispatchEvent', dispatch);
