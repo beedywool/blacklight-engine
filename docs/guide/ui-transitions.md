@@ -36,6 +36,65 @@ Leaving takes 75 % of the entering time. Enter progress eases out fast (`cubic-b
 
 Defaults are unchanged from the [UI layer](./ui#screen-options): screens use `fade`, modals enter with `zoom`. An unknown screen transition logs a warning with the known names and shows the screen without animation; an unknown scene transition throws `Unknown scene transition "irs". Did you mean "iris"? Known: none, fade, …`.
 
+## Examples
+
+Each example opens a menu with the effect, closes it, then changes scene under the same effect, and loops. `distort` exists for scene changes only. Edit `TRANSITION` to compare effects, or the timings in `create()`.
+
+### fade
+
+<LiveExample src="transitions/fade" hint="Menu enter and leave, then a scene change." />
+
+### slide-left
+
+<LiveExample src="transitions/slide-left" hint="Menu enter and leave, then a scene change." />
+
+### slide-right
+
+<LiveExample src="transitions/slide-right" hint="Menu enter and leave, then a scene change." />
+
+### slide-up
+
+<LiveExample src="transitions/slide-up" hint="Menu enter and leave, then a scene change." />
+
+### slide-down
+
+<LiveExample src="transitions/slide-down" hint="Menu enter and leave, then a scene change." />
+
+### zoom
+
+<LiveExample src="transitions/zoom" hint="Menu enter and leave, then a scene change." />
+
+### wipe
+
+<LiveExample src="transitions/wipe" hint="Menu enter and leave, then a scene change." />
+
+### slash
+
+<LiveExample src="transitions/slash" hint="Menu enter and leave, then a scene change." />
+
+### iris
+
+<LiveExample src="transitions/iris" hint="Menu enter and leave, then a scene change." />
+
+### ink
+
+<LiveExample src="transitions/ink" hint="Menu enter and leave, then a scene change." />
+
+### slices
+
+<LiveExample src="transitions/slices" hint="Menu enter and leave, then a scene change." />
+
+### shatter
+
+<LiveExample src="transitions/shatter" hint="Menu enter and leave, then a scene change." />
+
+### distort
+
+<LiveExample src="transitions/distort" hint="Scene changes only." />
+
+### none
+
+<LiveExample src="transitions/none" hint="Menu enter and leave, then a scene change." />
 ## Between scenes
 
 Installing `@blacklight/ui` registers every effect in `game.transitions`, the map core's `goto` reads names from. A scene transition then draws a full-screen element (`.bl-cover`) above the canvas and every screen, so HUDs disappear under the cover with the scene. Without the UI package only core's `fade`, drawn on the canvas, exists.
@@ -72,6 +131,8 @@ defineTransition('blinds', {
   },
 });
 ```
+
+<LiveExample src="transitions/custom" hint="A twelve-band blinds effect, on a screen and on a scene change." />
 
 | Field      | Default                                                   | Meaning                                           |
 | ---------- | --------------------------------------------------------- | ------------------------------------------------- |
