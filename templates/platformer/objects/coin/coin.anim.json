@@ -1,0 +1,14 @@
+{
+  "$schema": "../../node_modules/@blacklight/core/schema/anim.schema.json",
+  "source": "./coin@8x8.png",
+  "hitbox": {
+    "type": "circle",
+    "radius": 4
+  },
+  "animations": {
+    "spin": {
+      "frames": [0, 1, 2, 3],
+      "fps": 8
+    }
+  }
+}

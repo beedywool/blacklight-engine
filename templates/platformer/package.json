@@ -1,0 +1,22 @@
+{
+  "name": "blacklight-template-platformer",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "blacklight dev",
+    "build": "blacklight build --target web",
+    "preview": "blacklight preview",
+    "typecheck": "blacklight types && vue-tsc --noEmit"
+  },
+  "dependencies": {
+    "@blacklight/core": "workspace:*",
+    "@blacklight/ui": "workspace:*",
+    "vue": "3.5.44"
+  },
+  "devDependencies": {
+    "@blacklight/cli": "workspace:*",
+    "typescript": "6.0.3",
+    "vue-tsc": "3.3.14"
+  }
+}
