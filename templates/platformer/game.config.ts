@@ -12,4 +12,7 @@ export default defineConfig({
       jump: ['Space', 'KeyZ', 'ArrowUp', 'KeyW', 'Pad:A'],
     },
   },
+  // Used only by `blacklight build --target steam`. 480 is Spacewar, Valve's test app: put your
+  // own App ID here before uploading.
+  steam: { appId: 480 },
 });

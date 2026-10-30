@@ -7,4 +7,7 @@ export default defineConfig({
   entry: 'title',
   resolution: { width: 1920, height: 1080, mode: 'extend' },
   ui: { theme: 'persona' },
+  // Used only by `blacklight build --target steam`. 480 is Spacewar, Valve's test app: put your
+  // own App ID here before uploading.
+  steam: { appId: 480 },
 });

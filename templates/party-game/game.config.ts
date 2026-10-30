@@ -25,4 +25,7 @@ export default defineConfig({
     // Online play talks to the relay the players type in, and the account module to the SSO.
     csp: { connect: ['https://sso.beedywool.com', 'ws:', 'wss:'] },
   },
+  // Used only by `blacklight build --target steam`. 480 is Spacewar, Valve's test app: put your
+  // own App ID here before uploading.
+  steam: { appId: 480 },
 });

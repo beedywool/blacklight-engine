@@ -1,7 +1,8 @@
 // DOC-05 / DOC-06: every folder of templates/ is created with create-blacklight, runs with
 // `blacklight dev`, and builds for every target without a change: web (PWA), the desktop target of
-// this OS (unpacked app: packaging the installers runs in CI's desktop jobs), and the Android and
-// iOS projects (generated and synced; the native compilers run in CI's android and ios jobs).
+// this OS (unpacked app: packaging the installers runs in CI's desktop jobs), Steam (that app with
+// steamworks.js and the depot scripts), and the Android and iOS projects (generated and synced;
+// the native compilers run in CI's android and ios jobs).
 // New templates are picked up from the folder list.
 import { spawnSync } from 'node:child_process';
 import { existsSync, mkdtempSync, readdirSync, rmSync, statSync } from 'node:fs';
@@ -32,7 +33,7 @@ test('the scaffolder offers every template', () => {
 });
 
 templates.forEach((template, index) => {
-  test(`${template}: dev, then web, ${os}, android and ios builds`, async ({ page }) => {
+  test(`${template}: dev, then web, ${os}, steam, android and ios builds`, async ({ page }) => {
     test.setTimeout(900_000);
     const work = mkdtempSync(join(tmpdir(), `blacklight-template-${template}-`));
     const game = join(work, 'game');
@@ -78,7 +79,15 @@ templates.forEach((template, index) => {
           (name) => name.includes('unpacked') || name.startsWith('mac'),
         ),
       ).toBe(true);
-      // Electron apps are large: free the space before the next template.
+      // Electron apps are large: free the space before the next build.
+      rmSync(join(game, 'release'), { recursive: true, force: true });
+
+      // Steam: the same app with steamworks.js, staged as this OS's depot, and the upload scripts.
+      build('steam');
+      const steam = join(game, 'release', 'steam');
+      expect(existsSync(join(steam, 'content', os))).toBe(true);
+      expect(readdirSync(join(steam, 'content', os)).length).toBeGreaterThan(0);
+      expect(existsSync(join(steam, 'scripts', 'app_build_480.vdf'))).toBe(true);
       rmSync(join(game, 'release'), { recursive: true, force: true });
 
       build('android', '--dry-run');
