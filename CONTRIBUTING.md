@@ -17,7 +17,10 @@ pnpm e2e --update-snapshots   # after an intended visual change, then review the
 pnpm bench          # NF-01 benchmark, alone on an idle machine; fails on a regression > 10 %
 BLACKLIGHT_BENCH_UPDATE=1 pnpm bench   # after an intended performance change: new baseline
 pnpm docs:dev       # documentation on http://localhost:5173
+pnpm docs:screenshots   # retake the pictures of the installation and getting-started guides
 ```
+
+The guide pictures in `docs/guide/captures/` come from `e2e/guide-captures.spec.ts`; retake them after a change to the CLI output, the `empty` template, the getting-started project or the VS Code extension, and review them before committing. The first run downloads VS Code into `packages/vscode/.vscode-test/`, like the extension's integration tests.
 
 To try a change in a real game, scaffold one against your checkout:
 
