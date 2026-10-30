@@ -17,7 +17,11 @@ beforeEach(() => {
     join(empty, 'package.json'),
     JSON.stringify({
       name: 'blacklight-template-empty',
-      dependencies: { '@blacklight/core': 'workspace:*', other: '1.0.0' },
+      dependencies: {
+        '@blacklight/core': 'workspace:*',
+        '@blacklight/module-http': 'workspace:*',
+        other: '1.0.0',
+      },
       devDependencies: { '@blacklight/cli': 'workspace:*' },
     }),
   );
@@ -38,7 +42,11 @@ describe('scaffold', () => {
     });
     const pkg = manifest(dir);
     expect(pkg.name).toBe('my-game');
-    expect(pkg.dependencies).toEqual({ '@blacklight/core': '^1.2.3', other: '1.0.0' });
+    expect(pkg.dependencies).toEqual({
+      '@blacklight/core': '^1.2.3',
+      '@blacklight/module-http': '^1.2.3',
+      other: '1.0.0',
+    });
     expect(pkg.devDependencies).toEqual({ '@blacklight/cli': '^1.2.3' });
     expect(existsSync(join(dir, '.gitignore'))).toBe(true);
     expect(existsSync(join(dir, 'node_modules'))).toBe(false);
@@ -52,7 +60,9 @@ describe('scaffold', () => {
       engineVersion: '0.0.0',
       link: '/src/engine',
     });
-    expect(manifest(dir).dependencies['@blacklight/core']).toBe('link:/src/engine/packages/core');
+    const deps = manifest(dir).dependencies;
+    expect(deps['@blacklight/core']).toBe('link:/src/engine/packages/core');
+    expect(deps['@blacklight/module-http']).toBe('link:/src/engine/packages/modules/http');
   });
 
   it('refuses unknown templates and non-empty folders', () => {

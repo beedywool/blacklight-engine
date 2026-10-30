@@ -68,7 +68,11 @@ export function packageName(dir: string): string {
 
 function engineDependency(name: string, options: ScaffoldOptions): string {
   if (options.link) {
-    const folder = name === 'create-blacklight' ? 'create' : name.replace(/^@blacklight\//, '');
+    // Modules live in packages/modules/<name> but are published as @blacklight/module-<name>.
+    const folder =
+      name === 'create-blacklight'
+        ? 'create'
+        : name.replace(/^@blacklight\/module-/, 'modules/').replace(/^@blacklight\//, '');
     return `link:${join(resolve(options.link), 'packages', folder)}`;
   }
   return `^${options.engineVersion}`;
