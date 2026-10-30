@@ -12,7 +12,7 @@ Turns with left and right, drives along its rotation with up and down: tanks, ca
 static override behaviors = [behaviors.tankRotation({ speed: 200, turnSpeed: 180 })];
 ```
 
-The helper `turnTowards(object, angle, degreesPerSecond, dt)` turns an object towards an angle at a maximum speed, for turrets.
+The helper `turnTowards(object, angle, degreesPerSecond, dt)` turns an object towards an angle in radians (the unit of `rotation`) at a maximum speed in degrees per second, for turrets.
 
 ## Example
 
