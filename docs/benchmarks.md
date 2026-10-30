@@ -27,27 +27,31 @@ BLACKLIGHT_BENCH_UPDATE=1 pnpm bench  # store this machine's results as its base
 node scripts/bench.mjs update bench-results/*.json  # same, from result files (CI artifact)
 ```
 
-`e2e/bench.spec.ts` runs the release build five times per viewport in fresh browser contexts, with no CPU throttling, and keeps the median of each metric. It fails when a gated metric is more than 10 % worse than the baseline of the same runner. The method and the reasons for it are in the comment at the top of the spec.
+`e2e/bench.spec.ts` runs the release build five times per viewport in fresh browser contexts, with no CPU throttling, and fails when a gated metric of the best run is more than 10 % worse than the baseline of the same runner; when one is, it measures five more runs and the best of the ten decides. The method and the reasons for it are in the comment at the top of the spec and in `DECISIONS.md`.
 
-Headless desktop Chromium 2026-10-30, Ryzen 7 9700X, Radeon RX 6650 XT (ANGLE on Vulkan), Linux. Median of 5 runs, 5 s each:
+The gated timing is not the time of a displayed frame. Headless Chromium shows at most 60 frames per second and a frame takes about 1.2 ms here, so the core idles most of the time, and how fast it runs the next frame depends on what else the machine does: with a browser, a chat client and the desktop shell open, the same build measured 1.1 to 1.6 ms of frame work from one run to the next. After the measured window the scene runs 20 bursts of frames back to back (game step, draw, Pixi render, UI timeline and the style it causes), each between two runs of a fixed calibration loop, and reports the median of burst time divided by calibration time (`stepRelative`). Both timings follow the CPU's speed of the moment, so the ratio holds still while more work per frame raises it.
 
-| Metric                                         | 1920×1080 | 915×412 at 2.625× (A54 viewport) | Gated |
-| ---------------------------------------------- | --------- | -------------------------------- | ----- |
-| Average fps                                    | 59.8      | 59.8                             | yes   |
-| 1 % low fps                                    | 59.5      | 59.5                             | yes   |
-| Mean frame interval                            | 16.67 ms  | 16.67 ms                         | no    |
-| p99 frame interval                             | 16.8 ms   | 16.8 ms                          | no    |
-| Frame work (main thread, rendering task)       | 1.25 ms   | 1.24 ms                          | yes   |
-| p99 frame work                                 | 2.1 ms    | 2.0 ms                           | no    |
-| Main-thread busy per frame (DevTools protocol) | 1.22 ms   | 1.18 ms                          | yes   |
-| Game ticker work per frame                     | 0.41 ms   | 0.41 ms                          | yes   |
-| JS heap after GC                               | 9.5 MB    | 9.5 MB                           | yes   |
+Headless desktop Chromium 2026-10-30, Ryzen 7 9700X, Radeon RX 6650 XT (ANGLE on Vulkan), Linux, normal desktop load (load average 1.3 to 2.4). Median of 5 runs, 5 s window each:
 
-Headless Chromium caps the frame rate at 60, so fps and 1 % low stay at 60 on this machine; the per-frame work is what moves first, and it uses about 7 % of a 16.7 ms frame. Across repeated sessions the medians stayed within 7 % of each other. With 0.5 ms of busy work added to every frame, frame work rises by 30 to 40 % and the check fails (`the regression check fails when every frame does more work` in the spec).
+| Metric                                         | 1920×1080 | 915×412 at 2.625× (A54 viewport) | Gated          |
+| ---------------------------------------------- | --------- | -------------------------------- | -------------- |
+| Average fps                                    | 59.8      | 59.8                             | yes (best run) |
+| 1 % low fps                                    | 60.0      | 60.0                             | yes (best run) |
+| Mean frame interval                            | 16.67 ms  | 16.67 ms                         | no             |
+| p99 frame interval                             | 16.67 ms  | 16.67 ms                         | no             |
+| Frame work (main thread, rendering task)       | 1.18 ms   | 1.18 ms                          | no             |
+| p99 frame work                                 | 1.95 ms   | 1.89 ms                          | no             |
+| Main-thread busy per frame (DevTools protocol) | 1.19 ms   | 1.17 ms                          | no             |
+| Game ticker work per frame                     | 0.44 ms   | 0.44 ms                          | no             |
+| Frame run back to back                         | 0.243 ms  | 0.245 ms                         | no             |
+| `stepRelative` (frame / calibration loop)      | 0.160     | 0.156                            | yes (best run) |
+| JS heap after GC                               | 10.0 MB   | 10.0 MB                          | yes (best run) |
 
-The same machine with the GPU turned off (SwiftShader, as on CI runners without a GPU) shows what CI measures: at 1920×1080, 26 fps, 1 % low 20 fps, 46 ms of frame work per frame, of which the engine's ticker work is 0.7 ms. The rest is software rendering on the main thread, so CI numbers are compared only with CI baselines.
+The frame uses about 7 % of a 16.7 ms frame, so fps and 1 % low stay at 60 on this machine. Over five consecutive sessions of `pnpm bench` on the desktop as it was, single runs of `stepRelative` ranged from 0.146 to 0.166 (one disturbed run at 0.289, which the best-of-five ignores), and the best run of each session stayed between -3.0 % and +4.8 % of the baseline (0.1506 at 1920×1080, 0.150 at the phone viewport); all sessions passed. With 30 % of the frame's cost added as busy work to every frame, `stepRelative` rose by 29 to 34 % and the check failed, as the test `the regression check fails when every frame does 30 % more work` requires. A slowdown of 15 % or more fails reliably; one between 10 and 15 % fails in most sessions, depending on how close the session's best run comes to the baseline.
 
-Limits: `performance.measureUserAgentSpecificMemory()` needs a cross-origin isolated page, which the preview server does not provide, so `memoryMb` is recorded as `null` and the heap figure covers the JS heap only (no GPU textures, no DOM).
+The same machine with the GPU turned off (SwiftShader, as on CI runners without a GPU) shows what CI measures: at 1920×1080, 26 fps, 1 % low 20 fps, 47 ms of frame work per frame, of which the engine's ticker work is 0.8 ms; the rest is software rendering. There `stepRelative` is about 0.30 (bursts are kept short so the software renderer can catch up), within 5 % across runs, and fps is not compared (the baseline is under 55 fps). CI numbers are compared only with CI baselines.
+
+Limits: the spec makes the pages cross-origin isolated, but the Chromium build Playwright uses refuses `performance.measureUserAgentSpecificMemory()`, so `memoryMb` is recorded as `null` and the heap figure covers the JS heap only (no GPU textures, no DOM). The gate does not see a regression that only affects displayed frames and not frames run back to back (paint and compositing of the UI, GPU time); such a regression shows in the recorded frame work and, once it costs frames, in fps and 1 % low.
 
 ## Start time (NF-02)
 
