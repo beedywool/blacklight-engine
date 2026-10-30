@@ -237,3 +237,34 @@ With an Xbox Series, a DualSense, a Switch Pro and a generic USB pad, in the des
 ## Deep links on desktop
 
 1. With the deb installed (Linux) or the app installed (Windows, macOS), open `dev.blacklight.fixture.desktop:/oauth/callback?code=1` from a browser. Expected: the running game receives `deeplink` with that URL (the OIDC login of the accounts module completes the same way).
+
+## Platformer template (any desktop browser, a gamepad, a phone)
+
+Create it with `pnpm create blacklight jumper --template platformer`, then `pnpm install && pnpm dev`.
+
+1. Title screen, Enter. Expected: the level fades in; the HUD shows `0 / 30` coins and the jump and pause prompts with keyboard keys.
+2. Run with the arrows, jump with Space; hold Space for a high jump, tap it for a short one. Expected: run and jump animations, the camera follows smoothly and stops at the level edges; the hills scroll slower than the ground.
+3. Jump onto a wooden plank from below. Expected: the hero passes through it and lands on top (one-way platform).
+4. Walk into a slime. Expected: hurt sound, short shake, the hero blinks back at the start (or the raised checkpoint flag). Land on a slime from above. Expected: it flattens and disappears, the hero bounces.
+5. Fall into the water. Expected: back at the last checkpoint.
+6. Walk past the grey flag in the middle of the level. Expected: the flag turns red; later hits bring the hero back there.
+7. Reach the star at the end. Expected: chime, "LEVEL CLEAR" with the coin count; PLAY AGAIN restarts the level.
+8. With a gamepad (Xbox, PlayStation, Switch Pro): D-pad or stick runs, A / Cross / B (Switch) jumps, Start pauses. Expected: the HUD and menus switch to that pad's glyphs as soon as it is used.
+9. On a phone (`pnpm dev --host`, open the Network URL): Expected: a round jump button bottom right and a pause button top right; a thumb on the left half shows a joystick under it that runs left and right; both thumbs at once run and jump. A key press on a desktop hides the touch controls again.
+
+## Web build as an installed app (PWA)
+
+Build a template (`pnpm build`) and host `dist/` on an HTTPS server you control (see docs/guide/deploy-web.md), or use `pnpm preview --host` with an HTTPS tunnel.
+
+1. Android, Chrome: open the URL, wait for the title screen, menu → Install app (or the install banner). Expected: the game's name and icon (192 px) on the home screen; opening it shows full screen, landscape, no browser bar, black splash.
+2. Turn on airplane mode, open the installed game from the home screen. Expected: it starts and every scene plays, sounds included.
+3. iPhone, Safari: Share → Add to Home Screen. Expected: same as 1 (icon from `apple-touch-icon`). Airplane mode, open it. Expected: plays offline.
+4. Desktop Chrome or Edge: the install icon in the address bar. Expected: the game opens in its own window without browser controls; offline (disconnect the network) it still starts.
+5. Build again after a visible change (a different title text), upload, open the installed game online, close it completely and open it again. Expected: the second start shows the change; DevTools → Application → Cache storage lists only the new `blacklight:<id>:<version>` cache.
+6. With the http module pointed at a server and the network off, trigger a request. Expected: the game shows its offline handling (no crash); with the network back, queued writes reach the server.
+
+## GitHub Actions build workflow of a new game (a GitHub account)
+
+1. `pnpm create blacklight my-game --template platformer`, `cd my-game`, `pnpm install`, commit everything including `pnpm-lock.yaml`, push to a new GitHub repository. Expected: the "Build" workflow runs six jobs (web, desktop win / mac / linux, android, ios) and each uploads an artifact.
+2. Download the artifacts. Expected: `web` holds the PWA, `desktop-win` the NSIS installer and portable .exe, `desktop-mac` dmg + zip for x64 and arm64, `desktop-linux` AppImage + deb, `android` a debug APK that installs with `adb install`, `ios` the Simulator `.app`.
+3. Add the signing secrets named in `.github/workflows/build.yml` and run it again (Actions → Build → Run workflow). Expected: signed installers and a release APK.
