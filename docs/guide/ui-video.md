@@ -27,6 +27,8 @@ await this.goto('chapter1', undefined, { transition: 'iris' });
 </template>
 ```
 
+<LiveExample src="concepts/video" hint="A video as a game object (looping, muted), and Enter plays it as a cutscene with subtitles (hold Enter to skip). The browser picks intro.webm or intro.mp4, whichever it can play." />
+
 ## Sources
 
 A source is an asset name (`intro`), a path (`@assets/video/intro`), a URL, or a list of them. An asset name or a path without extension gives every format of that file. The order follows the platform: WebM first, so desktop browsers and Android keep the alpha channel; MP4 first on Apple WebKit (Safari, iOS), which plays WebM without alpha. `videoSources(game, source)` returns the list.

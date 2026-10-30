@@ -54,6 +54,8 @@ const ui = useUi();
 </template>
 ```
 
+<LiveExample src="concepts/dialogue" hint="An Ink dialogue: Enter advances (or completes the line), arrows pick a choice. Edit the speakers below." />
+
 ## Ink files
 
 `.ink` files under `stories/` (alias `@stories`) are imported as modules: the CLI compiles them with the inkjs compiler at dev and build time, so games ship the compiled JSON, not the compiler or the source. `INCLUDE` works, and editing an included file reloads the story. Compile errors stop the build with the file and line: `Ink errors in stories/main.ink: ERROR: line 2: Expected closing ']' …`. TypeScript needs one declaration in the game (the templates ship it as `env.d.ts`):

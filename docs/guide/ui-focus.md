@@ -25,6 +25,8 @@ const pick = (slot: number) => console.log('slot', slot);
 </style>
 ```
 
+<LiveExample src="concepts/focus" hint="Arrows move the focus through two groups (the grid wraps, the bar does not); Enter or a click picks." />
+
 ## Focusable elements
 
 | Markup              | Effect                                                                                   |

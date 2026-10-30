@@ -30,6 +30,8 @@ damageNumber(this.game, enemy, 42, { critical: true });
 floatText(this.game, chest, '+1 KEY', { color: '#ffd60a' });
 ```
 
+<LiveExample src="concepts/world-ui" hint="UI anchored to game objects: health bars follow the enemies while the camera pans. Click an enemy to hit it (a floating damage number rises from it); a red bar at the edge points to the one off screen." />
+
 ## WorldAnchor
 
 | Prop     | Default          | Meaning                                                                                                  |

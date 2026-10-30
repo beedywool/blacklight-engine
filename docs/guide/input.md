@@ -12,6 +12,8 @@ override update() {
 
 In a scene, `this.input` is the input manager; its `pressed`, `held`, `released`, `value`, `axis` and `vector` read player 1. In an object, `this.input` is the input of the object's `player` (1 by default).
 
+<LiveExample src="concepts/input" hint="Arrows/WASD or a gamepad move the dot (vector), J or a click fires (custom action), held keys light up." />
+
 ## Actions and bindings
 
 Actions are declared in `game.config.ts` and merged over the defaults:

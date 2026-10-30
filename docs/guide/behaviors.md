@@ -105,6 +105,8 @@ export class Drift extends Behavior<{ speed: number }> {
 
 Plain data fields of a behavior (numbers, strings, arrays, plain objects, references to objects) are saved by [snapshots](./snapshots); keep runtime handles in fields the engine can skip (class instances, functions).
 
+<LiveExample src="concepts/custom-behavior" hint="A behavior written for this game: objects pulse. Press Space to turn it off and on for all." />
+
 ## Limits
 
 - Per-behavior limits are listed on each behavior's page.

@@ -1,7 +1,7 @@
 // Run with `node docs/scripts/generate-example-assets.mjs`. Draws the art of the docs examples, the
 // playground and the getting-started project (original pixel art, CC0): a 16x16 hero with idle and
 // run frames, and a coin. The PNG files are committed; rerun only to change them.
-import { copyFileSync, mkdirSync, writeFileSync } from 'node:fs';
+import { copyFileSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 
 const require = createRequire(new URL('../../packages/cli/package.json', import.meta.url));
@@ -66,3 +66,54 @@ for (const dir of ['playground/objects/hero', 'getting-started/objects/hero']) {
   mkdirSync(`${examples}${dir}`, { recursive: true });
   copyFileSync(`${examples}assets/hero@16x16.png`, `${examples}${dir}/hero@16x16.png`);
 }
+// The getting-started guide links this copy for download.
+const downloads = new URL('../public/downloads/', import.meta.url).pathname;
+mkdirSync(downloads, { recursive: true });
+copyFileSync(`${examples}assets/hero@16x16.png`, `${downloads}hero@16x16.png`);
+
+// Tileset for the tilemap example: 1 floor, 2 brick, 3-4 an animated light.
+const tiles = png(64, 16, (x, y) => {
+  const tile = Math.floor(x / 16) + 1;
+  const tx = x % 16;
+  const edge = tx === 0 || tx === 15 || y === 0 || y === 15;
+  if (tile === 1) return y === 0 ? WHITE : edge ? DARK : GREY;
+  if (tile === 2) return y % 8 === 0 || (tx + (y < 8 ? 0 : 8)) % 16 === 0 ? DARK : RED;
+  const d = (tx - 7.5) ** 2 + (y - 7.5) ** 2;
+  if (d > (tile === 3 ? 20 : 40)) return undefined;
+  return tile === 3 ? GREY : WHITE;
+});
+writeFileSync(`${examples}assets/tiles.png`, tiles);
+
+// 120 ms 880 Hz blip, 16-bit mono PCM WAV, for the audio example.
+const rate = 22050;
+const samples = Math.floor(rate * 0.12);
+const pcm = Buffer.alloc(samples * 2);
+for (let i = 0; i < samples; i++)
+  pcm.writeInt16LE(
+    Math.round(Math.sin((i / rate) * 880 * Math.PI * 2) * 12000 * (1 - i / samples)),
+    i * 2,
+  );
+const header = Buffer.alloc(44);
+header.write('RIFF', 0);
+header.writeUInt32LE(36 + pcm.length, 4);
+header.write('WAVE', 8);
+header.write('fmt ', 12);
+header.writeUInt32LE(16, 16);
+header.writeUInt16LE(1, 20);
+header.writeUInt16LE(1, 22);
+header.writeUInt32LE(rate, 24);
+header.writeUInt32LE(rate * 2, 28);
+header.writeUInt16LE(2, 32);
+header.writeUInt16LE(16, 34);
+header.write('data', 36);
+header.writeUInt32LE(pcm.length, 40);
+writeFileSync(`${examples}assets/blip.wav`, Buffer.concat([header, pcm]));
+
+// The dialogue example's Ink story, compiled to the JSON the runtime loads (what the CLI does
+// for stories/*.ink in a game).
+const { Compiler } = require('inkjs/full');
+const ink = readFileSync(`${examples}concepts/dialogue/story.ink`, 'utf8');
+writeFileSync(
+  `${examples}concepts/dialogue/story.json`,
+  `${new Compiler(ink).Compile().ToJson()}\n`,
+);

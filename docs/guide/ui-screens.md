@@ -11,6 +11,8 @@ if (this.input.pressed('pause')) this.ui.push(PauseScreen, { slots });
 ui.push(SettingsScreen);
 ```
 
+<LiveExample src="concepts/ready-screens" hint="Ready-made screens: Escape opens the pause menu (it pauses the game; Settings, Save and Load work), Enter opens the settings directly." />
+
 ## Settings
 
 `SettingsScreen` has five tabs, switched with the tab buttons or `tabLeft` / `tabRight`. Every change applies at once and is saved.

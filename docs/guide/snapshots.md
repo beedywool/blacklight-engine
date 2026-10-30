@@ -8,6 +8,8 @@ const before = this.snapshot();
 this.restore(before);
 ```
 
+<LiveExample src="concepts/snapshots" hint="Enter takes a snapshot of the scene, Backspace goes back to it. Click to add balls in between." />
+
 ## What is saved
 
 | Part         | Content                                                                                                                                                                                           |

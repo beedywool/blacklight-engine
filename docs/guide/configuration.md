@@ -37,3 +37,5 @@ Every coordinate in a game is in virtual pixels: `(0, 0)` is the top-left corner
 An invalid configuration stops the game before the first scene and lists every problem with its fix, for example ``id must be a lowercase reverse-domain identifier, e.g. `id: "com.example.mygame"` ``.
 
 Saves, security, targets, modules, locales, accounts and platform settings join this file as their packages land.
+
+<LiveExample src="concepts/resolution" hint="A square 1000x1000 design in a wide preview: `extend` shows more on the long side. Change mode to 'letterbox' to get black bars instead." />

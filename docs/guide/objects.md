@@ -25,6 +25,8 @@ export default class Hero extends Sprite {
 
 `GameObject` extends a Pixi `Container`, so `rotation`, `scale`, `alpha`, `visible`, `zIndex` and `addChild` work as in Pixi. Positions are in virtual pixels, speeds in virtual pixels per second, angles in radians unless an option says degrees.
 
+<LiveExample src="concepts/objects" hint="Objects: a container with children, layers and z-order, alpha, tint and a Pixi filter." />
+
 ## Spawning
 
 ```ts
@@ -192,6 +194,8 @@ this.spawn(Text, { bitmap: true, text: '000', style: { fontFamily: 'Arcade', fon
 
 `static bitmap` makes every instance of a class use bitmap fonts; the `bitmap` field switches one instance, at spawn or later (the text, style and anchor are kept). A bitmap text with a web font family that has no `.fnt` makes Pixi generate a bitmap font from it.
 
+<LiveExample src="concepts/text" hint="Text objects: Pixi text styles, anchors, and a text updated every step." />
+
 ### Graphics
 
 Vector shapes drawn with the Pixi Graphics API on `draw`:
@@ -258,6 +262,8 @@ Options are set with the `options` spawn prop or `configure(options)`, which rep
 
 Particles are children of the emitter: moving the emitter moves the particles already emitted. For a trail, spawn an emitter that stays in place, or burst from short-lived emitters.
 
+<LiveExample src="concepts/particles" hint="A fountain emits continuously; click to burst sparks where you click." />
+
 ### TilemapLayer
 
 A grid of tiles from one tileset image. Tiles are drawn in cached 16×16 chunks; solid tiles block `move()`, behaviors and raycasts.
@@ -308,6 +314,8 @@ import tiled from './level-1.json';
 const data = TilemapLayer.fromTiled(tiled, 'ground', 'tiles');
 this.spawn(TilemapLayer, { map: data });
 ```
+
+<LiveExample src="concepts/tilemap" hint="A tilemap defined in code: grey and red tiles are solid, the lights are animated. Arrows move. Click a cell to dig or fill it." />
 
 ## Limits
 

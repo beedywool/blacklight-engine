@@ -1,0 +1,65 @@
+{
+  "inkVersion": 21,
+  "root": [
+    [
+      "^mira: You made it. The <color=primary>last train</color> leaves in five minutes.",
+      "\n",
+      "^mira: Can I count on you?",
+      "\n",
+      "ev",
+      "str",
+      "^Yes",
+      "/str",
+      "/ev",
+      { "*": "0.c-0", "flg": 20 },
+      "ev",
+      "str",
+      "^Not yet",
+      "/str",
+      "/ev",
+      { "*": "0.c-1", "flg": 20 },
+      {
+        "c-0": [
+          "\n",
+          "ev",
+          { "VAR?": "trust" },
+          1,
+          "+",
+          "/ev",
+          { "VAR=": "trust", "re": true },
+          "^mira: Then follow me. <wave>Quickly.</wave>",
+          "\n",
+          { "->": "0.g-0" },
+          { "#f": 5 }
+        ],
+        "c-1": [
+          "\n",
+          "^mira: Fine. I will wait<pause=400>... for a while.",
+          "\n",
+          { "->": "0.g-0" },
+          { "#f": 5 }
+        ],
+        "g-0": [
+          "^Trust is now ",
+          "ev",
+          { "VAR?": "trust" },
+          "out",
+          "/ev",
+          "^. ",
+          "#",
+          "^bg: platform",
+          "/#",
+          "\n",
+          "^mira: The end. Run the example again to choose differently.",
+          "\n",
+          "end",
+          ["done", { "#n": "g-1" }],
+          null
+        ]
+      }
+    ],
+    "done",
+    { "global decl": ["ev", 0, { "VAR=": "trust" }, "/ev", "end", null] }
+  ],
+  "listDefs": {}
+}

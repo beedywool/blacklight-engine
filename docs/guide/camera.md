@@ -16,6 +16,8 @@ The camera moves the world layers. The `'hud'` layer is drawn in screen space ab
 this.spawn(Text, { layer: 'hud', x: 32, y: 32, text: 'Score 0' });
 ```
 
+<LiveExample src="concepts/camera" hint="Arrows move through a world wider than the screen; Q and E zoom, Space shakes the camera." />
+
 ## Following
 
 `follow(target, options)` moves the camera towards `target` every step until `unfollow()`. The target is any object with `x` and `y`; a destroyed object stops being followed.
@@ -72,6 +74,8 @@ override create() {
 `addCamera(viewport)` adds a camera drawing to part of the screen; `viewport` is in fractions of the design size (`{ x: 0, y: 0, width: 0.5, height: 1 }` is the left half). A scene has at most 4 cameras; a fifth throws. With more than one camera, each one renders the world into its own texture. `scene.cameras` lists them, `scene.camera` is the first, and `removeCamera(camera)` removes one (never the last). The HUD is drawn once, over the whole screen.
 
 Each camera has its own `follow`, `bounds`, `zoom`, `rotation` and `shake`. Its view size at zoom 1 is the visible size times its viewport fraction.
+
+<LiveExample src="concepts/split-screen" hint="Split screen: WASD moves the white player (left view), the arrows move the red one (right view)." />
 
 ## Limits
 

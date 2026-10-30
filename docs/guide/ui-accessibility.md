@@ -23,6 +23,8 @@ accessibility.reducedMotion = 'on';
 
 The object is the same as `uiOf(game).accessibility`. Values are read from settings when the UI layer starts; a saved value of the wrong type is replaced by the default.
 
+<LiveExample src="concepts/accessibility" hint="Accessibility options apply at once to the canvas and the UI. Enter: color filter, Space: contrast, up and down: text size. A subtitle shows every few seconds." />
+
 ## In your screens
 
 - **Text size.** Write font sizes of long text as `calc(32px * var(--bl-text-scale))`. Menus with fixed layouts can keep fixed sizes.
