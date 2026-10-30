@@ -92,6 +92,16 @@ Run `pnpm --filter blacklight-template-2d-with-3d build && pnpm --filter blackli
 4. Samsung Galaxy A54 (Chrome) and iPhone 12 (Safari), landscape: open `/#bench`, wait 7 s. Expected: the line at the top reads 58 fps or more and CPU under 8 ms; note the numbers in docs (3D page, performance table). Then `/#bench-2d` for the 2D baseline.
 5. Same phones: open the arena and the pause menu. Expected: no visible stutter while walking; the menu model turns smoothly.
 
+## NF-01 on the reference phones (Samsung Galaxy A54, iPhone 12)
+
+The benchmark fixture `e2e/fixtures/bench` (300 animated sprites under an animated UI screen) shows its result at the bottom of the screen 7 s after it starts. Charge the phone above 50 %, close other apps, turn off battery saver / Low Power Mode, hold it in landscape.
+
+1. Galaxy A54, app build: `pnpm build`, then `pnpm --dir e2e/fixtures/bench exec blacklight build --target android --run`. Expected: the bottom line reads 58 fps or more, 1 % low 50 or more. Note the full line in docs/benchmarks.md (NF-01, a "Galaxy A54" row with the date and the Android version).
+2. Galaxy A54, Chrome: `pnpm --dir e2e/fixtures/bench build && pnpm --dir e2e/fixtures/bench preview --host`, open the printed network URL. Expected: same thresholds as step 1; note the line.
+3. iPhone 12, app build on a Mac: `pnpm --dir e2e/fixtures/bench exec blacklight build --target ios --dry-run`, open `.blacklight/mobile/ios/App/App.xcodeproj`, set your team, run on the phone. Expected: 58 fps or more, 1 % low 50 or more; note the line with the iOS version.
+4. iPhone 12, Safari: open the preview URL of step 2. Expected: same thresholds; note the line.
+5. On each phone, reload three times and keep the lowest fps of the three. Expected: the cards slide in and out, the ring turns, the gauge and the counter change, and no visible stutter while the sprites cross the screen.
+
 ## Modules and platform services (phase 3e)
 
 Automated with mocks: `e2e/modules.spec.ts` (registry, `blacklight add`, sql.js, OIDC against a mock provider, offline queues) and the module unit tests. These need real accounts, devices or services.

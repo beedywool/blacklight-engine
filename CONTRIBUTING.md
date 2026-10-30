@@ -14,6 +14,8 @@ pnpm lint           # ESLint + Prettier check
 pnpm typecheck
 pnpm e2e            # browser tests (Playwright; first run: pnpm exec playwright install chromium)
 pnpm e2e --update-snapshots   # after an intended visual change, then review the new images
+pnpm bench          # NF-01 benchmark, alone on an idle machine; fails on a regression > 10 %
+BLACKLIGHT_BENCH_UPDATE=1 pnpm bench   # after an intended performance change: new baseline
 pnpm docs:dev       # documentation on http://localhost:5173
 ```
 
