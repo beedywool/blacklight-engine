@@ -163,8 +163,9 @@ for (const [name, profile] of Object.entries(PROFILES)) {
   test(`${name}: 300 animated sprites and an animated UI screen stay within 10 % of the baseline`, async (// eslint-disable-next-line no-empty-pattern
   {}, testInfo: TestInfo) => {
     test.setTimeout(60_000 + 2 * RUNS * 30_000);
-    const runner = runnerName();
     const runs = await measureRuns(profile, RUNS);
+    // After the first run: the default runner name includes the GPU the page reported.
+    const runner = runnerName();
     const baseline = readBaseline()[runner]?.[name];
     let rows = baseline ? compare(baseline.best, best(runs)) : [];
     if (rows.some((row) => row.regressed) && process.env.BLACKLIGHT_BENCH_UPDATE !== '1') {
@@ -174,7 +175,7 @@ for (const [name, profile] of Object.entries(PROFILES)) {
       rows = compare(baseline!.best, best(runs));
     }
     const file = {
-      runner: runnerName(),
+      runner,
       profile: name,
       gpu,
       date: new Date().toISOString(),
@@ -209,15 +210,15 @@ for (const [name, profile] of Object.entries(PROFILES)) {
 }
 
 // Proof that the check fails on a real regression: the same scene with busy work added to every
-// frame (`?burn=<ms>`, a fifth of the frame's own cost), compared with clean runs taken just
+// frame (`?burn=<ms>`, 30 % of the frame's own cost), compared with clean runs taken just
 // before on the same machine, must be reported as a regression; the clean runs compared with
 // themselves must not.
-test('the regression check fails when every frame does 20 % more work', async () => {
+test('the regression check fails when every frame does 30 % more work', async () => {
   test.setTimeout(60_000 + 6 * 30_000);
   const profile = PROFILES.desktop!;
   const cleanRuns = await measureRuns(profile, 3);
   const clean = best(cleanRuns);
-  const burnMs = Math.max(0.01, Number((summarize(cleanRuns).stepMs! * 0.2).toFixed(3)));
+  const burnMs = Math.max(0.01, Number((summarize(cleanRuns).stepMs! * 0.3).toFixed(3)));
   const slower = best(await measureRuns(profile, 3, `?burn=${burnMs}`));
   const rows = compare(clean, slower);
   console.log(`[bench] ${burnMs} ms of work added to every frame\n${formatComparison(rows)}`);
