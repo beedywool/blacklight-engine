@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { MenuList, useGame, useTimeline } from '@blacklight/ui';
-import { computed, onMounted, ref } from 'vue';
+import { MenuList, onUiStep, useGame, useTimeline } from '@blacklight/ui';
+import { computed, onMounted, ref, shallowRef } from 'vue';
 import SkinBadge from '@ui/SkinBadge.vue';
 import { party, ranking } from '../../../party/session';
 import type Match from '../match.scene';
@@ -17,6 +17,16 @@ const intro = useTimeline().to(
   { duration: 0.35, ease: 'backOut' },
 );
 onMounted(() => void intro.play());
+
+// Players are mashing buttons when the game ends: the menu appears once nobody holds confirm.
+const armed = shallowRef(false);
+let calm = 0;
+onUiStep(() => {
+  if (armed.value) return;
+  const held = game.input.joinedPlayers.some((p) => game.input.uiPlayer(p.number).held('confirm'));
+  calm = held ? 0 : calm + 1;
+  if (calm >= 20) armed.value = true;
+});
 
 const items = online
   ? [
@@ -58,7 +68,8 @@ function select(value: string) {
           <span class="end__points">{{ row.points }} PTS</span>
         </div>
       </div>
-      <MenuList class="end__menu" :items="items" horizontal @select="select" />
+      <MenuList v-if="armed" class="end__menu" :items="items" horizontal @select="select" />
+      <div v-else class="end__menu end__menu--wait" />
     </div>
   </div>
 </template>
@@ -102,5 +113,8 @@ function select(value: string) {
 }
 .end__menu {
   font-size: 56px;
+}
+.end__menu--wait {
+  height: 1.3em;
 }
 </style>
