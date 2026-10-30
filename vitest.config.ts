@@ -8,6 +8,8 @@ export default defineConfig({
       'packages/modules/*',
       // Folders only: servers/ also holds docker-compose.yml.
       'servers/*/vitest.config.ts',
+      // Template rules and their online variants (headless, no browser).
+      'templates/party-game',
     ],
     coverage: {
       provider: 'v8',
