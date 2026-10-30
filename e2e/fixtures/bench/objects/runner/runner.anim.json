@@ -1,0 +1,9 @@
+{
+  "$schema": "../../node_modules/@blacklight/core/schema/anim.schema.json",
+  "source": "./runner@32x32.png",
+  "default": "run",
+  "animations": {
+    "run": { "frames": [0, 1, 2, 3, 4, 5], "fps": 12 },
+    "idle": { "frames": [6, 7], "fps": 3 }
+  }
+}
