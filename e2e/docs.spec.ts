@@ -334,9 +334,14 @@ test('every exercise has a solution, shown on its page with the changed lines hi
   expect(problems).toEqual([]);
 });
 
-/** Clicks the preview of a live example and holds each key for a moment. */
+/** Clicks the middle of a live example's preview, then holds each key for a moment. */
 async function pressKeys(page: Page, live: Locator, keys: string[]): Promise<void> {
-  await live.locator('.bl-live__preview iframe').click();
+  // Held for a few steps: a click shorter than a step is not seen by `pointer.pressed`.
+  const box = (await live.locator('.bl-live__preview iframe').boundingBox())!;
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.down();
+  await page.waitForTimeout(100);
+  await page.mouse.up();
   for (const key of keys) {
     await page.keyboard.down(key);
     await page.waitForTimeout(400);
@@ -376,7 +381,8 @@ test('every exercise solution runs, and each check passes on the solution, not o
       if (checks) {
         const deadline = Date.now() + 15_000;
         while ((await live.getAttribute('data-done')) !== 'true' && Date.now() < deadline) {
-          if (keys.length) await pressKeys(page, live, keys);
+          // A click on the preview, then the keys: what a reader does to try it.
+          await pressKeys(page, live, keys);
           await page.waitForTimeout(250);
         }
         if ((await live.getAttribute('data-done')) !== 'true') fail('the solution fails the check');
