@@ -42,6 +42,19 @@ jobs:
       - if: runner.os != 'Linux'
         run: pnpm e2e
       - run: pnpm --filter blacklight-vscode test:integration
+      # NF-01 benchmark, after the other tests so the runner is idle. Baselines are per runner
+      # (e2e/bench-baseline.json); a runner without one records its results and passes. Copy them
+      # from the bench-results-<os> artifact of a green main run: node scripts/bench.mjs update.
+      - run: pnpm bench
+        env:
+          BLACKLIGHT_BENCH_RUNNER: github-${{ matrix.os }}
+      - uses: actions/upload-artifact@v5
+        if: always()
+        with:
+          name: bench-results-${{ matrix.os }}
+          path: bench-results/
+          if-no-files-found: ignore
+          retention-days: 90
       - uses: actions/upload-artifact@v5
         if: always()
         with:
