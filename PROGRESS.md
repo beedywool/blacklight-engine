@@ -155,6 +155,6 @@ One line per `SPEC.md` requirement: `- [x] ID · where · test`. A requirement i
 - [ ] NF-02 Cold start under 3 s on desktop; first interactive screen…
 - [ ] NF-03 Under 300 MB memory on mobile for the party-game…
 - [x] NF-04 Core size · `@blacklight/core` main bundle 59.6 KB gzip without Pixi, Vue and Three (Motion included), lazy gamepad database 44.9 KB apart; reported in docs/benchmarks.md · test: packages/cli/test/core-size.spec.ts (fails at 150 KB)
-- [ ] NF-05 Support
+- [ ] NF-05 Support — partial · browsers: the release build of every template starts, draws and takes keys and pointer in Chromium, Firefox and WebKit (Safari's engine) · test: e2e browsers.spec.ts (WebKit skipped where Playwright cannot install its libraries, e.g. this Arch-based machine; runs in CI). Still to check: the OS matrix (Windows 10+, macOS 12+, Ubuntu 22.04+) and Android 8 / iOS 15 in CI; "last two versions" of each browser is one Playwright build per engine plus MANUAL_TESTS.md
 - [ ] NF-06 Fully typed, documented public API; semver from 1.0.
 - [ ] NF-07 Tests — unit coverage of core 50 % (browser-only code is covered by e2e only); needs browser-mode unit tests to reach 80 %

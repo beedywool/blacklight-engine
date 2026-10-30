@@ -154,6 +154,20 @@ export function isGameChunk(
 }
 
 /**
+ * Path of `pixi.js/unsafe-eval` in the Pixi copy a game bundles: the game's own when it depends on
+ * Pixi (what `resolve.dedupe` picks), core's otherwise.
+ */
+export function resolvePixiUnsafeEval(game: NodeJS.Require, core: NodeJS.Require): string {
+  let file: string;
+  try {
+    file = game.resolve('pixi.js/unsafe-eval');
+  } catch {
+    file = core.resolve('pixi.js/unsafe-eval');
+  }
+  return file.replace(/\.js$/, '.mjs');
+}
+
+/**
  * Vite plugin of release builds: adds the CSP to `index.html` and Pixi's eval-free code paths, and
  * obfuscates the game's chunks. Dev builds are untouched (SEC measures are off in dev).
  */
@@ -175,9 +189,10 @@ export function hardening(options: { root: string }): Plugin {
       if (settings.csp) {
         policy = core.contentSecurityPolicy(settings.csp);
         // Pixi compiles shader sync code with `new Function` unless this module is loaded; it must
-        // be the copy core uses.
+        // patch the copy the game bundles. `resolve.dedupe` takes Pixi from the game when the game
+        // depends on it (2d-with-3d does, for Three), else from core: resolve it the same way.
         const coreRequire = createRequire(require.resolve('@blacklight/core/config'));
-        unsafeEvalModule = coreRequire.resolve('pixi.js/unsafe-eval').replace(/\.js$/, '.mjs');
+        unsafeEvalModule = resolvePixiUnsafeEval(require, coreRequire);
       }
       // SEC-06 times a `debugger` statement; the minifier drops those by default.
       return settings.debugger

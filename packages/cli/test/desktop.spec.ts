@@ -2,7 +2,13 @@ import { readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { signCommand } from '../src/commands/desktop';
-import { OBFUSCATION_LEVELS, isGameChunk, obfuscate, withoutEmbindEval } from '../src/security';
+import {
+  OBFUSCATION_LEVELS,
+  isGameChunk,
+  obfuscate,
+  resolvePixiUnsafeEval,
+  withoutEmbindEval,
+} from '../src/security';
 import { desktopEntry, hostOs, unpackedDir } from '../src/targets/desktop';
 import { capacitorConfig } from '../src/targets/mobile-native';
 import { nativeEntry } from '../src/targets/natives';
@@ -218,5 +224,26 @@ describe('CSP and WebAssembly libraries (SEC-08)', () => {
     expect(patched).not.toMatch(/newFunc\(Function,/);
     expect(patched).toContain('var invokerFn=function(...invokeArgs)');
     expect(withoutEmbindEval('const a = 1;')).toBe('const a = 1;');
+  });
+
+  it("patches the Pixi copy the game bundles: the game's own first, else core's", () => {
+    const from = (dir: string | undefined) =>
+      Object.assign(
+        (id: string) => {
+          throw new Error(id);
+        },
+        {
+          resolve: (id: string) => {
+            if (!dir) throw new Error(`Cannot find module '${id}'`);
+            return `${dir}/node_modules/pixi.js/lib/${id.split('/')[1]}/init.js`;
+          },
+        },
+      ) as unknown as NodeJS.Require;
+    expect(resolvePixiUnsafeEval(from('/game'), from('/core'))).toBe(
+      '/game/node_modules/pixi.js/lib/unsafe-eval/init.mjs',
+    );
+    expect(resolvePixiUnsafeEval(from(undefined), from('/core'))).toBe(
+      '/core/node_modules/pixi.js/lib/unsafe-eval/init.mjs',
+    );
   });
 });

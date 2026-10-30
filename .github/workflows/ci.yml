@@ -32,7 +32,7 @@ jobs:
       - run: pnpm --filter blacklight-template-empty build
       - run: pnpm --filter blacklight-template-persona-menu typecheck
       - run: pnpm docs:build
-      - run: pnpm exec playwright install --with-deps chromium webkit
+      - run: pnpm exec playwright install --with-deps chromium firefox webkit
       # Electron (e2e/desktop.spec.ts) needs a display on Linux, and Ubuntu 24.04 restricts the
       # unprivileged user namespaces Chromium's sandbox uses.
       - if: runner.os == 'Linux'

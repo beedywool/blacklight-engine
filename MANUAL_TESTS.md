@@ -7,6 +7,8 @@ What CI cannot check (SPEC §11.3). Run before each release; every step says wha
 1. `pnpm create blacklight my-game && cd my-game && pnpm install && pnpm dev`, open the printed URL. Expected: black page, white dot pulsing, "My Game" and the edit hint centered.
 2. Resize the window to very wide, then very tall. Expected: the content stays centered and fully visible, never stretched.
 
+3. Older browser versions (NF-05: the last two versions of Chrome, Firefox and Safari; CI runs one build of each engine). In the previous major version of each browser, open the release build of `party-game` and `visual-novel` (`pnpm build && pnpm preview` in the template). Expected: the title screen appears, keys and the mouse work, no error in the console.
+
 ## Runtime fixture (any desktop browser)
 
 Run `pnpm --filter blacklight-fixture-runtime dev` and open the printed URL.
