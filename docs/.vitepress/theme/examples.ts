@@ -11,7 +11,7 @@ const sources = import.meta.glob(
   { query: '?raw', import: 'default' },
 ) as Record<string, () => Promise<string>>;
 const binaries = import.meta.glob(
-  ['../../examples/**/*.png', '!../../examples/getting-started/**'],
+  ['../../examples/**/*.{png,wav,webm,mp4,vtt}', '!../../examples/getting-started/**'],
   {
     query: '?url',
     import: 'default',

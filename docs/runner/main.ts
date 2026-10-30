@@ -126,7 +126,12 @@ async function report(game: core.Game): Promise<void> {
     if (performance.now() > deadline) throw new Error('The first scene did not start in 15 s.');
     await new Promise((resolve) => setTimeout(resolve, 50));
   }
-  for (let i = 0; i < 20; i++) await new Promise((resolve) => requestAnimationFrame(resolve));
+  // Frames are throttled while the preview is off screen: never wait more than 100 ms for one.
+  for (let i = 0; i < 20; i++)
+    await new Promise((resolve) => {
+      requestAnimationFrame(resolve);
+      setTimeout(resolve, 100);
+    });
   if (failed) return;
   let lit = 0;
   try {

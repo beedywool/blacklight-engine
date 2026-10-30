@@ -14,6 +14,8 @@ export default tseslint.config(
       'packages/vscode/{dist-webview,dist-test,schema,.vscode-test}/**',
       'docs/.vitepress/cache/**',
       'docs/.vitepress/dist/**',
+      'docs/public/runner/**',
+      'docs/api/**',
     ],
   },
   js.configs.recommended,

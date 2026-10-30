@@ -28,6 +28,8 @@ const runs = ref(0);
 const status = ref<'idle' | 'loading' | 'running' | 'error'>('idle');
 const error = ref('');
 const report = ref<RenderReport>();
+/** Runs started so far, for tests waiting for the next one. */
+const started = ref(0);
 const changed = computed(
   () =>
     !!files.value &&
@@ -48,7 +50,11 @@ function onStatus(next: 'loading' | 'running' | 'error', detail?: RenderReport |
   // The first error wins: later ones are usually consequences.
   if (status.value === 'error' && next === 'running') return;
   status.value = next;
-  if (next === 'loading') error.value = '';
+  if (next === 'loading') {
+    error.value = '';
+    report.value = undefined;
+    started.value++;
+  }
   if (next === 'error' && !error.value) error.value = String(detail);
   if (next === 'running') report.value = detail as RenderReport;
 }
@@ -60,6 +66,8 @@ function reset() {
 
 onMounted(async () => {
   const example = await loadExample(props.src);
+  // Unmounted while loading (navigation, hot reload).
+  if (!root.value) return;
   original.value = example.files;
   files.value = example.files;
   running.value = example.files;
@@ -89,6 +97,7 @@ onBeforeUnmount(() => {
     :data-status="status"
     :data-lit="report?.lit"
     :data-error="error || undefined"
+    :data-run="started"
   >
     <div class="bl-live__bar">
       <div class="bl-live__tabs" role="tablist">

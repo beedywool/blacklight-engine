@@ -18,6 +18,9 @@ const runs = ref(0);
 const status = ref<'loading' | 'running' | 'error'>('loading');
 const error = ref('');
 const report = ref<RenderReport>();
+const started = ref(0);
+/** Problem with the link the page was opened with. */
+const linkError = ref('');
 const newPath = ref('');
 const shareUrl = ref('');
 const copied = ref(false);
@@ -64,7 +67,10 @@ function onChange(path: string, text: string) {
 function onStatus(next: 'loading' | 'running' | 'error', detail?: RenderReport | string) {
   if (status.value === 'error' && next === 'running') return;
   status.value = next;
-  if (next === 'loading') error.value = '';
+  if (next === 'loading') {
+    error.value = '';
+    started.value++;
+  }
   if (next === 'error' && !error.value) error.value = String(detail);
   if (next === 'running') report.value = detail as RenderReport;
 }
@@ -119,7 +125,7 @@ onMounted(async () => {
   try {
     project = (await decodeProject(location.hash)) ?? starter.value;
   } catch (failure) {
-    error.value = (failure as Error).message;
+    linkError.value = (failure as Error).message;
   }
   start(project);
   shareUrl.value = location.href;
@@ -127,7 +133,13 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="bl-play" :data-status="status" :data-error="error || undefined">
+  <div
+    class="bl-play"
+    :data-status="status"
+    :data-error="error || undefined"
+    :data-run="started"
+    :data-link-error="linkError || undefined"
+  >
     <aside class="bl-play__files" aria-label="Project files">
       <ul>
         <li v-for="path in paths" :key="path" :class="{ 'is-active': path === active }">
@@ -189,6 +201,7 @@ onMounted(async () => {
           @status="onStatus"
         />
       </div>
+      <p v-if="linkError" class="bl-play__error">{{ linkError }}</p>
       <pre v-if="error" class="bl-play__error">{{ error }}</pre>
       <p v-else class="bl-play__hint">
         Click the preview to give it the keyboard. The address bar always holds a link to this
@@ -208,7 +221,7 @@ onMounted(async () => {
 <style scoped>
 .bl-play {
   display: grid;
-  grid-template-columns: 220px minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-columns: 260px minmax(0, 1fr) minmax(0, 1fr);
   gap: 12px;
   height: calc(100vh - var(--vp-nav-height) - 48px);
   min-height: 560px;
@@ -276,9 +289,11 @@ li.is-active .bl-play__file {
   gap: 4px;
   margin-top: 8px;
 }
+.bl-play__add input {
+  flex: 1;
+}
 .bl-play__add input,
 .bl-play__link {
-  flex: 1;
   min-width: 0;
   padding: 4px 10px;
   border-radius: 999px;
