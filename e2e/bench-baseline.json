@@ -2,38 +2,60 @@
   "linux-x64 · AMD Ryzen 7 9700X 8-Core Processor · ANGLE (AMD, Vulkan 1.4.354 (AMD Radeon RX 6650 XT (RADV NAVI23) (0x000073EF)), radv)": {
     "desktop": {
       "gpu": "ANGLE (AMD, Vulkan 1.4.354 (AMD Radeon RX 6650 XT (RADV NAVI23) (0x000073EF)), radv)",
-      "date": "2026-10-30T19:56:09.428Z",
+      "date": "2026-10-30T20:56:11.278Z",
+      "best": {
+        "fps": 59.8,
+        "low1Fps": 59.99,
+        "stepRelative": 0.1506,
+        "heapMb": 9.95
+      },
       "median": {
         "sprites": 300,
         "burnMs": 0,
         "frames": 299,
         "fps": 59.8,
-        "low1Fps": 59.52,
+        "low1Fps": 59.99,
         "frameMs": 16.67,
-        "p99FrameMs": 16.8,
-        "frameWorkMs": 1.19,
-        "frameWorkP99Ms": 2,
+        "p99FrameMs": 16.67,
+        "frameWorkMs": 1.09,
+        "frameWorkP50Ms": 1.06,
+        "frameWorkP99Ms": 1.76,
         "gameMs": 0.4,
-        "heapMb": 9.51,
-        "mainThreadMs": 1.17
+        "gameP50Ms": 0.39,
+        "stepMs": 0.237,
+        "calibrationMs": 1.535,
+        "stepRelative": 0.1514,
+        "heapMb": 9.98,
+        "mainThreadMs": 1.1
       }
     },
     "phone": {
       "gpu": "ANGLE (AMD, Vulkan 1.4.354 (AMD Radeon RX 6650 XT (RADV NAVI23) (0x000073EF)), radv)",
-      "date": "2026-10-30T19:56:46.939Z",
+      "date": "2026-10-30T20:56:51.905Z",
+      "best": {
+        "fps": 59.8,
+        "low1Fps": 59.99,
+        "stepRelative": 0.15,
+        "heapMb": 9.93
+      },
       "median": {
         "sprites": 300,
         "burnMs": 0,
         "frames": 299,
         "fps": 59.8,
-        "low1Fps": 59.52,
+        "low1Fps": 59.99,
         "frameMs": 16.67,
-        "p99FrameMs": 16.8,
-        "frameWorkMs": 1.2,
-        "frameWorkP99Ms": 2,
-        "gameMs": 0.42,
-        "heapMb": 9.52,
-        "mainThreadMs": 1.17
+        "p99FrameMs": 16.67,
+        "frameWorkMs": 1.11,
+        "frameWorkP50Ms": 1.06,
+        "frameWorkP99Ms": 2.01,
+        "gameMs": 0.41,
+        "gameP50Ms": 0.39,
+        "stepMs": 0.247,
+        "calibrationMs": 1.54,
+        "stepRelative": 0.1524,
+        "heapMb": 10.02,
+        "mainThreadMs": 1.12
       }
     }
   }
