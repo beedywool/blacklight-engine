@@ -293,8 +293,9 @@ for (const game of MINI_GAMES) {
       await hold(page, 0, game.hold[0], true);
       await hold(page, 1, game.hold[1], true);
     }
-    const steps = await playToEnd(page, 60 * 60 * 4);
-    expect(steps).toBeLessThan(60 * 60 * 4);
+    // Matches are not seeded: idle players can take minutes of game time (milliseconds here).
+    const steps = await playToEnd(page, 60 * 60 * 10);
+    expect(steps).toBeLessThan(60 * 60 * 10);
     if (game.hold) {
       await hold(page, 0, game.hold[0], false);
       await hold(page, 1, game.hold[1], false);

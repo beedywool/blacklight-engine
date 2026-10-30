@@ -26,6 +26,22 @@ describe('Air Hockey', () => {
     expect(steps).toBeLessThan(60 * 60 * 3);
   });
 
+  it('reaches the goal target with both mallets parked against the boards', async () => {
+    // Matches are not seeded, so every one serves differently: no serve may loop without goals.
+    for (let seed = 0; seed < 40; seed++) {
+      const { scene, steps } = await playOffline(AirHockey, 'air-hockey', {
+        players: 2,
+        settings: [0, 0],
+        seed: `parked-${seed}`,
+        script: (player) => [player === 1 ? 'up' : 'down'],
+        maxSteps: 60 * 60 * 10,
+      });
+      expect(scene.referee.finished).toBe(true);
+      expect(Math.max(...scene.referee.goals)).toBe(3);
+      expect(steps).toBeLessThan(60 * 60 * 10);
+    }
+  });
+
   it('plays online without desync', async () => {
     const { result } = await playOnline(AirHockey, 'air-hockey', {
       players: 2,

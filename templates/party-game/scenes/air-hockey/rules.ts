@@ -15,13 +15,20 @@ export const PUCK_RADIUS = 26;
 /** Fraction of the puck's speed kept each step. */
 export const PUCK_FRICTION = 0.997;
 /** The puck never slows below this once served: idle rinks still see goals. */
-export const PUCK_MIN_SPEED = 240;
+export const PUCK_MIN_SPEED = 360;
 export const PUCK_MAX_SPEED = 1700;
 /** Speed added along the normal when a mallet hits the puck. */
 export const KICK = 320;
 export const SERVE_SPEED = 420;
 /** Steps the puck rests at the center after a goal. */
 export const SERVE_DELAY = SECOND;
+/** Without a goal for this long, the puck is served again from the center (a face-off). */
+export const FACE_OFF_AFTER = 12 * SECOND;
+/** Share of the puck's speed always kept across the rink, so it never bounces up and down forever. */
+export const MIN_ACROSS = 0.25;
+/** Largest turn (radians) a board gives the puck: real boards are never perfect, and a perfect one
+ * lets the puck settle into a loop that never reaches a goal mouth. */
+export const BOARD_SPIN = 0.12;
 export const WIN_BONUS = 3;
 /** Goals to win by the GOALS TO WIN setting. */
 export const GOALS_TO_WIN = [3, 5, 7, 10] as const;

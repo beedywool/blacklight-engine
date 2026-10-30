@@ -3,9 +3,12 @@ import { DMath, Graphics } from '@blacklight/core';
 import Referee from '@objects/referee/referee.object';
 import { length } from '../../../../party/geometry';
 import {
+  BOARD_SPIN,
+  FACE_OFF_AFTER,
   GOAL,
   KICK,
   MIDDLE,
+  MIN_ACROSS,
   PUCK_FRICTION,
   PUCK_MAX_SPEED,
   PUCK_MIN_SPEED,
@@ -27,6 +30,8 @@ export default class Puck extends Graphics {
   serveIn = 0;
   /** Team the next serve goes towards (0 left, 1 right). */
   serveTo = 0;
+  /** Steps since the last serve; parked mallets can trap the puck in a loop without goals. */
+  inPlay = 0;
 
   override create(): void {
     this.paint();
@@ -51,7 +56,9 @@ export default class Puck extends Graphics {
       const angle = (this.serveTo === 0 ? DMath.PI : 0) + this.scene.random.float(-0.55, 0.55);
       this.vx = DMath.cos(angle) * SERVE_SPEED;
       this.vy = DMath.sin(angle) * SERVE_SPEED;
+      this.inPlay = 0;
     }
+    if (++this.inPlay > FACE_OFF_AFTER) return this.faceOff(this.serveTo);
     this.vx *= PUCK_FRICTION;
     this.vy *= PUCK_FRICTION;
     this.limit(PUCK_MIN_SPEED, PUCK_MAX_SPEED);
@@ -61,10 +68,12 @@ export default class Puck extends Graphics {
     if (this.y < RINK.top + r) {
       this.y = RINK.top + r;
       this.vy = Math.abs(this.vy);
+      this.board();
     }
     if (this.y > RINK.bottom - r) {
       this.y = RINK.bottom - r;
       this.vy = -Math.abs(this.vy);
+      this.board();
     }
     const inMouth = this.y > GOAL.top + r && this.y < GOAL.bottom - r;
     if (inMouth && this.x < RINK.left - r) return this.scored(referee, 1);
@@ -72,10 +81,12 @@ export default class Puck extends Graphics {
     if (!inMouth && this.x < RINK.left + r) {
       this.x = RINK.left + r;
       this.vx = Math.abs(this.vx);
+      this.board();
     }
     if (!inMouth && this.x > RINK.right - r) {
       this.x = RINK.right - r;
       this.vx = -Math.abs(this.vx);
+      this.board();
     }
     for (const mallet of this.scene.findAll<Mallet>('mallet')) this.strike(mallet);
   }
@@ -107,16 +118,36 @@ export default class Puck extends Graphics {
     this.scene.audio.play('hit');
   }
 
+  /** Turns the puck a little after a board bounce (seeded, the same on every machine). */
+  private board(): void {
+    const turn = this.scene.random.float(-BOARD_SPIN, BOARD_SPIN);
+    const cos = DMath.cos(turn);
+    const sin = DMath.sin(turn);
+    const vx = this.vx * cos - this.vy * sin;
+    this.vy = this.vx * sin + this.vy * cos;
+    this.vx = vx;
+  }
+
   private limit(min: number, max: number): void {
     const speed = length(this.vx, this.vy);
     if (speed === 0) return;
     const target = speed < min ? min : speed > max ? max : speed;
     this.vx = (this.vx / speed) * target;
     this.vy = (this.vy / speed) * target;
+    const across = target * MIN_ACROSS;
+    if (Math.abs(this.vx) < across) {
+      this.vx = this.vx < 0 ? -across : across;
+      this.vy = (this.vy < 0 ? -1 : 1) * Math.sqrt(target * target - across * across);
+    }
   }
 
   private scored(referee: RinkReferee, team: number): void {
     referee.goal(team);
+    this.faceOff(team);
+  }
+
+  /** Puts the puck back at the center; it is served towards `1 - team`. */
+  private faceOff(team: number): void {
     this.x = MIDDLE;
     this.y = (RINK.top + RINK.bottom) / 2;
     this.vx = 0;

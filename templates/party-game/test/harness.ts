@@ -74,10 +74,17 @@ function hold(game: Game, player: number, actions: readonly ActionName[]): void 
 export async function playOffline<S extends MiniGame>(
   Scene: new () => S,
   name: string,
-  options: { players: number; settings: MiniGameSettings; script?: Script; maxSteps?: number },
+  options: {
+    players: number;
+    settings: MiniGameSettings;
+    script?: Script;
+    maxSteps?: number;
+    /** Seed of the game's random; the mini-game name by default. */
+    seed?: string;
+  },
 ): Promise<{ scene: S; steps: number }> {
   const game = partyGame();
-  game.random.seed(name);
+  game.random.seed(options.seed ?? name);
   const scene = await headlessScene(
     Scene,
     name,
