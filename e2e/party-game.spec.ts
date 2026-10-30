@@ -27,6 +27,8 @@ interface PartyWindow {
     pause(): void;
     resume(): void;
     step(count: number): void;
+    random: { seed(seed: string): void };
+    on(name: 'step', listener: () => void): () => void;
     scene: {
       name: string;
       minigame?: {
@@ -199,16 +201,24 @@ async function pick(page: Page, index: number, settings: [number, number], scree
   if (screenshot) await still(page, 'game-select.png');
   await press(page, 0, DOWN);
   await expect.poll(() => focused(page)).toBe('PLAY!');
+  // Matches are not seeded: seed this one, and pause on the mini-game's first step, so the
+  // screenshots and the steps the test drives from here see the same match on every run.
+  await page.evaluate(() => {
+    const game = (window as unknown as PartyWindow).blacklight;
+    game.random.seed('e2e');
+    const off = game.on('step', () => {
+      if (!game.scene?.minigame?.referee?.phase) return;
+      off();
+      game.pause();
+    });
+  });
   await press(page, 0, A);
   await expect(scene(page)).toHaveAttribute('data-blacklight-scene', 'match', { timeout: 10_000 });
-  // From here the test drives the steps itself: the mini-game runs only when the test says.
   await expect
     .poll(() =>
       page.evaluate(() => {
         const game = (window as unknown as PartyWindow).blacklight;
-        const phase = game.scene.minigame?.referee?.phase;
-        if (phase) game.pause();
-        return phase;
+        return game.paused ? game.scene.minigame?.referee?.phase : undefined;
       }),
     )
     .toBe('intro');
