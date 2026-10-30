@@ -368,6 +368,9 @@ describe('builds (PF-03, PF-05, PF-07)', () => {
     expect(DESKTOP_TARGETS.linux.map((t) => t.target)).toEqual(['AppImage', 'deb']);
     expect(win.electronFuses).toEqual(RELEASE_FUSES);
     expect(win.asar).toBe(true);
+    // PF-08: updates come from the stores only; electron-builder writes no update feed.
+    for (const os of ['win', 'mac', 'linux'] as const)
+      expect(builderConfig({ ...base, os }).publish).toBeNull();
     expect(win.protocols).toEqual([{ name: 'My Game', schemes: ['com.example.mygame'] }]);
     const mac = builderConfig({ ...base, os: 'mac' });
     expect(mac.mac).toMatchObject({ hardenedRuntime: true, identity: null, notarize: false });
