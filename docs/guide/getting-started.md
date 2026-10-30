@@ -2,18 +2,20 @@
 
 This guide goes from an empty folder to a small game: a title menu, a field where an animated character runs where you steer it, and a pause menu over the field. It takes well under an hour, most of it reading. Every file below is shown in full, and the finished project is the one the test suite builds and plays on every change (`e2e/getting-started.spec.ts`), so the code on this page runs as written.
 
-You need Node.js 24 or newer and [pnpm](https://pnpm.io/installation) 12 or newer. Any editor works; the [VS Code extension](./vscode) adds completion for animation names, actions and asset paths.
+You need Node.js 24 or newer, [pnpm](https://pnpm.io/installation) 12 or newer and, for the pictures below, VS Code with the Blacklight Engine extension: [Install the tools](./installation) sets them up. Any editor works; the extension adds completion for animation names, actions and asset paths. The pictures and terminal output on this page are taken from a real run of these steps by the test suite (`e2e/guide-captures.spec.ts`).
 
 ## 1. Create the project
 
+In a terminal, in the folder that will hold the project:
+
+<<< @/guide/captures/create.txt{console}
+
+`my-game` is the folder to create; without it, the command asks. `--template <name>` starts from another template (`--help` lists them). Then install the engine packages:
+
 ```sh
-pnpm create blacklight my-game
 cd my-game
 pnpm install
-pnpm dev
 ```
-
-The dev server opens on `http://localhost:5173` and shows the title scene of the `empty` template. Leave it running: every file you save from now on reloads the page, and an error shows up on the page with the file and the fix instead of a blank screen. `pnpm dev --host` also listens on the network, so a phone on the same Wi-Fi can open the game.
 
 ```
 my-game/
@@ -25,6 +27,26 @@ my-game/
 ```
 
 The `.blacklight/` folder holds files the CLI generates on each run (entry page, typed names). It is ignored by git; do not edit it.
+
+### Open it in VS Code
+
+Open the folder in VS Code (**File > Open Folder…**, or `code .` in the terminal). The extension finds `game.config.ts` and activates: the Blacklight icon appears in the activity bar on the left. `game.config.ts` is typed, so hovering a field shows what it does and completion lists the fields you can add:
+
+![VS Code with the my-game folder in the Explorer and game.config.ts open; the hover on entry reads "Name of the first scene (the folder name under scenes/)"](./captures/vscode-project.png)
+
+The Blacklight icon opens the **Live Objects** view: while the dev server runs and the game is open in a browser (next step), it lists the objects of the running scene with their positions, and you can pause the game, step it and edit variables ([Live objects and variables](./vscode#live-objects-and-variables)). In code, the extension completes the names the engine reads as strings. Here, in `scenes/title/title.scene.ts`, the actions a key can trigger:
+
+![The Live Objects view lists the title scene's three objects; in title.scene.ts, completion after this.input.pressed(' lists the actions action, back, confirm, down, jump, left, pause, right, tabLeft, tabRight, up](./captures/vscode-actions.png)
+
+### Run it
+
+<<< @/guide/captures/dev.txt{console}
+
+Open `http://localhost:5173`: the title scene of the `empty` template.
+
+![The empty template in the browser: a white dot over the game name, My Game, and the line "Edit scenes/title/title.scene.ts and save."](./captures/browser-empty.png)
+
+Leave the dev server running: every file you save from now on reloads the page, and an error shows up on the page with the file and the fix instead of a blank screen. `pnpm dev --host` also listens on the network, so a phone on the same Wi-Fi can open the game. If port 5173 is taken, the server picks the next free one and prints it.
 
 ## 2. Add the UI layer
 
@@ -58,6 +80,10 @@ The `$schema` line gives completion and checks in VS Code. Then the object itsel
 
 <<< @/examples/getting-started/objects/hero/hero.object.ts
 
+As soon as `hero.anim.json` is saved, the extension knows its animations: `this.play('` completes them.
+
+![In hero.object.ts, completion after this.play(' lists idle and run, marked as animations](./captures/vscode-animations.png)
+
 `Hero` is a `Sprite`: an object drawn from a sheet. `static animations` attaches the animation file, `static behaviors` the ready-made [eightDirections](../behaviors/eight-directions) movement: the arrows, WASD, the D-pad and the left stick move it, with a short acceleration and deceleration. `update()` runs 60 times per second whatever the screen's refresh rate; it plays `run` while the hero moves and `idle` otherwise, and mirrors the sprite when it goes left. `play` does nothing when the animation already plays, so calling it every step is the normal way.
 
 ## 5. The field
@@ -67,6 +93,8 @@ A scene is a folder under `scenes/` with a `<name>.scene.ts` file. Create `scene
 <<< @/examples/getting-started/scenes/field/field.scene.ts
 
 `create()` runs once when the scene starts. `spawn` creates an object in the scene and sets its properties; `Graphics` and `Text` are ready-made objects. `@objects/hero/hero.object` is an alias of `objects/hero/hero.object.ts`. In `update()`, `this.input.pressed('pause')` is true on the step where Escape (or Start on a gamepad) goes down; `pause` is one of the default actions, along with `left`, `right`, `up`, `down`, `confirm` and `back` ([Input](./input)).
+
+![The field: a dark grid, the hero in the middle running to the right, and the line "Arrows or WASD to move, Escape for the menu"](./captures/browser-field.png)
 
 `this.ui.push('PauseMenu')` opens the screen `ui/PauseMenu.vue` on top of the others. A pushed screen takes the keyboard and gamepad until it closes: the scene keeps running, but game input reads as idle, so the hero stops without any check in its code. `this.game.pause()` would also freeze the scene.
 
@@ -84,6 +112,8 @@ and create the menu, `ui/TitleMenu.vue`:
 
 The page now shows the menu. Press Enter: the field fades in, and the hero runs where you steer it.
 
+![The title menu: My Game over START (focused) and CREDITS (disabled), and the Enter key prompt labelled SELECT](./captures/browser-title.png)
+
 ## 7. The pause menu
 
 Create `ui/PauseMenu.vue`:
@@ -93,6 +123,8 @@ Create `ui/PauseMenu.vue`:
 `useScreen` gives the screen's own controls: its enter and leave [transitions](./ui-transitions) and `close()`. Escape (or B on a gamepad) also closes it, because `back` closes a pushed screen by default. `TITLE` goes back to the title scene with an iris.
 
 Press Escape in the field: the red panel slashes in over the field. That is the whole game.
+
+![The pause menu: a red panel over the field with RESUME and TITLE](./captures/browser-pause.png)
 
 ## 8. Check and build
 

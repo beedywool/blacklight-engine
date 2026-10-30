@@ -18,6 +18,7 @@
     "bench": "playwright test --project bench",
     "docs:dev": "pnpm --filter blacklight-docs dev",
     "docs:build": "pnpm --filter blacklight-docs build",
+    "docs:screenshots": "node scripts/docs-screenshots.mjs",
     "changelog": "node scripts/changelog.mjs"
   },
   "devDependencies": {

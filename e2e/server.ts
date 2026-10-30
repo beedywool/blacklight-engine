@@ -8,11 +8,15 @@ export function run(command: string, args: string[], cwd: string): void {
   if (result.status !== 0) throw new Error(`${command} ${args.join(' ')} failed in ${cwd}`);
 }
 
-/** Starts `pnpm <script> --port <port>` in `cwd` and waits until it answers. */
+/**
+ * Starts `pnpm <script> --port <port>` in `cwd` and waits until it answers. With `output`, the
+ * server's stdout and stderr go to that callback instead of the test's console.
+ */
 export async function serve(
   cwd: string,
   script: 'dev' | 'preview',
   port: number,
+  output?: (text: string) => void,
 ): Promise<() => void> {
   // Own process group on POSIX so stopping it also stops the Vite process pnpm starts.
   const server: ChildProcess = spawn(
@@ -22,9 +26,13 @@ export async function serve(
       cwd,
       shell,
       detached: !shell,
-      stdio: 'inherit',
+      stdio: output ? 'pipe' : 'inherit',
     },
   );
+  if (output) {
+    server.stdout!.on('data', (chunk: Buffer) => output(chunk.toString()));
+    server.stderr!.on('data', (chunk: Buffer) => output(chunk.toString()));
+  }
   let exited: number | null | undefined;
   server.on('exit', (code) => (exited = code));
   const deadline = Date.now() + 60_000;

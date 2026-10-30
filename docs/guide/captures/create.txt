@@ -1,0 +1,7 @@
+$ pnpm create blacklight my-game
+Created ~/my-game from the "empty" template.
+
+Next:
+  cd my-game
+  pnpm install
+  pnpm dev
