@@ -51,4 +51,28 @@ cd ../my-game && pnpm install && pnpm dev
 - Every public symbol has TSDoc with a short example. Every error says what went wrong and how to fix it.
 - A pull request that changes behaviour adds or updates a test, and updates `PROGRESS.md` with the requirement ID it covers.
 - Dependencies are pinned to exact versions and must be MIT-compatible (MIT, BSD, Apache-2.0, ISC, zlib, CC0); add runtime ones to `THIRD_PARTY_LICENSES.md`.
-- Commit messages: `area: what changed` in the imperative (`core: cap catch-up steps after a stall`).
+- Commit messages: `area: what changed` in the imperative (`core: cap catch-up steps after a stall`). The area is the package or folder (`core`, `ui`, `cli`, `templates`, `docs`…); mark a change that breaks the public API with `!` after the area (`ui!: rename MenuList's select event`) or a `BREAKING CHANGE: …` line in the body. The changelog is built from these messages.
+
+## Versions and releases
+
+Every published package (`@blacklight/*`, `create-blacklight`, `blacklight-vscode`) carries the same version, and games depend on `^<version>` of each, so one number tells which engine a game runs on. Versions follow [semantic versioning](https://semver.org) from 1.0:
+
+- **Major** (`2.0.0`): a change to a public API, a configuration field, a file format (saves, `.anim.json`, registry index) or a supported platform that makes an existing game fail to build or behave differently. Saves written by the previous major stay readable through save migrations.
+- **Minor** (`1.1.0`): new features, new optional configuration, deprecations (the old API keeps working and logs how to move until the next major).
+- **Patch** (`1.0.1`): fixes that change no documented behaviour.
+
+The public API is what the packages export and document (TSDoc and the guides); names starting with `_` and symbols marked `@internal` are not part of it. Before 1.0, minor versions may break.
+
+To release, from a clean `main` with CI green:
+
+```sh
+pnpm -r --filter "./packages/**" exec npm pkg set version=1.1.0   # every package, one version
+git commit -am "release: 1.1.0"
+git tag v1.1.0
+pnpm changelog                    # rewrites CHANGELOG.md from the git history, 1.1.0 included
+git commit -a --amend --no-edit   # the release commit carries its changelog
+git tag -f v1.1.0
+git push --follow-tags
+```
+
+`pnpm changelog` (`scripts/changelog.mjs`) writes one section per `v*` tag and an "Unreleased" section for the commits after the last one, grouped by area, with breaking changes listed first. Do not edit `CHANGELOG.md` by hand: fix the history or the script instead.

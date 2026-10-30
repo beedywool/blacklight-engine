@@ -1,0 +1,38 @@
+{
+  "$schema": "../../node_modules/@blacklight/core/schema/anim.schema.json",
+  "source": "./hero@16x16.png",
+  "default": "idle",
+  "pivot": {
+    "x": 8,
+    "y": 16
+  },
+  "hitbox": {
+    "type": "box",
+    "x": -4,
+    "y": -13,
+    "width": 8,
+    "height": 13
+  },
+  "animations": {
+    "idle": {
+      "frames": [0, 0, 0, 1],
+      "fps": 4
+    },
+    "run": {
+      "frames": [2, 3, 4, 5],
+      "fps": 12,
+      "events": {
+        "0": "step",
+        "2": "step"
+      }
+    },
+    "jump": {
+      "frames": [6],
+      "loop": false
+    },
+    "fall": {
+      "frames": [7],
+      "loop": false
+    }
+  }
+}

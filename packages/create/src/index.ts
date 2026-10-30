@@ -4,9 +4,10 @@ import { relative } from 'node:path';
 import { createInterface } from 'node:readline/promises';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
-import { listTemplates, scaffold } from './scaffold';
+import { listTemplates, packageManagerFromAgent, scaffold } from './scaffold';
 
 const templatesDir = fileURLToPath(new URL('../templates', import.meta.url));
+const sharedDir = fileURLToPath(new URL('../shared', import.meta.url));
 const { version } = JSON.parse(
   readFileSync(new URL('../package.json', import.meta.url), 'utf8'),
 ) as {
@@ -52,6 +53,8 @@ async function main(): Promise<void> {
     engineVersion: version,
     link: values.link,
     force: values.force,
+    sharedDir,
+    packageManager: packageManagerFromAgent(process.env.npm_config_user_agent),
   });
 
   const cd = relative(process.cwd(), target) || '.';

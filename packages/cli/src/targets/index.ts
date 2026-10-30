@@ -19,9 +19,9 @@ export interface TargetOptions {
 /** Builds a game for one target. */
 export type TargetBuilder = (options: TargetOptions) => Promise<void>;
 
-/** The web build: every other target starts from it. */
+/** The web build, a Progressive Web App that runs offline once loaded (PF-01). */
 export async function buildWeb({ root }: Pick<TargetOptions, 'root'>): Promise<void> {
-  await build(createViteConfig(resolve(root)));
+  await build(createViteConfig(resolve(root), { pwa: true }));
 }
 
 /**

@@ -1,0 +1,24 @@
+{
+  "$schema": "../../node_modules/@blacklight/core/schema/anim.schema.json",
+  "source": "./checkpoint@16x32.png",
+  "default": "down",
+  "pivot": {
+    "x": 8,
+    "y": 32
+  },
+  "hitbox": {
+    "type": "box",
+    "x": -6,
+    "y": -30,
+    "width": 12,
+    "height": 30
+  },
+  "animations": {
+    "down": {
+      "frames": [0]
+    },
+    "up": {
+      "frames": [1]
+    }
+  }
+}
