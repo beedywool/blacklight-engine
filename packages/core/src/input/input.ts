@@ -489,8 +489,19 @@ export class InputManager {
     }
   }
 
+  /**
+   * Input reads so far: one per fixed step, and one per frame while the game is paused (the UI
+   * keeps reading). Code that injects input (`virtual`) waits for it to change before lifting a
+   * press, so a slow frame cannot swallow the press.
+   */
+  get updates(): number {
+    return this.updateCount;
+  }
+  private updateCount = 0;
+
   /** @internal Called once per fixed step, before game logic. */
   update(): void {
+    this.updateCount++;
     this.padsBefore = this.padsHeld;
     this.pollPads();
     this.pointer.pressed = this.pointerPresses > 0;
