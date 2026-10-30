@@ -1,4 +1,4 @@
-import { Graphics, Scene } from '@blacklight/core';
+import { Graphics, Scene, Text } from '@blacklight/core';
 import { UPDATE_PRIORITY } from 'pixi.js';
 
 /** Frames ignored at the start: shader compilation, texture uploads, JIT warm-up. */
@@ -59,7 +59,8 @@ const round = (value: number) => Math.round(value * 100) / 100;
  * timeline, gauge, counter). After `WARMUP_MS` it measures `MEASURE_MS` of displayed frames and
  * publishes a {@link BenchResult} as `window.blacklightBench` and as JSON in `data-bench` on the
  * game element. Query parameters: `?sprites=<n>` (default 300), `?burn=<ms>` adds busy work to
- * every frame (used to prove that the regression check fails).
+ * every frame (used to prove that the regression check fails). The result also shows at the bottom of
+ * the screen, for phones where the page cannot be inspected.
  */
 export default class Bench extends Scene {
   private readonly options = new URLSearchParams(location.search);
@@ -168,6 +169,15 @@ export default class Bench extends Scene {
       heapMb: mb(heap),
       memoryMb: mb(memory),
     };
+    const panel = this.spawn(Graphics, { zIndex: 9 });
+    panel.draw.rect(0, this.height - 100, this.width, 80).fill({ color: 0x080808, alpha: 0.85 });
+    this.spawn(Text, {
+      x: this.width / 2,
+      y: this.height - 60,
+      zIndex: 10,
+      text: `${result.fps} fps · 1 % low ${result.low1Fps} · frame work ${result.frameWorkMs} ms · game ${result.gameMs} ms · heap ${result.heapMb ?? '?'} MB`,
+      style: { fill: 0xffffff, fontSize: 30 },
+    });
     window.blacklightBench = result;
     this.game.mount.dataset.bench = JSON.stringify(result);
   }
