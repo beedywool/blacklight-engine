@@ -13,7 +13,7 @@
     "lint": "eslint . && prettier --check .",
     "format": "prettier --write .",
     "test": "vitest run",
-    "test:coverage": "vitest run --coverage",
+    "test:coverage": "vitest run --coverage --project core --project core-browser --project net --project relay",
     "e2e": "playwright test --project chromium",
     "bench": "playwright test --project bench",
     "docs:dev": "pnpm --filter blacklight-docs dev",
