@@ -9,6 +9,7 @@ import {
 } from 'node:fs';
 import { basename, join, resolve } from 'node:path';
 
+/** Options of {@link scaffold}: which template to copy where, and how to pin the engine. */
 export interface ScaffoldOptions {
   /** Folder to create. */
   dir: string;
@@ -43,13 +44,34 @@ export const DEFAULT_PACKAGE_MANAGER = 'pnpm@12.16.1';
  */
 const DOTTED = ['gitignore', 'github'];
 
-/** The pnpm version running the scaffolder (`pnpm create blacklight`), from npm's user agent. */
+/**
+ * The pnpm version running the scaffolder (`pnpm create blacklight`), read from npm's user agent
+ * (`npm_config_user_agent`), so the new project pins the pnpm its author already has. Returns
+ * `undefined` under another package manager.
+ *
+ * @example
+ * ```ts
+ * import { packageManagerFromAgent } from 'create-blacklight';
+ *
+ * packageManagerFromAgent('pnpm/12.16.1 npm/? node/v24.11.0 linux x64'); // 'pnpm@12.16.1'
+ * packageManagerFromAgent(process.env.npm_config_user_agent);
+ * ```
+ */
 export function packageManagerFromAgent(agent: string | undefined): string | undefined {
   const match = /^pnpm\/(\d+\.\d+\.\d+)/.exec(agent ?? '');
   return match ? `pnpm@${match[1]}` : undefined;
 }
 
-/** Template names available in `templatesDir`. */
+/**
+ * Template names available in `templatesDir` (its sub-folders), sorted.
+ *
+ * @example
+ * ```ts
+ * import { listTemplates } from 'create-blacklight';
+ *
+ * listTemplates('node_modules/create-blacklight/templates'); // ['2d-with-3d', 'empty', …]
+ * ```
+ */
 export function listTemplates(templatesDir: string): string[] {
   return readdirSync(templatesDir, { withFileTypes: true })
     .filter((entry) => entry.isDirectory())
@@ -57,7 +79,17 @@ export function listTemplates(templatesDir: string): string[] {
     .sort();
 }
 
-/** Lowercase npm-safe package name from a folder name. */
+/**
+ * Lowercase npm-safe package name from a folder name: characters npm refuses become `-`, and an
+ * empty result falls back to `my-game`. {@link scaffold} writes it into the new `package.json`.
+ *
+ * @example
+ * ```ts
+ * import { packageName } from 'create-blacklight';
+ *
+ * packageName('../My Great Game'); // 'my-great-game'
+ * ```
+ */
 export function packageName(dir: string): string {
   const name = basename(resolve(dir))
     .toLowerCase()
@@ -79,9 +111,25 @@ function engineDependency(name: string, options: ScaffoldOptions): string {
 }
 
 /**
- * Copies a template into `dir` and turns it into a standalone project.
+ * Copies a template into `dir` and turns it into a standalone project: shared files added, `_`
+ * names renamed to their dotted form (`_gitignore` → `.gitignore`), the package renamed after the
+ * folder, `packageManager` pinned, and `workspace:` engine dependencies replaced by
+ * `^<engineVersion>` (or `link:` paths with `link`). This is what `pnpm create blacklight` runs.
  *
+ * @returns The absolute path of the created project.
  * @throws Error when the template does not exist or `dir` is not empty (without `force`).
+ *
+ * @example
+ * ```ts
+ * import { scaffold } from 'create-blacklight';
+ *
+ * const target = scaffold({
+ *   dir: 'my-game',
+ *   template: 'empty',
+ *   templatesDir: 'node_modules/create-blacklight/templates',
+ *   engineVersion: '1.0.0',
+ * });
+ * ```
  */
 export function scaffold(options: ScaffoldOptions): string {
   const target = resolve(options.dir);
