@@ -125,7 +125,7 @@
         },
         "events": {
           "type": "object",
-          "description": "Frame index within this animation → event name(s), received with sprite.onFrame(name, ...).",
+          "description": "Frame index within this animation → event name(s), received with sprite.onFrame(name, ({ animation, frame, sheetFrame }) => ...), where frame is this key.",
           "propertyNames": { "pattern": "^[0-9]+$" },
           "additionalProperties": {
             "oneOf": [{ "type": "string" }, { "type": "array", "items": { "type": "string" } }]

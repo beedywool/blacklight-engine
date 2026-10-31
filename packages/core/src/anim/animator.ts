@@ -288,19 +288,54 @@ export function findFallback(
 }
 
 /**
+ * An event of an `.anim.json` (`"events": { "2": "step" }`), as `Sprite.onFrame` listeners
+ * receive it.
+ *
+ * @example
+ * ```ts
+ * this.onFrame('step', ({ animation, frame }) => {
+ *   // `frame` is the key in `events`: 2 for the third frame of `run`.
+ *   if (animation === 'run') this.scene.audio.play('footstep');
+ * });
+ * ```
+ */
+export interface AnimationFrameEvent {
+  /** Event name from the animation's `events`. */
+  event: string;
+  /** Name of the playing animation. */
+  animation: string;
+  /** Frame index within the animation, the key of `events` and the value of `sprite.frame`. */
+  frame: number;
+  /** Index of the frame in the sprite sheet, the image shown. */
+  sheetFrame: number;
+}
+
+/** A frame of an animation started; what {@link AnimatorCallbacks.frame} receives. */
+export interface AnimationFrame {
+  /** Name of the playing animation. */
+  animation: string;
+  /** Frame index within the animation, the key of `events`. */
+  frame: number;
+  /** Index of the frame in the sprite sheet, the image to show. */
+  sheetFrame: number;
+  /** Event names the animation attaches to this frame, often none. */
+  events: readonly string[];
+}
+
+/**
  * What an {@link Animator} calls while it plays: the code that shows frames and hears ends.
  *
  * @example
  * ```ts
  * const callbacks: AnimatorCallbacks = {
- *   frame: (frame) => (pixiSprite.texture = textures[frame]!),
+ *   frame: ({ sheetFrame }) => (pixiSprite.texture = textures[sheetFrame]!),
  *   end: (name) => console.log(name, 'ended'),
  * };
  * ```
  */
 export interface AnimatorCallbacks {
-  /** A frame started: sheet frame index and the events attached to it. */
-  frame(sheetFrame: number, events: readonly string[]): void;
+  /** A frame started: its index within the animation and in the sheet, and its events. */
+  frame(frame: AnimationFrame): void;
   /**
    * A non-looping animation showed its last frame for its full duration. Called once per play,
    * before a queued or `next` animation starts; not called when `play()` interrupts it.
@@ -344,7 +379,7 @@ export interface AnimatorState {
  * const sheet = gridSheet({ width: 64, height: 64, spacing: 0 }, 512, 64);
  * const animations = resolveAnimations({ animations: { idle: { frames: { from: 0, to: 7 } } } }, sheet);
  * const animator = new Animator(animations, {
- *   frame: (frame) => (pixiSprite.texture = textures[frame]!),
+ *   frame: ({ sheetFrame }) => (pixiSprite.texture = textures[sheetFrame]!),
  *   end: () => {},
  * });
  * animator.play('idle');
@@ -523,6 +558,11 @@ export class Animator {
 
   private emitFrame(): void {
     const animation = this.current!;
-    this.callbacks.frame(animation.frames[this.index]!, animation.events.get(this.index) ?? []);
+    this.callbacks.frame({
+      animation: animation.name,
+      frame: this.index,
+      sheetFrame: animation.frames[this.index]!,
+      events: animation.events.get(this.index) ?? [],
+    });
   }
 }

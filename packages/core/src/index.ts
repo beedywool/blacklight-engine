@@ -59,6 +59,8 @@ export {
   type AnimationDef,
   type AnimationFile,
   type AnimationFileInput,
+  type AnimationFrame,
+  type AnimationFrameEvent,
   type AnimatorCallbacks,
   type AnimatorState,
   type FrameOverride,

@@ -125,13 +125,25 @@ describe('Animator', () => {
     const frames: number[] = [];
     const events: string[] = [];
     const animator = new Animator(animations, {
-      frame: (f, e) => (frames.push(f), events.push(...e)),
+      frame: (f) => (frames.push(f.sheetFrame), events.push(...f.events)),
       end: () => {},
     });
     animator.play('run');
     animator.step(450);
     expect(frames).toEqual([2, 3, 4, 5, 2]);
     expect(events).toEqual(['step']);
+  });
+
+  it('reports each frame by its index within the animation and in the sheet', () => {
+    const frames: unknown[] = [];
+    const animator = new Animator(animations, { frame: (f) => frames.push(f), end: () => {} });
+    animator.play('run');
+    animator.step(200);
+    expect(frames).toEqual([
+      { animation: 'run', frame: 0, sheetFrame: 2, events: [] },
+      { animation: 'run', frame: 1, sheetFrame: 3, events: [] },
+      { animation: 'run', frame: 2, sheetFrame: 4, events: ['step'] },
+    ]);
   });
 
   it('chains to next and calls end', () => {
@@ -173,7 +185,8 @@ describe('Animator', () => {
     function record() {
       const log: string[] = [];
       const animator = new Animator(set, {
-        frame: (frame, events) => log.push(`frame ${frame}${events.map((e) => ` ${e}`).join('')}`),
+        frame: ({ sheetFrame, events }) =>
+          log.push(`frame ${sheetFrame}${events.map((e) => ` ${e}`).join('')}`),
         end: (name) => log.push(`end ${name}`),
       });
       return { animator, log };

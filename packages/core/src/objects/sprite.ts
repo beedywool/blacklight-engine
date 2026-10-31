@@ -1,5 +1,5 @@
 import { Sprite as PixiSprite, type Texture } from 'pixi.js';
-import { Animator, type AnimationFileInput } from '../anim/animator';
+import { Animator, type AnimationFileInput, type AnimationFrameEvent } from '../anim/animator';
 import type { LoadedSheet } from '../anim/sheet-cache';
 import { IMAGE_EXTENSIONS } from '../assets';
 import type { HitboxSpec, LocalPixelShape } from '../collision/shapes';
@@ -39,7 +39,7 @@ export class Sprite extends GameObject {
   animator: Animator | undefined;
   private loaded: LoadedSheet | undefined;
   private flip = { x: false, y: false };
-  private readonly frameListeners = new Set<(event: string, frame: number) => void>();
+  private readonly frameListeners = new Set<(event: AnimationFrameEvent) => void>();
   private readonly endListeners = new Set<(name: string) => void>();
 
   constructor() {
@@ -56,10 +56,11 @@ export class Sprite extends GameObject {
     this.animator = new Animator(
       sheet.animations,
       {
-        frame: (frame, events) => {
-          this.showFrame(frame);
+        frame: ({ animation, frame, sheetFrame, events }) => {
+          this.showFrame(sheetFrame);
           for (const event of events)
-            for (const listener of this.frameListeners) listener(event, frame);
+            for (const listener of this.frameListeners)
+              listener({ event, animation, frame, sheetFrame });
         },
         end: (name) => {
           for (const listener of this.endListeners) listener(name);
@@ -118,10 +119,22 @@ export class Sprite extends GameObject {
     return this;
   }
 
-  /** Listens to frame events from the `.anim.json` (`"events": { "2": "step" }`). */
-  onFrame(event: string, listener: (frame: number) => void): Unsubscribe {
-    const wrapped = (name: string, frame: number) => {
-      if (name === event) listener(frame);
+  /**
+   * Listens to an event of the `.anim.json` (`"events": { "2": "step" }`), fired when the frame
+   * it is attached to starts. The listener gets the event, the animation and the frame index
+   * within it (the key in `events`, `2` here) and in the sheet. Returns a function that removes
+   * the listener.
+   *
+   * @example
+   * ```ts
+   * this.onFrame('step', ({ animation, frame }) => {
+   *   this.scene.audio.play(frame === 0 ? 'step-left' : 'step-right');
+   * });
+   * ```
+   */
+  onFrame(event: string, listener: (event: AnimationFrameEvent) => void): Unsubscribe {
+    const wrapped = (fired: AnimationFrameEvent) => {
+      if (fired.event === event) listener(fired);
     };
     this.frameListeners.add(wrapped);
     return () => this.frameListeners.delete(wrapped);

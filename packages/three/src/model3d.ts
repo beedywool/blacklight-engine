@@ -21,6 +21,7 @@ import {
   ModelAnimator,
   type ModelAnimationSettings,
   type ModelAnimationState,
+  type ModelFrameEvent,
   type ModelPlayOptions,
 } from './animator';
 import { drawModel } from './context';
@@ -193,12 +194,21 @@ export class Model3D extends GameObject {
     return animator.onEnd(listener);
   }
 
-  /** Listens to an event of `static animations` (`events: { 0.4: 'step' }`). */
-  onFrame(event: string, listener: (animation: string) => void): Unsubscribe {
+  /**
+   * Listens to an event of `static animations` (`events: { 0.4: 'step' }`), fired when playback
+   * passes its time. The listener gets the event, the animation and the event's time in the clip.
+   * Returns a function that removes the listener.
+   *
+   * @example
+   * ```ts
+   * this.onFrame('step', ({ animation }) => this.scene.audio.play(`${animation}-step`));
+   * ```
+   */
+  onFrame(event: string, listener: (event: ModelFrameEvent) => void): Unsubscribe {
     const animator = this.ensureModel();
     if (!animator) throw this.noModelError();
-    return animator.onEvent((name, animation) => {
-      if (name === event) listener(animation);
+    return animator.onEvent((fired) => {
+      if (fired.event === event) listener(fired);
     });
   }
 

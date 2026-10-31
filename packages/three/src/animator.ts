@@ -45,6 +45,26 @@ export interface ModelPlayOptions {
   loop?: boolean;
 }
 
+/**
+ * An event of `static animations` (`events: { 0.4: 'step' }`), as `Model3D.onFrame` listeners
+ * receive it.
+ *
+ * @example
+ * ```ts
+ * this.onFrame('step', ({ animation, time }) => {
+ *   if (animation === 'run') this.scene.audio.play(time < 0.5 ? 'step-left' : 'step-right');
+ * });
+ * ```
+ */
+export interface ModelFrameEvent {
+  /** Event name from the animation's `events`. */
+  event: string;
+  /** Name of the playing animation (clip). */
+  animation: string;
+  /** Time of the event in the clip, in seconds: its key in `events`. */
+  time: number;
+}
+
 /** Saved animation state (snapshots). */
 export interface ModelAnimationState {
   /** Playing animation, `undefined` before the first `play`. */
@@ -72,6 +92,7 @@ export interface ModelAnimationState {
  * animator.play('attack', { restart: true, fade: 80 });
  * animator.queue('idle');
  * animator.onEnd((name) => console.log(name, 'ended'));
+ * animator.onEvent(({ event, time }) => console.log(event, 'at', time, 's'));
  * ```
  */
 export class ModelAnimator {
@@ -90,7 +111,7 @@ export class ModelAnimator {
   private ended: AnimationAction | undefined;
   private looped: AnimationAction | undefined;
   private readonly endListeners = new Set<(name: string) => void>();
-  private readonly eventListeners = new Set<(event: string, name: string) => void>();
+  private readonly eventListeners = new Set<(event: ModelFrameEvent) => void>();
   private readonly warned = new Set<string>();
 
   constructor(
@@ -206,7 +227,7 @@ export class ModelAnimator {
   }
 
   /** Calls `listener` for each event of `static animations` playback passes. */
-  onEvent(listener: (event: string, name: string) => void): Unsubscribe {
+  onEvent(listener: (event: ModelFrameEvent) => void): Unsubscribe {
     this.eventListeners.add(listener);
     return () => this.eventListeners.delete(listener);
   }
@@ -258,7 +279,7 @@ export class ModelAnimator {
           : t < before && t >= after;
       if (!passed || t > duration) continue;
       for (const event of Array.isArray(names) ? names : [names])
-        for (const listener of this.eventListeners) listener(event, name);
+        for (const listener of this.eventListeners) listener({ event, animation: name, time: t });
     }
   }
 

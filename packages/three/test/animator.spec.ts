@@ -73,7 +73,7 @@ describe('ModelAnimator', () => {
     });
     const log: string[] = [];
     animator.onEnd((name) => log.push(`end ${name}`));
-    animator.onEvent((event, name) => log.push(`${event} ${name}`));
+    animator.onEvent(({ event, animation }) => log.push(`${event} ${animation}`));
     animator.play('wave', { fade: 0 });
     animator.queue('walk-right');
     animator.queue('wave');
@@ -101,7 +101,7 @@ describe('ModelAnimator', () => {
     const { root, clips } = rig();
     const animator = new ModelAnimator(root, clips, { idle: { events: { 0.9: 'late' } } });
     const events: string[] = [];
-    animator.onEvent((event) => events.push(event));
+    animator.onEvent(({ event }) => events.push(event));
     animator.play('idle', { fade: 0 });
     animator.queue('wave');
     animator.step(0.5);
@@ -130,12 +130,14 @@ describe('ModelAnimator', () => {
       idle: { events: { 0.25: 'step', 0.9: ['step', 'land'] } },
     });
     const events: string[] = [];
-    animator.onEvent((event) => events.push(event));
+    const fired: unknown[] = [];
+    animator.onEvent((event) => (events.push(event.event), fired.push(event)));
     animator.play('idle');
     animator.step(0.2);
     expect(events).toEqual([]);
     animator.step(0.1);
     expect(events).toEqual(['step']);
+    expect(fired).toEqual([{ event: 'step', animation: 'idle', time: 0.25 }]);
     animator.step(0.8); // 1.1 → wraps to 0.1, passing 0.9
     expect(events).toEqual(['step', 'step', 'land']);
   });

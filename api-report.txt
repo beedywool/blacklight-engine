@@ -527,7 +527,7 @@ class Sprite extends GameObject
   protected autoHitbox(): { height: number; type: "box"; width: number; x?: number; y?: number } | { radius: number; type: "circle"; x?: number; y?: number } | { points: ([number, number])[]; type: "polygon" } | undefined
   protected currentHitbox(): HitboxSpec
   onEnd(listener: (animation: string) => void): Unsubscribe
-  onFrame(event: string, listener: (frame: number) => void): Unsubscribe
+  onFrame(event: string, listener: (event: AnimationFrameEvent) => void): Unsubscribe
   protected pixelHitbox(): { height: number; type: "box"; width: number; x?: number; y?: number } | { radius: number; type: "circle"; x?: number; y?: number } | { points: ([number, number])[]; type: "polygon" } | LocalPixelShape | undefined
   play(name: string & {}, options?: { restart?: boolean; speed?: number }): this
   queue(name: string & {}): this
@@ -658,9 +658,19 @@ interface AnimationFile
   hitbox?: HitboxSpec
   pivot?: Point
   source?: string
+interface AnimationFrame
+  animation: string
+  events: readonly string[]
+  frame: number
+  sheetFrame: number
+interface AnimationFrameEvent
+  animation: string
+  event: string
+  frame: number
+  sheetFrame: number
 interface AnimatorCallbacks
   end(name: string): void
-  frame(sheetFrame: number, events: readonly string[]): void
+  frame(frame: AnimationFrame): void
 interface AnimatorState
   elapsed: number
   finished: boolean
@@ -2004,7 +2014,7 @@ class Model3D extends GameObject
   protected autoHitbox(): { height: number; type: "box"; width: number; x?: number; y?: number } | { radius: number; type: "circle"; x?: number; y?: number } | { points: ([number, number])[]; type: "polygon" } | undefined
   destroy(options?: DestroyOptions): void
   onEnd(listener: (animation: string) => void): Unsubscribe
-  onFrame(event: string, listener: (animation: string) => void): Unsubscribe
+  onFrame(event: string, listener: (event: ModelFrameEvent) => void): Unsubscribe
   play(name: string & {}, options?: ModelPlayOptions): this
   queue(name: string & {}): this
   setModel(keyOrPath: string & {}): this
@@ -2019,7 +2029,7 @@ class ModelAnimator
   get speed(): number; set speed(value: number)
   get time(): number
   onEnd(listener: (name: string) => void): Unsubscribe
-  onEvent(listener: (event: string, name: string) => void): Unsubscribe
+  onEvent(listener: (event: ModelFrameEvent) => void): Unsubscribe
   play(name: string, options?: ModelPlayOptions): void
   queue(name: string): void
   step(seconds: number): void
@@ -2080,6 +2090,10 @@ interface ModelAnimationState
   name: string | undefined
   queued?: string[]
   speed: number
+  time: number
+interface ModelFrameEvent
+  animation: string
+  event: string
   time: number
 interface ModelPlayOptions
   fade?: number

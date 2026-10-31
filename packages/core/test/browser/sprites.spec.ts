@@ -80,8 +80,15 @@ describe('Sprite', () => {
 
     bat.play('fly-right' as never, { speed: 1 });
     game.step(1);
-    // Events are keyed by the frame within the animation; listeners get the sheet frame shown.
-    expect(flaps).toHaveBeenCalledWith(2);
+    // Events are keyed by the frame within the animation; listeners get that index (the key in
+    // `events`, also `bat.frame`) and the sheet frame shown.
+    expect(flaps).toHaveBeenCalledWith({
+      event: 'flap',
+      animation: 'fly-right',
+      frame: 1,
+      sheetFrame: 2,
+    });
+    expect(bat.frame).toBe(1);
     stopFlaps();
 
     // A missing direction falls back to the mirrored one, with a warning.

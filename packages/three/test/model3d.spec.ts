@@ -81,6 +81,21 @@ describe('Model3D', () => {
     expect(robot3d.animation).toBe('idle');
   });
 
+  it('passes the event, the animation and the event time to onFrame listeners', () => {
+    class Stepper extends Model3D {
+      static override model = '@models/hero.glb';
+      static override animations = { walk: { events: { 0.1: 'step' } } };
+    }
+    const scene = sceneWith();
+    const robot3d = scene.spawn(Stepper);
+    const steps: unknown[] = [];
+    robot3d.onFrame('step', (event) => steps.push(event));
+    robot3d.onFrame('other', () => steps.push('other'));
+    robot3d.play('walk', { fade: 0 });
+    scene.tick(10);
+    expect(steps).toEqual([{ event: 'step', animation: 'walk', time: 0.1 }]);
+  });
+
   it('collides with the box of its model, scaled by pixelsPerUnit', () => {
     const robot3d = sceneWith().spawn(Robot, { x: 300, y: 400 });
     const shape = robot3d.worldShape() as { kind: string; rect: { y: number; height: number } };

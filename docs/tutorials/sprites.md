@@ -62,7 +62,7 @@ In the JSON file, add an entry to `animations`: `"jump": { "frames": [3], "fps":
 
 </BlExercise>
 
-`frames` takes a list (`[3]`, `[0, 1]`) or a range (`{ "from": 2, "to": 5 }`). An animation can also name events on frames (`"events": { "0": "step" }`) that the object hears with `this.onFrame('step', …)`, to play footstep sounds in time with the feet.
+`frames` takes a list (`[3]`, `[0, 1]`) or a range (`{ "from": 2, "to": 5 }`). An animation can also name events on frames (`"events": { "0": "step" }`) that the object hears with `this.onFrame('step', ({ animation, frame }) => …)`, to play footstep sounds in time with the feet; `frame` is the index within the animation, the same number as the key in `events`.
 
 ## What you used
 

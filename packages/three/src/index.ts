@@ -8,6 +8,7 @@ export {
   ModelAnimator,
   type ModelAnimationSettings,
   type ModelAnimationState,
+  type ModelFrameEvent,
   type ModelPlayOptions,
 } from './animator';
 export { View3D, view3d, type Layers3D, type View3DOptions } from './view';
