@@ -49,6 +49,24 @@ pnpm e2e                 # first run: pnpm exec playwright install chromium
 pnpm bench               # NF-01 benchmark (docs/benchmarks.md)
 ```
 
+## Documentation
+
+The site in `docs/` (guides, tutorials with exercises, live examples, playground, API reference) runs locally. The API reference is generated from the packages' built declarations, so build them first:
+
+```sh
+pnpm install && pnpm build
+pnpm docs:dev            # http://localhost:5173, reloads on edit
+```
+
+`pnpm docs:dev` and `pnpm docs:build` also generate the API reference into `docs/api/` and build the engine bundle the live examples run in (`docs/public/runner/`); both folders are git-ignored. To check the production site:
+
+```sh
+pnpm docs:build          # also runs pnpm api:check; fails on dead links
+pnpm --filter blacklight-docs preview
+```
+
+`pnpm docs:screenshots` regenerates the pictures of the getting-started guide (it drives VS Code and a browser; Linux only). Deployment is in `docs/guide/deploy-docs.md`.
+
 CI (`.github/workflows/ci.yml`) runs lint, type checks, unit tests, the builds and the browser tests on Linux, Windows and macOS, Electron end-to-end tests on the three systems, the Android emulator and the iOS Simulator, and the VS Code extension tests. The repository has no remote yet, so CI has not run: every gate so far passed on Linux only.
 
 ## How the work is organized
