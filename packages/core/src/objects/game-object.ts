@@ -1,4 +1,9 @@
-import { Container as PixiContainer, type DestroyOptions } from 'pixi.js';
+import {
+  Container as PixiContainer,
+  ObservablePoint,
+  type DestroyOptions,
+  type PointData,
+} from 'pixi.js';
 import type { AnyBehavior, Behavior, BehaviorSpec } from '../behaviors/behavior';
 import type { CollisionSpec, Contact, MoveResult, Side } from '../collision/world';
 import {
@@ -25,7 +30,7 @@ export type SpawnProps<T> = {
   [
     K in keyof T as T[K] extends (...args: never[]) => unknown
       ? never
-      : K extends 'scale'
+      : K extends 'scale' | 'position'
         ? never
         : K
   ]?: T[K] extends Vector2
@@ -39,6 +44,13 @@ export type SpawnProps<T> = {
 } & {
   /** Scene layer to add the object to. */
   layer?: string;
+  /** Position, the same as `x` and `y`. */
+  position?: {
+    /** Horizontal position. */
+    x: number;
+    /** Vertical position. */
+    y: number;
+  };
   /** Uniform scale or per-axis scale. */
   scale?:
     | number
@@ -55,13 +67,16 @@ export type GameObjectClass<T extends GameObject = GameObject> = (new () => T) &
 
 const ENGINE_KEYS = Symbol('blacklight.engineKeys');
 const POSITION_KEYS = ['_lx', '_ly', 'prevX', 'prevY'];
+// Symbol key: not a field of the game's data, so snapshots and Object.keys never see it.
+const LOGICAL_POSITION = Symbol('blacklight.position');
 
 /**
  * Base class of everything placed in a scene. Positions are in virtual pixels; speeds in virtual
  * pixels per second. Subclass it (or `Sprite`, `Text`…) and override `update()`.
  *
- * Logic runs on `x` / `y`; the display is interpolated between fixed steps, so read and write
- * `x` / `y`, not `position`.
+ * Logic runs on `x` / `y`; the display is drawn between the previous and the current step's
+ * position (interpolation). `position` is the same logical position as `x` / `y`, as in Pixi:
+ * `position.set(x, y)` moves the object like `x = …; y = …` would.
  *
  * @example
  * ```ts
@@ -99,6 +114,7 @@ export class GameObject extends PixiContainer {
 
   declare private _lx: number;
   declare private _ly: number;
+  declare private [LOGICAL_POSITION]: ObservablePoint | undefined;
   /** Position at the start of the current step, for display interpolation. */
   declare prevX: number;
   /** Position at the start of the current step, for display interpolation. */
@@ -161,14 +177,46 @@ export class GameObject extends PixiContainer {
   }
   override set x(value: number) {
     this._lx = value;
-    this.position.x = value;
+    super.x = value;
+    const point = this[LOGICAL_POSITION];
+    if (point) point._x = value;
   }
   override get y(): number {
     return this._ly ?? 0;
   }
   override set y(value: number) {
     this._ly = value;
-    this.position.y = value;
+    super.y = value;
+    const point = this[LOGICAL_POSITION];
+    if (point) point._y = value;
+  }
+
+  /**
+   * Position in the parent, the same as `x` / `y`: writing `position.x`, `position.set()` or
+   * `position = point` moves the object, with display interpolation from where it was (use
+   * `teleport()` to jump). Pixi's drawn position, between two steps, is not exposed.
+   *
+   * @example
+   * ```ts
+   * this.position.set(160, 90); // same as this.x = 160; this.y = 90;
+   * this.position.copyFrom(checkpoint); // any { x, y }
+   * ```
+   */
+  override get position(): ObservablePoint {
+    return (this[LOGICAL_POSITION] ??= new ObservablePoint(
+      {
+        _onUpdate: (point) => {
+          this.x = point!._x;
+          this.y = point!._y;
+        },
+      },
+      this.x,
+      this.y,
+    ));
+  }
+  override set position(value: PointData) {
+    this.x = value.x;
+    this.y = value.y;
   }
 
   /** Moves without display interpolation (no sliding from the previous position). */
@@ -389,7 +437,8 @@ export class GameObject extends PixiContainer {
       x = Math.round(x);
       y = Math.round(y);
     }
-    this.position.set(x, y);
+    // Pixi's own point: what is drawn, leaving the logical position alone.
+    super.position.set(x, y);
   }
 
   /** Removes the object from its scene and frees it. Safe to call more than once. */

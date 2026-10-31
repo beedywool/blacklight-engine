@@ -234,6 +234,7 @@ class GameObject extends Container
   get contacts(): GameObject[]
   get input(): PlayerInput
   get objectName(): string
+  get position(): ObservablePoint; set position(value: PointData)
   get x(): number; set x(value: number)
   get y(): number; set y(value: number)
   addBehavior<B extends AnyBehavior>(behavior: B | () => B): B
@@ -487,7 +488,7 @@ abstract class Scene<P = void>
   render(_alpha: number): void
   restore(snapshot: SceneSnapshot): void
   snapshot(): SceneSnapshot
-  spawn<T extends GameObject>(Type: GameObjectClass<T> | () => T, props?: SpawnProps<T>): T; spawn(Type: string, props?: { alive?: boolean; readonly behaviors?: AnyBehavior[]; collision?: CollisionSpec; contacts?: GameObject[]; readonly disposables?: Disposables; engineKeys?: ReadonlySet<string>; game?: Game; hitbox?: HitboxSpec; id?: number; input?: PlayerInput; objectName?: string; onCollide?: (other: GameObject, contact: Contact) => void; onCollideEnd?: (other: GameObject) => void; onDestroy?: () => void; onLeave?: (side: Side) => void; onRestore?: () => void; player?: number; prevX?: number; prevY?: number; scene?: Scene<never>; readonly tags?: Set<string>; readonly timers?: Timers; readonly velocity?: { x: number; y: number }; x?: number; y?: number } & { layer?: string; scale?: number | { x: number; y: number } } & Record<string, unknown>): GameObject
+  spawn<T extends GameObject>(Type: GameObjectClass<T> | () => T, props?: SpawnProps<T>): T; spawn(Type: string, props?: { alive?: boolean; readonly behaviors?: AnyBehavior[]; collision?: CollisionSpec; contacts?: GameObject[]; readonly disposables?: Disposables; engineKeys?: ReadonlySet<string>; game?: Game; hitbox?: HitboxSpec; id?: number; input?: PlayerInput; objectName?: string; onCollide?: (other: GameObject, contact: Contact) => void; onCollideEnd?: (other: GameObject) => void; onDestroy?: () => void; onLeave?: (side: Side) => void; onRestore?: () => void; player?: number; prevX?: number; prevY?: number; scene?: Scene<never>; readonly tags?: Set<string>; readonly timers?: Timers; readonly velocity?: { x: number; y: number }; x?: number; y?: number } & { layer?: string; position?: { x: number; y: number }; scale?: number | { x: number; y: number } } & Record<string, unknown>): GameObject
   spawnMany<T extends GameObject>(Type: GameObjectClass<T> | () => T, count: number, props: (index: number) => SpawnProps<T>): T[]
   tween(target: object, to: Record<string, number>, options?: TweenOptions): Tween
   update(): void
@@ -1352,7 +1353,7 @@ type SceneLoader = () => Promise<{ default: SceneClass }>
 type SceneName = Registered<"scenes", string>
 type ScreenSlotMeta = Omit<ScreenSlotInfo, "id" | "savedAt">
 type Side = "left" | "right" | "top" | "bottom"
-type SpawnProps<T> = { [K in keyof T as T[K] extends (...args: never[]) => unknown ? never : K extends "scale" ? never : K]?: T[K] extends Vector2 ? { x: number; y: number } : T[K] } & { layer?: string; scale?: number | { x: number; y: number } }
+type SpawnProps<T> = { [K in keyof T as T[K] extends (...args: never[]) => unknown ? never : K extends "scale" | "position" ? never : K]?: T[K] extends Vector2 ? { x: number; y: number } : T[K] } & { layer?: string; position?: { x: number; y: number }; scale?: number | { x: number; y: number } }
 type TamperReport = (info: { expected: unknown; found: unknown; restore(): void }) => void
 type Unsubscribe = () => void
 type WebFallback = Record<string, (...args: unknown[]) => unknown>

@@ -50,6 +50,6 @@ export default class Example extends Scene {
     const grid = this.walker.behavior<GridMovement>('gridMovement')!;
     // moveTo returns false when the cell cannot be reached.
     this.marker.visible = grid.moveTo(column, row);
-    this.marker.position.set((column + 0.5) * CELL, (row + 0.5) * CELL);
+    this.marker.teleport((column + 0.5) * CELL, (row + 0.5) * CELL);
   }
 }

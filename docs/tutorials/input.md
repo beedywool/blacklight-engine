@@ -47,7 +47,7 @@ In a project, the CLI generates the list of action names from `game.config.ts`, 
 `this.pointer` is the mouse, a finger or a pen, in the scene's coordinates: `x` and `y`, and `pressed`, `down`, `released` like an action. Move the dot to the pointer's position when it is pressed, then click around the preview.
 
 ::: details Hint
-`this.pointer.pressed` is true on the step of the click. `this.dot.teleport(x, y)` sets both coordinates at once, without the slide that display interpolation would draw from the old position. Do not use Pixi's `position.set`: game objects keep their own `x` and `y` ([Objects](../guide/objects#position-x-y-not-position)).
+`this.pointer.pressed` is true on the step of the click. `this.dot.teleport(x, y)` sets both coordinates at once, without the slide that display interpolation would draw from the old position ([Objects](../guide/objects#position-and-interpolation)).
 :::
 
 ::: details Solution

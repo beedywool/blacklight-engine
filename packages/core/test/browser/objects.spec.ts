@@ -277,7 +277,15 @@ describe('GameObject in a running scene', () => {
     scene.game.step(1);
     expect(ball.x).toBeCloseTo(1);
     scene.draw(0.5);
-    // `x` is the logic position; the display position is half-way.
-    expect(ball.position.x).toBeCloseTo(0.5);
+    // `x` and `position` are the logic position; Pixi draws half-way.
+    expect(ball.position.x).toBeCloseTo(1);
+    ball.updateLocalTransform();
+    expect(ball.localTransform.tx).toBeCloseTo(0.5);
+    // Moving through Pixi's position also slides from the previous step's position.
+    scene.game.step(1);
+    ball.position.set(101, 0);
+    scene.draw(0.5);
+    ball.updateLocalTransform();
+    expect(ball.localTransform.tx).toBeCloseTo(51);
   });
 });

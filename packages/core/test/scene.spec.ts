@@ -118,6 +118,70 @@ describe('Scene', () => {
   });
 });
 
+describe('GameObject position', () => {
+  /** Where Pixi draws the object after `draw(alpha)`. */
+  function drawn(object: GameObject): { x: number; y: number } {
+    object.updateLocalTransform();
+    return { x: object.localTransform.tx, y: object.localTransform.ty };
+  }
+
+  it('moves the object when Pixi position is written, like x and y', () => {
+    const scene = testScene();
+    const box = scene.spawn(Box, { x: 10, y: 20 });
+    expect(box.position.x).toBe(10);
+    box.position.set(100, 50);
+    expect([box.x, box.y]).toEqual([100, 50]);
+    box.position.x = 30;
+    expect(box.x).toBe(30);
+    box.position = { x: 7, y: 8 };
+    expect([box.x, box.y]).toEqual([7, 8]);
+    box.position.copyFrom({ x: 1, y: 2 });
+    expect([box.x, box.y]).toEqual([1, 2]);
+    expect(scene.spawn(Box, { position: { x: 3, y: 4 } }).y).toBe(4);
+    // Writing x and y shows in position.
+    box.x = 64;
+    box.y = 32;
+    expect([box.position.x, box.position.y]).toEqual([64, 32]);
+    // And the position survives the next frame.
+    scene.tick();
+    scene.draw(1);
+    expect([box.x, box.y]).toEqual([64, 32]);
+    expect(drawn(box)).toEqual({ x: 64, y: 32 });
+  });
+
+  it('interpolates a move through position, and teleport() still jumps', () => {
+    const scene = testScene();
+    const box = scene.spawn(Box, { x: 0, y: 0 });
+    scene.tick();
+    // Moved during a step: drawn between the previous and the new position.
+    box.position.set(100, 40);
+    scene.draw(0.5);
+    expect(drawn(box)).toEqual({ x: 50, y: 20 });
+    // The drawn position is not the logical one.
+    expect(box.position.x).toBe(100);
+    scene.tick();
+    scene.draw(0.5);
+    expect(drawn(box)).toEqual({ x: 100, y: 40 });
+    box.teleport(300, 10);
+    scene.draw(0.5);
+    expect(drawn(box)).toEqual({ x: 300, y: 10 });
+    expect(box.position.x).toBe(300);
+  });
+
+  it('keeps position out of snapshots and in step after a restore', () => {
+    const scene = testScene();
+    const box = scene.spawn(Box, { x: 5, y: 6 });
+    box.position.set(40, 50);
+    const snapshot = scene.snapshot();
+    expect(Object.keys(snapshot.objects[0]!.data)).toEqual(['hp', 'friend']);
+    expect(snapshot.objects[0]!.core).toMatchObject({ x: 40, y: 50 });
+    box.position.set(0, 0);
+    scene.restore(snapshot);
+    expect([box.x, box.y]).toEqual([40, 50]);
+    expect([box.position.x, box.position.y]).toEqual([40, 50]);
+  });
+});
+
 describe('behaviors', () => {
   it('eightDirections moves with input and is blocked by walls', () => {
     const scene = testScene();

@@ -53,14 +53,15 @@ Props are any public field of the object, plus:
 
 An object created with `new` joins a scene through `this.add(object, { layer, parent })`. `spawn` is the usual way: it applies props before `create()` runs and before behaviors attach.
 
-## Position: `x` / `y`, not `position`
+## Position and interpolation
 
-Game logic runs at a fixed step (60 Hz by default); the display runs at the screen's rate. Between two steps the engine draws each object between its previous and its current position, so movement stays smooth on a 144 Hz screen. The logical position is `x` / `y`; the Pixi `position` holds the interpolated display position and is rewritten every frame.
+Game logic runs at a fixed step (60 Hz by default); the display runs at the screen's rate. Between two steps the engine draws each object between its previous and its current position, so movement stays smooth on a 144 Hz screen.
 
-- Read and write `x` and `y`. A value written to `position` is lost at the next frame.
-- `teleport(x, y)` moves without interpolation: the object appears at the new place instead of sliding there during one frame. Use it for respawns, portals and screen wraps.
-- Only `x` and `y` are interpolated. `rotation`, `scale` and `alpha` show their step value.
-- With `resolution.pixelArt`, the display position is rounded to whole pixels.
+- `x` / `y` and Pixi's `position` are the same logical position: `this.position.set(100, 50)`, `this.position.x = 100` and `this.x = 100` all move the object, and the object slides there from where it was at the previous step.
+- `teleport(x, y)` moves without interpolation: the object appears at the new place instead of sliding there during one frame. Use it for respawns, portals, screen wraps and clicks that place something.
+- Only the position is interpolated. `rotation`, `scale` and `alpha` show their step value.
+- With `resolution.pixelArt`, the drawn position is rounded to whole pixels.
+- The drawn, in-between position stays inside Pixi: `localTransform` and `toGlobal()` give it after a frame is drawn. Game logic reads `x` / `y`.
 
 `velocity` is applied every step through `move()`, so an object with a hitbox stops at solids. A behavior that moves the object itself (`ownsMovement`) turns this off; see [Behaviors](./behaviors).
 
