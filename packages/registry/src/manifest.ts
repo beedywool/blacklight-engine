@@ -51,7 +51,9 @@ export interface ModuleManifest {
   module: string;
   /** Semver range of `@blacklight/core` versions the module works with. */
   engine: string;
+  /** Platforms the module runs on; `blacklight add` warns when the game targets others. */
   platforms: ModulePlatform[];
+  /** What the module may do (network, storage, native code…), shown before it is installed. */
   permissions: ModulePermission[];
   /** Other modules this one needs; `blacklight add` installs them too. */
   dependencies?: string[];
@@ -59,14 +61,30 @@ export interface ModuleManifest {
 
 /** The fields of a `package.json` the registry reads. */
 export interface PackageJson {
+  /** npm package name. */
   name?: string;
+  /** Package version (semver). */
   version?: string;
+  /** One-line description, shown by `blacklight search`. */
   description?: string;
+  /** SPDX license expression; it must be MIT-compatible (see {@link isLicenseAllowed}). */
   license?: string;
+  /** Search keywords. */
   keywords?: string[];
+  /** Project homepage URL. */
   homepage?: string;
-  repository?: string | { type?: string; url?: string };
+  /** Source repository, as a URL or npm's `{ type, url }` object. */
+  repository?:
+    | string
+    | {
+        /** Version control system, usually `git`. */
+        type?: string;
+        /** Repository URL. */
+        url?: string;
+      };
+  /** A private package cannot be listed in the registry. */
   private?: boolean;
+  /** The module manifest ({@link ModuleManifest}), checked by {@link validatePackage}. */
   blacklight?: unknown;
   [key: string]: unknown;
 }

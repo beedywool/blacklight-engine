@@ -32,8 +32,14 @@ export interface IndexEntry {
 
 /** The parts of an npm packument (`GET https://registry.npmjs.org/<package>`) the index reads. */
 export interface Packument {
+  /** Package name. */
   name: string;
-  'dist-tags'?: { latest?: string };
+  /** Named versions; the index reads `latest`. */
+  'dist-tags'?: {
+    /** The version `npm install` picks. */
+    latest?: string;
+  };
+  /** The `package.json` of every published version, by version. */
   versions: Record<string, PackageJson>;
 }
 
@@ -42,26 +48,41 @@ export type PackumentSource = (packageName: string) => Promise<Packument | undef
 
 /** One module in `v1/index.json`. */
 export interface ModuleSummary {
+  /** Module name, as in `blacklight add <name>`. */
   name: string;
+  /** npm package that holds the module. */
   package: string;
   /** Latest version with a valid manifest. */
   version: string;
+  /** The package's description (empty when it has none). */
   description: string;
+  /** The package's keywords. */
   keywords: string[];
+  /** Platforms the module runs on. */
   platforms: ModulePlatform[];
+  /** What the module may do, shown before it is installed. */
   permissions: ModulePermission[];
+  /** Semver range of `@blacklight/core` versions the module works with. */
   engine: string;
+  /** Other modules it needs. */
   dependencies: string[];
+  /** Maintained with the engine. */
   official: boolean;
+  /** Source repository URL, from the package or the index entry. */
   repository?: string;
+  /** SPDX license expression of the package. */
   license: string;
 }
 
 /** What a module declares for one published version. */
 export interface VersionManifest {
+  /** Semver range of `@blacklight/core` versions this version works with. */
   engine: string;
+  /** Platforms it runs on. */
   platforms: ModulePlatform[];
+  /** What it may do. */
   permissions: ModulePermission[];
+  /** Other modules it needs. */
   dependencies: string[];
 }
 
@@ -75,12 +96,29 @@ export interface ModuleDetail extends ModuleSummary {
 export interface RegistryIndex {
   /** ISO date of the build. */
   generatedAt: string;
+  /** Every listed module, sorted by name. */
   modules: ModuleSummary[];
 }
 
-/** Thrown by {@link buildIndex} when the index repository is invalid; `issues` lists every problem. */
+/**
+ * Thrown by {@link buildIndex} when the index repository is invalid. The message lists every
+ * problem, one per line, so a pull request to the index shows all of them at once.
+ *
+ * @example
+ * ```ts
+ * try {
+ *   await buildIndex('entries', 'public');
+ * } catch (error) {
+ *   if (error instanceof RegistryError) console.error(error.issues.join('\n'));
+ *   process.exitCode = 1;
+ * }
+ * ```
+ */
 export class RegistryError extends Error {
-  constructor(readonly issues: string[]) {
+  constructor(
+    /** One readable line per problem, naming the entry file and what is wrong with it. */
+    readonly issues: string[],
+  ) {
     super(`The registry index is invalid:\n${issues.map((issue) => `  - ${issue}`).join('\n')}`);
     this.name = 'RegistryError';
   }
@@ -153,10 +191,21 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 /**
- * Reads `entries/*.json` and checks their shape. Entries that cannot be used are left out and
- * reported in `issues`.
+ * Reads `entries/*.json` and checks their shape, without contacting npm. Entries that cannot be
+ * used are left out and reported in `issues`; {@link validateIndex} adds the npm checks.
+ *
+ * @example
+ * ```ts
+ * const { entries, issues } = readEntries('entries');
+ * for (const issue of issues) console.error(issue);
+ * ```
  */
-export function readEntries(entriesDir: string): { entries: IndexEntry[]; issues: string[] } {
+export function readEntries(entriesDir: string): {
+  /** The usable entries. */
+  entries: IndexEntry[];
+  /** One readable line per problem. */
+  issues: string[];
+} {
   const issues: string[] = [];
   const entries: IndexEntry[] = [];
   if (!existsSync(entriesDir)) {
