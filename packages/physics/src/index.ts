@@ -4,13 +4,20 @@ import { Behavior, type GameObject, type Scene, type HitboxSpec } from '@blackli
 // Rapier ships as WebAssembly; it is ready before any scene that imports this package starts.
 await RAPIER.init();
 
+/** Settings of a scene's physics world, given to {@link configurePhysics}. */
 export interface PhysicsWorldOptions {
-  /** px/s². @defaultValue `{ x: 0, y: 980 }` */
-  gravity?: { x: number; y: number };
+  /** Acceleration applied to dynamic bodies, in px/s². @defaultValue `{ x: 0, y: 980 }` */
+  gravity?: {
+    /** Horizontal gravity in px/s² (positive: to the right). */
+    x: number;
+    /** Vertical gravity in px/s² (positive: down). */
+    y: number;
+  };
   /** Pixels per physics meter: Rapier is tuned for objects of 0.1–10 m. @defaultValue `50` */
   pixelsPerMeter?: number;
 }
 
+/** Options of a rigid body, given to `physics.body(options)`. */
 export interface BodyOptions {
   /** `dynamic` moves under forces, `fixed` never moves, `kinematic` follows `x` / `y` set by code. @defaultValue `'dynamic'` */
   type?: 'dynamic' | 'fixed' | 'kinematic';
@@ -24,7 +31,9 @@ export interface BodyOptions {
   restitution?: number;
   /** Never rotates (characters). */
   fixedRotation?: boolean;
+  /** Slows the body's movement over time, like air drag (0 = none). @defaultValue `0` */
   linearDamping?: number;
+  /** Slows the body's rotation over time (0 = none). @defaultValue `0` */
   angularDamping?: number;
   /** Reports collisions without pushing. */
   sensor?: boolean;
@@ -43,7 +52,22 @@ interface WorldState {
 const worlds = new WeakMap<Scene<never>, WorldState>();
 const settings = new WeakMap<Scene<never>, PhysicsWorldOptions>();
 
-/** Sets the physics world of a scene (call in `create()` before spawning bodies). */
+/**
+ * Sets the physics world of a scene: gravity and scale. Call it in `create()` before spawning
+ * bodies; without it the world uses the defaults of {@link PhysicsWorldOptions}.
+ *
+ * @throws Error when a body already exists in the scene (the world is created with the first one).
+ *
+ * @example
+ * ```ts
+ * import { configurePhysics } from '@blacklight/physics';
+ *
+ * create() {
+ *   configurePhysics(this, { gravity: { x: 0, y: 0 } }); // top-down: no gravity
+ *   this.spawn(Puck, { x: 640, y: 360 });
+ * }
+ * ```
+ */
 export function configurePhysics(scene: Scene<never>, options: PhysicsWorldOptions): void {
   if (worlds.has(scene))
     throw new Error('configurePhysics must run before the first body is created in the scene.');
@@ -111,7 +135,12 @@ function stepWorld(state: WorldState): void {
 export class RigidBody extends Behavior<BodyOptions> {
   readonly name = 'rigidBody';
   override readonly ownsMovement = true;
+  /**
+   * The Rapier body, for what the behavior does not wrap (velocities, torques). Rapier works in
+   * meters: divide pixels by `pixelsPerMeter`.
+   */
   body!: RAPIER.RigidBody;
+  /** The Rapier collider attached to the body. */
   collider!: RAPIER.Collider;
   private state!: WorldState;
 
@@ -224,6 +253,7 @@ function boundsBox(object: GameObject): { x: number; y: number; width: number; h
 
 /** Physics behaviors for `static behaviors`. */
 export const physics = {
+  /** A {@link RigidBody} with `options`: the object moves under forces and hits other bodies. */
   body:
     (options: BodyOptions = {}) =>
     () =>
