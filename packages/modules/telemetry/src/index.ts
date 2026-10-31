@@ -1,4 +1,4 @@
-import { DropItem, defineModule, t, type Infer, type ModuleContext } from '@blacklight/core';
+import { DropItem, defineModule, t, type ModuleContext, type Schema } from '@blacklight/core';
 import { DEFAULT_CONSENT_TEXTS, consentDialog, type ConsentTexts } from './consent';
 import {
   TELEMETRY_VERSION,
@@ -23,22 +23,46 @@ export {
   type SentryEvent,
 } from './sentry';
 
-const config = t.object({
+/** Options of the `telemetry` module in `game.config.ts`, with their defaults applied. */
+export interface TelemetryConfig {
   /** Sentry DSN from the project settings of Sentry or GlitchTip; without it nothing is recorded. */
+  dsn: string | undefined;
+  /** `environment` of events. Unset: `development` in `blacklight dev`, `production` otherwise. */
+  environment: string | undefined;
+  /** `release` of events. Unset: `<game id>@<game version>`. */
+  release: string | undefined;
+  /** Share of events sent, 0 to 1 (crashes and usage events alike). @defaultValue `1` */
+  sampleRate: number;
+  /** Report uncaught errors and unhandled promise rejections. @defaultValue `true` */
+  crashes: boolean;
+  /** Send usage events from `track()`. @defaultValue `true` */
+  events: boolean;
+  /**
+   * Breadcrumbs (scene changes, `breadcrumb()`) kept and attached to each event, 0 to 100.
+   * @defaultValue `20`
+   */
+  maxBreadcrumbs: number;
+  /** Texts of the consent question. @defaultValue {@link DEFAULT_CONSENT_TEXTS} */
+  consent: ConsentTexts;
+}
+
+/**
+ * What `game.config.ts` may write under `modules.telemetry`: every option is optional, and so is
+ * each consent text.
+ */
+export type TelemetryConfigInput = Partial<Omit<TelemetryConfig, 'consent'>> & {
+  /** Texts of the consent question; missing ones keep the English defaults. */
+  consent?: Partial<ConsentTexts>;
+};
+
+const config: Schema<TelemetryConfig, TelemetryConfigInput> = t.object({
   dsn: t.string({ url: true }).optional(),
-  /** `environment` of events. Defaults to `development` in `blacklight dev`, `production` otherwise. */
   environment: t.string({ min: 1 }).optional(),
-  /** `release` of events. Defaults to `<game id>@<game version>`. */
   release: t.string({ min: 1 }).optional(),
-  /** Share of events sent, 0 to 1 (crashes and usage events alike). */
   sampleRate: t.number({ min: 0, max: 1 }).default(1),
-  /** Report uncaught errors and unhandled promise rejections. */
   crashes: t.boolean().default(true),
-  /** Send usage events from `track()`. */
   events: t.boolean().default(true),
-  /** Breadcrumbs (scene changes, `breadcrumb()`) kept and attached to each event. */
   maxBreadcrumbs: t.number({ integer: true, min: 0, max: 100 }).default(20),
-  /** Texts of the consent question. */
   consent: t
     .object({
       title: t.string().default(DEFAULT_CONSENT_TEXTS.title),
@@ -48,9 +72,6 @@ const config = t.object({
     })
     .default({ ...DEFAULT_CONSENT_TEXTS }),
 });
-
-/** Options of the `telemetry` module in `game.config.ts`. */
-export type TelemetryConfig = Infer<typeof config>;
 
 /** The player's answer: nothing is recorded until it is `granted`. */
 export type Consent = 'unknown' | 'granted' | 'denied';

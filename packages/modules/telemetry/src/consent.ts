@@ -1,6 +1,8 @@
 /** Texts of the consent question. */
 export interface ConsentTexts {
+  /** Title of the question, e.g. "Help improve the game?". */
   title: string;
+  /** Body of the question: what is sent, and that the answer can be changed later. */
   message: string;
   /** Label of the button that grants consent. */
   allow: string;

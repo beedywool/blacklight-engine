@@ -52,6 +52,7 @@ function plain(row: Record<string, unknown>): Row {
 export const sqliteNative = defineNative({
   name: 'sqlite',
   functions: {
+    /** Opens (creating it if needed) `<data folder>/databases/<file>` in WAL mode. */
     open: fn([name], (context, file) => {
       if (open.has(file)) return;
       const dir = join(context.dataDir, 'databases');
@@ -60,6 +61,7 @@ export const sqliteNative = defineNative({
       db.pragma('journal_mode = WAL');
       open.set(file, db);
     }),
+    /** Runs a write statement, or several separated by `;` without parameters. */
     execute: fn([name, sql, params], (_context, file, text, values): ExecuteResult => {
       checkValues(values);
       const db = database(file);
@@ -77,6 +79,7 @@ export const sqliteNative = defineNative({
       const result = db.prepare(text).run(bindable(values as never));
       return { changes: result.changes, lastInsertId: Number(result.lastInsertRowid) };
     }),
+    /** Runs a query and returns its rows (blobs as `Uint8Array`, big integers as numbers). */
     query: fn([name, sql, params], (_context, file, text, values): Row[] => {
       checkValues(values);
       const statement = database(file).prepare(text);
@@ -86,6 +89,7 @@ export const sqliteNative = defineNative({
       }
       return (statement.all(bindable(values as never)) as Record<string, unknown>[]).map(plain);
     }),
+    /** Closes a database; closing one that is not open does nothing. */
     close: fn([name], (_context, file) => {
       open.get(file)?.close();
       open.delete(file);

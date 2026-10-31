@@ -25,10 +25,26 @@ export interface TokenSet {
 /** Claims of an ID token or userinfo answer. */
 export type Claims = Record<string, unknown> & { sub: string };
 
-/** A failed OIDC step; `code` is the OAuth error code when the provider sent one. */
+/**
+ * A failed sign-in step: discovery, the provider's answer, token checks or a cancelled login.
+ * Its message says what failed; `code` is the OAuth error code when the provider sent one.
+ *
+ * @example
+ * ```ts
+ * import { OidcError } from '@blacklight/module-accounts-oidc';
+ *
+ * try {
+ *   await this.game.modules['accounts-oidc'].login();
+ * } catch (error) {
+ *   if (error instanceof OidcError && error.code === 'access_denied') return; // player cancelled
+ *   throw error;
+ * }
+ * ```
+ */
 export class OidcError extends Error {
   constructor(
     message: string,
+    /** OAuth error code sent by the provider (`access_denied`, `invalid_grant`…), if any. */
     readonly code?: string,
   ) {
     super(message);

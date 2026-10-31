@@ -3,33 +3,42 @@ import {
   EventBus,
   defineModule,
   t,
-  type Infer,
   type ModuleContext,
   type OfflineQueue,
+  type Schema,
   type Unsubscribe,
 } from '@blacklight/core';
 import { HttpError, type Http } from '@blacklight/module-http';
 
-const config = t.object({
+/** Options of the `achievements` module in `game.config.ts`, with their defaults applied. */
+export interface AchievementsConfig {
   /**
    * Where unlocks and scores go. `auto`: Steam when started by Steam, Game Center on iOS, Google
    * Play Games on Android, the reference server when `server` is set, otherwise the device only.
+   * @defaultValue `'auto'`
    */
-  backend: t.enum(['auto', 'steam', 'gamecenter', 'playgames', 'server', 'local']).default('auto'),
-  /** Reference server URL; defaults to the `server` of the accounts-oidc module. */
-  server: t.string({ url: true }).optional(),
+  backend: 'auto' | 'steam' | 'gamecenter' | 'playgames' | 'server' | 'local';
+  /** Reference server URL; unset, the `server` of the accounts-oidc module is used. */
+  server: string | undefined;
   /** Known achievement ids: `unlock()` refuses others, so a typo fails in development. */
+  ids: string[] | undefined;
+}
+
+/** What `game.config.ts` may write under `modules.achievements`: every option is optional. */
+export type AchievementsConfigInput = Partial<AchievementsConfig>;
+
+const config: Schema<AchievementsConfig, AchievementsConfigInput> = t.object({
+  backend: t.enum(['auto', 'steam', 'gamecenter', 'playgames', 'server', 'local']).default('auto'),
+  server: t.string({ url: true }).optional(),
   ids: t.array(t.string({ pattern: /^[A-Za-z0-9_.-]{1,64}$/ })).optional(),
 });
-
-/** Options of the `achievements` module in `game.config.ts`. */
-export type AchievementsConfig = Infer<typeof config>;
 
 /** A backend name after `auto` is resolved. */
 export type AchievementBackend = 'steam' | 'gamecenter' | 'playgames' | 'server' | 'local';
 
 /** An unlocked achievement. */
 export interface Unlocked {
+  /** Achievement id, as passed to `unlock`. */
   id: string;
   /** ms since the epoch, on the device that unlocked it. */
   unlockedAt: number;
@@ -37,9 +46,26 @@ export interface Unlocked {
 
 /** A leaderboard row. */
 export interface LeaderboardEntry {
+  /** Position on the board, 1 for the best score. */
   rank: number;
+  /** Display name of the player, as the backend gives it. */
   name: string;
+  /** The player's best score on this board. */
   score: number;
+}
+
+/** Progress of an achievement towards its unlock, as recorded with `progress`. */
+export interface AchievementProgress {
+  /** Steps done so far, e.g. `3` of 10 enemies. */
+  current: number;
+  /** Steps needed; the achievement unlocks when `current` reaches it. */
+  max: number;
+}
+
+/** Payload of the `progress` event. */
+export interface AchievementProgressEvent extends AchievementProgress {
+  /** Achievement id. */
+  id: string;
 }
 
 /** Events of the achievements module. */
@@ -47,7 +73,7 @@ export interface AchievementEvents {
   /** Unlocked on this device (delivery to the backend may come later). */
   unlock: Unlocked;
   /** Progress changed. */
-  progress: { id: string; current: number; max: number };
+  progress: AchievementProgressEvent;
   /** Every queued unlock and score reached the backend. */
   synced: void;
 }
@@ -186,7 +212,7 @@ function createAchievements(context: ModuleContext<AchievementsConfig>) {
       if (value >= max) await api.unlock(id);
     },
     /** Progress recorded with {@link progress}. */
-    progressOf(id: string): { current: number; max: number } | undefined {
+    progressOf(id: string): AchievementProgress | undefined {
       return progress[id];
     },
     /** Sends a score to a leaderboard (queued like unlocks). */

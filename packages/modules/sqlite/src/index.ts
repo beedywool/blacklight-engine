@@ -1,4 +1,4 @@
-import { defineModule, nativeModule, t, type Infer, type Platform } from '@blacklight/core';
+import { defineModule, nativeModule, t, type Platform, type Schema } from '@blacklight/core';
 import type { sqliteNative } from './native';
 import {
   DATABASE_NAME,
@@ -11,24 +11,34 @@ import { webBackend } from './web';
 
 export type { ExecuteResult, Row, SqlValue } from './protocol';
 
-const config = t.object({
-  /** Database opened by `sqlite.query()` and friends: a file name in the game's data folder. */
-  database: t.string({ pattern: DATABASE_NAME }).default('game.db'),
+/** Options of the `sqlite` module in `game.config.ts`, with their defaults applied. */
+export interface SqliteConfig {
+  /**
+   * Database opened by `sqlite.query()` and friends: a file name in the game's data folder
+   * (letters, digits, `-`, `_` and `.`). @defaultValue `'game.db'`
+   */
+  database: string;
   /**
    * Schema steps run once each, in order, when the default database opens (tracked with
-   * `PRAGMA user_version`). Append new steps; never edit released ones.
+   * `PRAGMA user_version`). Append new steps; never edit released ones. @defaultValue `[]`
    */
+  migrations: string[];
+}
+
+/** What `game.config.ts` may write under `modules.sqlite`: every option is optional. */
+export type SqliteConfigInput = Partial<SqliteConfig>;
+
+const config: Schema<SqliteConfig, SqliteConfigInput> = t.object({
+  database: t.string({ pattern: DATABASE_NAME }).default('game.db'),
   migrations: t.array(t.string({ min: 1 })).default([]),
 });
-
-/** Options of the `sqlite` module in `game.config.ts`. */
-export type SqliteConfig = Infer<typeof config>;
 
 /**
  * An open SQLite database. Statements run one at a time in call order; use `?` placeholders for
  * values, never string concatenation.
  */
 export interface Database {
+  /** File name of the database in the game's data folder, e.g. `'game.db'`. */
   readonly name: string;
   /** Runs a write statement (or, without `params`, several statements separated by `;`). */
   execute(sql: string, params?: SqlValue[]): Promise<ExecuteResult>;
@@ -43,6 +53,7 @@ export interface Database {
   transaction<R>(work: (db: Database) => Promise<R>): Promise<R>;
   /** Applies the steps not applied yet (`PRAGMA user_version`); returns the new version. */
   migrate(steps: string[]): Promise<number>;
+  /** Closes the database once the pending calls are done; `open(name)` opens it again. */
   close(): Promise<void>;
 }
 
@@ -203,10 +214,15 @@ export const sqlite = defineModule({
       db: main,
       /** Opens (or returns) another database file. */
       open,
+      /** {@link Database.execute} on the default database. */
       execute: main.execute,
+      /** {@link Database.query} on the default database. */
       query: main.query,
+      /** {@link Database.get} on the default database. */
       get: main.get,
+      /** {@link Database.transaction} on the default database. */
       transaction: main.transaction,
+      /** {@link Database.migrate} on the default database. */
       migrate: main.migrate,
     };
   },

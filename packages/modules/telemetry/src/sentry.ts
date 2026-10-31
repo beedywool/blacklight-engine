@@ -8,7 +8,9 @@ export const TELEMETRY_VERSION = '0.0.0';
 export interface Dsn {
   /** The DSN as written in the configuration. */
   readonly dsn: string;
+  /** Public key of the project (the user part of the DSN), sent as `sentry_key`. */
   readonly publicKey: string;
+  /** Project id (the last path segment of the DSN). */
   readonly projectId: string;
   /** Where envelopes go, with the authentication in the query string. */
   readonly envelopeUrl: string;
@@ -58,10 +60,15 @@ export function parseDsn(dsn: string): Dsn {
 
 /** One frame of a stack trace, Sentry style. */
 export interface Frame {
+  /** Function name, when the stack line has one. */
   function?: string;
+  /** Script location scrubbed by {@link scrubFilename}: `app:///<path inside the game>`. */
   filename: string;
+  /** 1-based line number. */
   lineno: number;
+  /** 1-based column number. */
   colno: number;
+  /** `false` for dependencies (`node_modules`, Vite's prebundled deps), so backends group by game code. */
   in_app: boolean;
 }
 
@@ -91,7 +98,19 @@ export function scrubFilename(location: string): string {
 const V8_FRAME = /^\s*at (?:(?:async )?(.+?) \()?(.+?):(\d+):(\d+)\)?\s*$/;
 const GECKO_FRAME = /^\s*(.*?)@(.+?):(\d+):(\d+)\s*$/;
 
-/** Parses a V8 (`at fn (url:1:2)`) or Firefox / Safari (`fn@url:1:2`) stack, oldest frame first. */
+/**
+ * Parses a V8 (`at fn (url:1:2)`) or Firefox / Safari (`fn@url:1:2`) stack into Sentry frames,
+ * oldest frame first (the frame that threw comes last), with locations scrubbed by
+ * {@link scrubFilename}. Lines that are not frames are skipped.
+ *
+ * @example
+ * ```ts
+ * import { parseStack } from '@blacklight/module-telemetry';
+ *
+ * const frames = parseStack(new Error('boom').stack);
+ * frames.at(-1); // { function: 'Title.update', filename: 'app:///assets/index.js', lineno: 1, colno: 4321, in_app: true }
+ * ```
+ */
 export function parseStack(stack: string | undefined): Frame[] {
   const frames: Frame[] = [];
   for (const line of (stack ?? '').split('\n')) {
@@ -119,25 +138,66 @@ export function eventId(): string {
 
 /** A Sentry event as this module builds it (no `user`, no `request`). */
 export interface SentryEvent {
+  /** Random 32-character hex id, returned by `captureException` and friends. */
   event_id: string;
+  /** Time of the event in seconds since the epoch. */
   timestamp: number;
+  /** Always `'javascript'`. */
   platform: 'javascript';
+  /** Severity: `error` for exceptions, the given level for messages. */
   level: Level;
+  /** `telemetry`, or `telemetry.event` for `track()`. */
   logger: string;
+  /** Release name, `<game id>@<game version>` unless configured. */
   release: string;
+  /** `production` or `development` unless configured. */
   environment: string;
+  /** The message, or the event name of `track()`. */
   message?: string;
-  exception?: { values: { type: string; value: string; stacktrace?: { frames: Frame[] } }[] };
+  /** The reported error, for `captureException` and uncaught errors. */
+  exception?: {
+    /** One entry per error (the module sends one). */
+    values: {
+      /** Error class name, e.g. `TypeError`. */
+      type: string;
+      /** Error message. */
+      value: string;
+      /** Scrubbed stack trace, when the error has one. */
+      stacktrace?: {
+        /** Frames from {@link parseStack}, oldest first. */
+        frames: Frame[];
+      };
+    }[];
+  };
+  /** `platform` (`web`, `desktop`, `android`, `ios`) and `steam` in Steam builds. */
   tags: Record<string, string>;
+  /** Game id and version, and the runtime (`browser`, `electron`, `webview`). */
   contexts: Record<string, Record<string, string>>;
+  /** Values passed with the event. */
   extra?: Record<string, string | number | boolean>;
+  /** The last scene changes and `breadcrumb()` calls, oldest first. */
   breadcrumbs?: {
+    /** Time in seconds since the epoch. */
     timestamp: number;
+    /** What happened, e.g. `scene level-1` for a scene change. */
     message: string;
+    /** `game` for the breadcrumbs this module records. */
     category: string;
+    /** Values passed with the breadcrumb. */
     data?: Record<string, string | number | boolean>;
   }[];
-  sdk: { name: string; version: string; settings: { infer_ip: 'never' } };
+  /** Identifies the sender to the backend. */
+  sdk: {
+    /** `blacklight.telemetry`. */
+    name: string;
+    /** {@link TELEMETRY_VERSION}. */
+    version: string;
+    /** Settings the backend applies to the event. */
+    settings: {
+      /** Tells the backend never to derive the player's IP address from the request. */
+      infer_ip: 'never';
+    };
+  };
 }
 
 /** Sentry severity levels. */

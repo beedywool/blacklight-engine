@@ -3,41 +3,61 @@ import {
   EventBus,
   defineModule,
   t,
-  type Infer,
   type ModuleContext,
   type ModuleSaves,
+  type Schema,
   type Unsubscribe,
 } from '@blacklight/core';
 import { HttpError, type Http } from '@blacklight/module-http';
 
-const config = t.object({
-  /** `server`: the reference server; `steam`: Steam Cloud (Steam builds). */
+/** Options of the `cloud-save` module in `game.config.ts`, with their defaults applied. */
+export interface CloudSaveConfig {
+  /**
+   * `server`: the reference server; `steam`: Steam Cloud (Steam builds).
+   * @defaultValue `'server'`
+   */
+  backend: 'server' | 'steam';
+  /** Reference server URL; unset, the `server` of the accounts-oidc module is used. */
+  server: string | undefined;
+  /**
+   * When both copies changed: keep the `newest`, or `ask` the game (`onConflict`).
+   * @defaultValue `'newest'`
+   */
+  conflict: 'newest' | 'ask';
+  /** Upload each slot after the game saves it. @defaultValue `true` */
+  autoUpload: boolean;
+  /** Sync every slot when the game starts and when the app resumes. @defaultValue `true` */
+  syncOnStart: boolean;
+}
+
+/** What `game.config.ts` may write under `modules['cloud-save']`: every option is optional. */
+export type CloudSaveConfigInput = Partial<CloudSaveConfig>;
+
+const config: Schema<CloudSaveConfig, CloudSaveConfigInput> = t.object({
   backend: t.enum(['server', 'steam']).default('server'),
-  /** Reference server URL; defaults to the `server` of the accounts-oidc module. */
   server: t.string({ url: true }).optional(),
-  /** When both copies changed: keep the `newest`, or `ask` the game (`onConflict`). */
   conflict: t.enum(['newest', 'ask']).default('newest'),
-  /** Upload each slot after the game saves it. */
   autoUpload: t.boolean().default(true),
-  /** Sync every slot when the game starts and when the app resumes. */
   syncOnStart: t.boolean().default(true),
 });
 
-/** Options of the `cloud-save` module in `game.config.ts`. */
-export type CloudSaveConfig = Infer<typeof config>;
-
 /** One copy of a slot. */
 export interface SlotCopy {
+  /** Name of the save slot, e.g. `'slot-1'`. */
   slot: string;
   /** Last write, ms since the epoch (the writing device's clock). */
   updatedAt: number;
+  /** The slot's save file, as the save system exports it (signed, possibly encrypted). */
   data: Uint8Array;
 }
 
 /** Both copies of a slot changed since the last sync. */
 export interface SaveConflict {
+  /** Name of the save slot. */
   slot: string;
+  /** The copy on this device. */
   local: SlotCopy;
+  /** The copy in the cloud. */
   remote: SlotCopy;
 }
 
@@ -47,11 +67,20 @@ export type Resolution = 'local' | 'remote';
 /** Events of the cloud-save module. */
 export interface CloudSaveEvents {
   /** A slot was uploaded. */
-  uploaded: { slot: string };
+  uploaded: {
+    /** Name of the uploaded slot. */
+    slot: string;
+  };
   /** A slot was replaced by the cloud copy. */
-  downloaded: { slot: string };
+  downloaded: {
+    /** Name of the replaced slot. */
+    slot: string;
+  };
   /** A conflict was resolved (by the policy or the game). */
-  conflict: SaveConflict & { kept: Resolution };
+  conflict: SaveConflict & {
+    /** The copy that won. */
+    kept: Resolution;
+  };
   /** A sync failed; it is retried later. */
   error: Error;
 }

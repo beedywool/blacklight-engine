@@ -8,11 +8,17 @@ import type { AddressInfo } from 'node:net';
 
 /** The signed-in user of the mock provider. */
 export interface MockUser {
+  /** Subject: the user's stable id, put in the `sub` claim. */
   sub: string;
+  /** `name` claim. */
   name?: string;
+  /** `preferred_username` claim. */
   preferred_username?: string;
+  /** `email` claim, sent when the client asks for the `email` scope. */
   email?: string;
+  /** `email_verified` claim. */
   email_verified?: boolean;
+  /** `picture` claim: avatar URL. */
   picture?: string;
 }
 
@@ -23,7 +29,12 @@ export interface MockProviderOptions {
   /** Host name in the issuer URL. @defaultValue `'localhost'` */
   host?: string;
   /** Registered clients; omitted: any client id and redirect URI are accepted. */
-  clients?: { clientId: string; redirectUris?: string[] }[];
+  clients?: {
+    /** Client id the game sends. */
+    clientId: string;
+    /** Allowed redirect URIs; omitted: any. */
+    redirectUris?: string[];
+  }[];
   /** @defaultValue `{ sub: 'user-1', name: 'Test Player', preferred_username: 'tester', email: 'tester@example.com' }` */
   user?: MockUser;
   /** Access and ID token lifetime in seconds. @defaultValue `3600` */
@@ -34,6 +45,7 @@ export interface MockProviderOptions {
 export interface MockProvider {
   /** Issuer URL, e.g. `http://localhost:5352`. */
   readonly issuer: string;
+  /** Port the provider listens on (the free one picked for `port: 0`). */
   readonly port: number;
   /** Changes the user that the next authorization signs in. */
   setUser(user: MockUser): void;
@@ -43,6 +55,7 @@ export interface MockProvider {
   revokeAll(): void;
   /** Paths requested so far, in order (`/authorize`, `/token`…). */
   readonly requests: string[];
+  /** Stops the server; await it at the end of the test. */
   close(): Promise<void>;
 }
 

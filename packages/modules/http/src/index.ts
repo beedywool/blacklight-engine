@@ -3,30 +3,40 @@ import {
   defineModule,
   isNetworkError,
   t,
-  type Infer,
   type ModuleContext,
   type OfflineQueue,
   type QueueEvents,
+  type Schema,
   type Unsubscribe,
 } from '@blacklight/core';
 
-const config = t.object({
-  /** Prefix of relative paths: `get('/scores')` → `<baseUrl>/scores`. */
+/** Options of the `http` module in `game.config.ts`, with their defaults applied. */
+export interface HttpConfig {
+  /** Prefix of relative paths: `get('/scores')` → `<baseUrl>/scores`. Unset: relative to the page. */
+  baseUrl: string | undefined;
+  /** Request timeout in ms. @defaultValue `10000` */
+  timeout: number;
+  /** Headers added to every request. @defaultValue `{}` */
+  headers: Record<string, string>;
+  /** First retry delay of queued requests in ms (doubles after each failure). @defaultValue `1000` */
+  retryDelay: number;
+  /** Longest delay between retries of queued requests in ms. @defaultValue `300000` */
+  maxDelay: number;
+  /** Attempts before a queued request is dropped; `0` retries forever. @defaultValue `0` */
+  maxAttempts: number;
+}
+
+/** What `game.config.ts` may write under `modules.http`: every option is optional. */
+export type HttpConfigInput = Partial<HttpConfig>;
+
+const config: Schema<HttpConfig, HttpConfigInput> = t.object({
   baseUrl: t.string({ url: true }).optional(),
-  /** Request timeout in ms. */
   timeout: t.number({ min: 1 }).default(10_000),
-  /** Headers added to every request. */
   headers: t.record(t.string()).default({}),
-  /** First retry delay of queued requests in ms (doubles after each failure). */
   retryDelay: t.number({ min: 1 }).default(1000),
-  /** Longest delay between retries in ms. */
   maxDelay: t.number({ min: 1 }).default(300_000),
-  /** Attempts before a queued request is dropped; `0` retries forever. */
   maxAttempts: t.number({ integer: true, min: 0 }).default(0),
 });
-
-/** Options of the `http` module in `game.config.ts`. */
-export type HttpConfig = Infer<typeof config>;
 
 /** Options of one request. */
 export interface RequestOptions {
@@ -36,6 +46,7 @@ export interface RequestOptions {
   json?: unknown;
   /** Raw body (ignored when `json` is set). */
   body?: string | Uint8Array;
+  /** Headers of this request, added to (and overriding) the module's `headers`. */
   headers?: Record<string, string>;
   /** Added to the URL as a query string. */
   query?: Record<string, string | number | boolean | undefined>;
@@ -47,15 +58,35 @@ export interface RequestOptions {
 
 /** A response with its parsed body (JSON when the server says so, text otherwise). */
 export interface HttpResponse<T> {
+  /** HTTP status code, between 200 and 299 (other statuses throw {@link HttpError}). */
   status: number;
+  /** Response headers. */
   headers: Headers;
+  /** Parsed JSON when the `content-type` says JSON, the body text otherwise. */
   data: T;
 }
 
-/** The server answered with an error status. */
+/**
+ * Thrown by `request`, `get`, `post` and the other direct calls when the server answers with an
+ * error status (not 2xx). Its message names the URL, the status and the server's `message` field.
+ *
+ * @example
+ * ```ts
+ * import { HttpError } from '@blacklight/module-http';
+ *
+ * try {
+ *   await this.game.modules.http.post('/scores', { points: 1200 });
+ * } catch (error) {
+ *   if (error instanceof HttpError && error.status === 401) this.goto('login');
+ *   else throw error;
+ * }
+ * ```
+ */
 export class HttpError extends Error {
   constructor(
+    /** HTTP status code of the answer, e.g. `404`. */
     readonly status: number,
+    /** Parsed body of the answer (JSON or text), often the server's error details. */
     readonly data: unknown,
     url: string,
   ) {
@@ -68,7 +99,23 @@ export class HttpError extends Error {
   }
 }
 
-/** A request that could not reach its server (offline, DNS, refused, timeout). */
+/**
+ * Thrown by the direct calls when a request cannot reach its server (offline, DNS failure,
+ * connection refused, timeout). Requests that must arrive anyway go through `send`, which queues
+ * them instead.
+ *
+ * @example
+ * ```ts
+ * import { OfflineError } from '@blacklight/module-http';
+ *
+ * let news: News[] = [];
+ * try {
+ *   news = await this.game.modules.http.get<News[]>('/news');
+ * } catch (error) {
+ *   if (!(error instanceof OfflineError)) throw error; // offline: show the menu without news
+ * }
+ * ```
+ */
 export class OfflineError extends Error {
   constructor(url: string, cause: unknown) {
     super(
@@ -80,10 +127,15 @@ export class OfflineError extends Error {
 
 /** A request stored by `send` until it is delivered. */
 export interface QueuedRequest {
+  /** Absolute URL, query string included. */
   url: string;
+  /** HTTP method in capitals, e.g. `'POST'`. */
   method: string;
+  /** Headers of the request (the module's `headers` are added when it is sent). */
   headers: Record<string, string>;
+  /** Body as text (a JSON body is already serialized). */
   body?: string;
+  /** Whether the `Authorization` header registered with `authorize` is added when it is sent. */
   auth: boolean;
 }
 

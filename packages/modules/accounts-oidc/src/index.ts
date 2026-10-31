@@ -2,8 +2,8 @@ import {
   EventBus,
   defineModule,
   t,
-  type Infer,
   type ModuleContext,
+  type Schema,
   type Unsubscribe,
 } from '@blacklight/core';
 import type { Http } from '@blacklight/module-http';
@@ -26,54 +26,86 @@ export { OidcError } from './oidc';
 /** Issuer of BlackLight SSO, used by `preset: 'blacklight'` unless `issuer` is set. */
 export const BLACKLIGHT_SSO_ISSUER = 'https://sso.beedywool.com';
 
-const config = t.object({
+/** Options of the `accounts-oidc` module in `game.config.ts`, with their defaults applied. */
+export interface AccountsConfig {
   /** `'blacklight'`: BlackLight SSO issuer, scopes and consent prompt. */
-  preset: t.enum(['blacklight']).optional(),
+  preset: 'blacklight' | undefined;
   /** Issuer URL of the OpenID Connect provider (required without a preset). */
-  issuer: t.string({ url: true }).optional(),
+  issuer: string | undefined;
   /** Client id registered with the provider (a public client: PKCE, no secret). */
-  clientId: t.string({ min: 1 }),
-  /** Scopes asked for. `offline_access` gives a refresh token, so the player stays signed in. */
-  scopes: t.array(t.string({ min: 1 })).optional(),
+  clientId: string;
   /**
-   * Where the provider sends the player back. Defaults: the game page on the web, `<game id>:/oauth/callback`
-   * on desktop and mobile (a custom scheme the app registers).
+   * Scopes asked for. `offline_access` gives a refresh token, so the player stays signed in.
+   * Unset: `openid profile offline_access`.
    */
-  redirectUri: t.string({ min: 1 }).optional(),
-  /** `prompt` parameter (`login`, `consent`…). */
-  prompt: t.string().optional(),
+  scopes: string[] | undefined;
+  /**
+   * Where the provider sends the player back. Unset: the game page on the web,
+   * `<game id>:/oauth/callback` on desktop and mobile (a custom scheme the app registers).
+   */
+  redirectUri: string | undefined;
+  /** `prompt` parameter (`login`, `consent`…); the BlackLight preset asks for `consent`. */
+  prompt: string | undefined;
   /** Reference server to link the account with (`servers/reference`); its requests get the session. */
+  server: string | undefined;
+  /**
+   * How long `login()` waits for the browser to come back on desktop and mobile (ms).
+   * @defaultValue `600000`
+   */
+  timeout: number;
+}
+
+/** What `game.config.ts` may write under `modules['accounts-oidc']`: `clientId` is required. */
+export type AccountsConfigInput = Partial<Omit<AccountsConfig, 'clientId'>> &
+  Pick<AccountsConfig, 'clientId'>;
+
+const config: Schema<AccountsConfig, AccountsConfigInput> = t.object({
+  preset: t.enum(['blacklight']).optional(),
+  issuer: t.string({ url: true }).optional(),
+  clientId: t.string({ min: 1 }),
+  scopes: t.array(t.string({ min: 1 })).optional(),
+  redirectUri: t.string({ min: 1 }).optional(),
+  prompt: t.string().optional(),
   server: t.string({ url: true }).optional(),
-  /** How long `login()` waits for the browser to come back on desktop and mobile (ms). */
   timeout: t.number({ min: 1000 }).default(600_000),
 });
-
-/** Options of the `accounts-oidc` module in `game.config.ts`. */
-export type AccountsConfig = Infer<typeof config>;
 
 /** The signed-in player, from the ID token and the userinfo endpoint. */
 export interface AccountUser {
   /** Stable identifier at the provider. */
   sub: string;
+  /** Issuer URL of the provider that signed the player in. */
   issuer: string;
+  /** Display name (`name` claim, or the user name when the provider has none). */
   name?: string;
+  /** User name at the provider (`preferred_username` claim). */
   username?: string;
   /** Only when the `email` scope was asked for. */
   email?: string;
+  /** URL of the player's avatar (http or https only). */
   picture?: string;
 }
 
 /** The account on the reference server. */
 export interface ServerAccount {
+  /** Account id on the reference server, the same on every device the player links. */
   id: string;
+  /** Display name on the server. */
   name: string;
-  identities: { issuer: string; subject: string }[];
+  /** Provider accounts linked to it; empty for a guest account. */
+  identities: {
+    /** Issuer URL of the provider. */
+    issuer: string;
+    /** The player's `sub` at that provider. */
+    subject: string;
+  }[];
 }
 
 /** Events of the accounts module. */
 export interface AccountEvents {
   /** A player signed in (or was restored at startup). */
   login: AccountUser;
+  /** The player signed out (`logout()`); the stored tokens are gone. */
   logout: void;
   /** The provider refused the stored refresh token: the player must sign in again. */
   expired: void;
@@ -373,6 +405,7 @@ function createAccounts(context: ModuleContext<AccountsConfig>) {
       get user(): AccountUser | undefined {
         return user;
       },
+      /** `true` while a player is signed in. */
       get loggedIn(): boolean {
         return user !== undefined;
       },
