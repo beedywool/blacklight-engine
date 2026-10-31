@@ -6,6 +6,7 @@ export type DesktopOs = 'win' | 'mac' | 'linux';
 
 /** What signing will do for one OS. */
 export interface SigningPlan {
+  /** The OS the plan is for. */
   os: DesktopOs;
   /** A certificate is configured: the build is signed. */
   sign: boolean;

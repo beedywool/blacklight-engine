@@ -4,7 +4,12 @@
 
 /** A runtime check for one argument; `t.*` schemas from `@blacklight/core/schema` fit. */
 export interface ArgSchema<T> {
+  /** Short description used in error messages (`"a string"`). */
   readonly description: string;
+  /**
+   * Checks `value`, pushing one readable line per problem into `issues`, and returns the value
+   * with defaults applied (meaningless when an issue was added).
+   */
   check(value: unknown, path: string, issues: string[]): T;
 }
 
@@ -20,13 +25,17 @@ export interface NativeContext {
 
 /** One function exposed to the game. */
 export interface NativeFunction<Args extends unknown[] = unknown[], Result = unknown> {
+  /** One schema per argument, in order. */
   readonly args: { readonly [K in keyof Args]: ArgSchema<Args[K]> };
+  /** The body, called with the checked arguments. */
   run(context: NativeContext, ...args: Args): Result | Promise<Result>;
 }
 
 /** Any native function, whatever its arguments. */
 export interface AnyNativeFunction {
+  /** One schema per argument, in order. */
   readonly args: readonly ArgSchema<unknown>[];
+  /** The body, called with the checked arguments. */
   run(context: NativeContext, ...args: never[]): unknown;
 }
 
@@ -76,7 +85,9 @@ export interface NativeModule<
   Name extends string = string,
   Functions extends Record<string, AnyNativeFunction> = Record<string, AnyNativeFunction>,
 > {
+  /** Name used with `platform.invoke(name, …)`. */
   readonly name: Name;
+  /** The declared functions, by name. */
   readonly functions: Functions;
   /** Names of the exposed functions. */
   readonly methods: readonly string[];
@@ -86,7 +97,9 @@ export interface NativeModule<
    * @throws Error for an unknown method or invalid arguments, saying what was expected.
    */
   call(method: string, args: unknown[], context: NativeContext): Promise<unknown>;
+  /** Runs once when the main process registers the module. */
   setup?(context: NativeContext): void | Promise<void>;
+  /** Runs when the app quits. */
   dispose?(context: NativeContext): void | Promise<void>;
   /** Brand checked by the main process before registering. */
   readonly blacklightNative: true;
@@ -174,7 +187,17 @@ export function defineNative<
   };
 }
 
-/** `true` when `value` was made by {@link defineNative}. */
+/**
+ * `true` when `value` was made by {@link defineNative}. The main process checks the exports of a
+ * module's native file with it before registering them.
+ *
+ * @example
+ * ```ts
+ * import { isNativeModule } from '@blacklight/native/define-native';
+ *
+ * const natives = Object.values(await import('./modules/notes/native')).filter(isNativeModule);
+ * ```
+ */
 export function isNativeModule(value: unknown): value is NativeModule {
   return (
     typeof value === 'object' &&

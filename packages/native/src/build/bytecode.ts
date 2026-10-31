@@ -10,6 +10,14 @@ import { electronBinary, packageDir } from './stage';
  *
  * The page's code cannot be bytecode: loading bytecode needs Node in the renderer, which the
  * sandbox forbids. It is obfuscated instead (SEC-03).
+ *
+ * @example
+ * ```ts
+ * import { compileMainToBytecode, stageApp } from '@blacklight/native/build';
+ *
+ * stageApp({ appDir, manifest, webDist: 'dist' });
+ * await compileMainToBytecode(appDir);
+ * ```
  */
 export async function compileMainToBytecode(
   appDir: string,

@@ -19,24 +19,45 @@ export interface DiscordActivity {
   state?: string;
   /** Start time (ms since 1970): Discord shows the elapsed time. */
   startTimestamp?: number;
+  /** End time (ms since 1970): Discord shows the time left instead. */
   endTimestamp?: number;
   /** Asset keys uploaded in the Discord developer portal. */
   largeImageKey?: string;
+  /** Tooltip of the large image. */
   largeImageText?: string;
+  /** Asset key of the small image drawn over the large one (a character, a rank). */
   smallImageKey?: string;
+  /** Tooltip of the small image. */
   smallImageText?: string;
   /** The player's group: Discord shows "2 of 4" and the Join button with `joinSecret`. */
-  party?: { id: string; size: number; max: number; joinSecret?: string };
+  party?: {
+    /** Party id, the same for every member. */
+    id: string;
+    /** Players in the party. */
+    size: number;
+    /** Party capacity. */
+    max: number;
+    /** Secret a friend's game receives when they click Join (`onJoin`): enough to connect. */
+    joinSecret?: string;
+  };
 }
 
 /** A Discord user asking to join. */
 export interface DiscordUser {
+  /** Discord user id (a snowflake, as a string). */
   id: string;
+  /** Display name. */
   name: string;
+  /** Avatar hash, for `https://cdn.discordapp.com/avatars/<id>/<avatar>.png`. */
   avatar?: string;
 }
 
+/**
+ * @internal Callbacks of {@link DiscordClient}; games use `discord(game)` from
+ * `@blacklight/native`.
+ */
 export interface DiscordHandlers {
+  /** Connected to Discord; `user` is the signed-in player. */
   ready?(user: DiscordUser | undefined): void;
   /** The player clicked Join on a friend's presence (or accepted an invite): connect with `secret`. */
   join?(secret: string): void;
@@ -44,7 +65,10 @@ export interface DiscordHandlers {
   joinRequest?(user: DiscordUser): void;
 }
 
-/** Socket paths where Discord listens, in the order clients try them. */
+/**
+ * @internal Socket paths where Discord listens, in the order clients try them. Plumbing of the
+ * built-in `discord` native module.
+ */
 export function discordSocketPaths(
   platform: NodeJS.Platform = process.platform,
   env: NodeJS.ProcessEnv = process.env,
@@ -91,8 +115,9 @@ export function toDiscordActivity(activity: DiscordActivity): Record<string, unk
 }
 
 /**
- * A minimal client of Discord's local RPC protocol. Discord's SDK does the same; speaking the
- * protocol directly avoids a native library and works with every Discord build.
+ * @internal A minimal client of Discord's local RPC protocol. Discord's SDK does the same; speaking
+ * the protocol directly avoids a native library and works with every Discord build. The main
+ * process starts it for `discord.appId`; games use `discord(game)` from `@blacklight/native`.
  */
 export class DiscordClient {
   private socket: Socket | undefined;
@@ -127,6 +152,7 @@ export class DiscordClient {
     tryAt(0);
   }
 
+  /** `true` after Discord answered the handshake. */
   get connected(): boolean {
     return this.ready;
   }
@@ -137,14 +163,17 @@ export class DiscordClient {
     this.send();
   }
 
+  /** Accepts a join request of `userId`. */
   accept(userId: string): void {
     this.command('SEND_ACTIVITY_JOIN_INVITE', { user_id: userId });
   }
 
+  /** Declines a join request of `userId`. */
   reject(userId: string): void {
     this.command('CLOSE_ACTIVITY_REQUEST', { user_id: userId });
   }
 
+  /** Disconnects and stops reconnecting. */
   close(): void {
     this.closed = true;
     clearTimeout(this.retry);

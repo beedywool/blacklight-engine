@@ -2,7 +2,9 @@ import { type InferArgs, type Validator, ValidationError } from './validate';
 
 /** A function the page may call, with the shape of each argument. */
 export interface NativeMethod {
+  /** One validator per argument, in order; extra arguments are refused. */
   readonly args: readonly Validator<unknown>[];
+  /** The handler, called with the validated arguments. */
   run(...args: never[]): unknown;
 }
 
@@ -100,7 +102,16 @@ export function registerNative(module: string, methods: Record<string, NativeMet
   };
 }
 
-/** Names of the registered modules and their methods. */
+/**
+ * Names of the registered modules and their methods: what the page can reach.
+ *
+ * @example
+ * ```ts
+ * import { registeredNatives } from '@blacklight/native/main';
+ *
+ * registeredNatives(); // { files: ['read', 'write', …], steam: […], notes: ['read'] }
+ * ```
+ */
 export function registeredNatives(): Record<string, string[]> {
   return Object.fromEntries([
     ...[...modules].map(([name, table]): [string, string[]] => [name, [...table.keys()]]),
@@ -113,6 +124,14 @@ export function registeredNatives(): Record<string, string[]> {
  * match their validators.
  *
  * @throws Error with a message safe to send back to the page.
+ *
+ * @example
+ * ```ts
+ * import { callNative } from '@blacklight/native/main';
+ *
+ * // What the IPC handler does with a call from the page; also handy in main-process tests.
+ * const result = await callNative('scores', 'submit', ['ada', 120]);
+ * ```
  */
 export async function callNative(module: unknown, name: unknown, args: unknown): Promise<unknown> {
   if (typeof module !== 'string' || typeof name !== 'string' || !Array.isArray(args)) {

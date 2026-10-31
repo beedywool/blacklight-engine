@@ -5,10 +5,19 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import type { DesktopOs } from './sign';
 
+/** Options of {@link writeSteamScripts}. */
 export interface SteamUploadOptions {
+  /** Steam app id (`steam.appId` in `game.config.ts`). */
   appId: number;
   /** Depot per OS; defaults to `appId + 1` (Windows), `+ 2` (macOS), `+ 3` (Linux). */
-  depots?: { windows?: number; mac?: number; linux?: number };
+  depots?: {
+    /** Windows depot id. */
+    windows?: number;
+    /** macOS depot id. */
+    mac?: number;
+    /** Linux depot id. */
+    linux?: number;
+  };
   /** Folder with one unpacked build per OS: `content/<win|mac|linux>/`. */
   steamDir: string;
   /** OS builds present in `content/`. */
@@ -21,7 +30,17 @@ export interface SteamUploadOptions {
 
 const OS_KEY = { win: 'windows', mac: 'mac', linux: 'linux' } as const;
 
-/** Depot ID of an OS. */
+/**
+ * Depot ID of an OS: the configured one, or the app id plus 1 (Windows), 2 (macOS) or 3 (Linux),
+ * the ids Steamworks gives the first depots of a new app.
+ *
+ * @example
+ * ```ts
+ * import { depotId } from '@blacklight/native/build';
+ *
+ * depotId({ appId: 480 }, 'linux'); // 483
+ * ```
+ */
 export function depotId(
   options: Pick<SteamUploadOptions, 'appId' | 'depots'>,
   os: DesktopOs,
@@ -49,6 +68,18 @@ function vdf(name: string, entries: Record<string, string | Record<string, strin
  * Writes `scripts/app_build_<appId>.vdf` and one `depot_build_<depotId>.vdf` per OS in `steamDir`.
  *
  * @returns The app build script path.
+ *
+ * @example
+ * ```ts
+ * import { writeSteamScripts } from '@blacklight/native/build';
+ *
+ * const script = writeSteamScripts({
+ *   appId: 480,
+ *   steamDir: 'release/steam',
+ *   oses: ['win', 'linux'],
+ *   description: 'v1.2.0',
+ * });
+ * ```
  */
 export function writeSteamScripts(options: SteamUploadOptions): string {
   const scripts = join(options.steamDir, 'scripts');
@@ -89,11 +120,28 @@ export function writeSteamScripts(options: SteamUploadOptions): string {
  * (Steam Guard is answered once, then steamcmd remembers the machine). In dry-run mode the app
  * build runs with `Preview "1"`: steamcmd checks the files and writes the manifests, nothing is
  * uploaded.
+ *
+ * @example
+ * ```ts
+ * import { spawnSync } from 'node:child_process';
+ * import { steamUploadCommand } from '@blacklight/native/build';
+ *
+ * const { command, args, display } = steamUploadCommand(script, { dryRun: true });
+ * console.log(display);
+ * spawnSync(command, args, { stdio: 'inherit' });
+ * ```
  */
 export function steamUploadCommand(
   appBuild: string,
   options: { username?: string; dryRun?: boolean; cwd?: string } = {},
-): { command: string; args: string[]; display: string } {
+): {
+  /** Executable to run (`steamcmd`). */
+  command: string;
+  /** Its arguments. */
+  args: string[];
+  /** The command line, for logs and instructions. */
+  display: string;
+} {
   const script = options.cwd ? relative(options.cwd, appBuild) : appBuild;
   const args = [
     '+login',

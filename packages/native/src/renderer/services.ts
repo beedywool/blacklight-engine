@@ -15,9 +15,11 @@ export interface DiscordPresence {
   readonly available: boolean;
   /** Shows what the player does; the party adds "2 of 4" and, with `joinSecret`, the Join button. */
   setActivity(activity: DiscordActivity): Promise<void>;
+  /** Removes the presence from the player's profile. */
   clearActivity(): Promise<void>;
   /** Lets a user who asked to join in (see {@link onJoinRequest}). */
   accept(userId: string): Promise<void>;
+  /** Declines a join request (see {@link onJoinRequest}). */
   reject(userId: string): Promise<void>;
   /** The player joined a friend's party from Discord: connect to the game the secret names. */
   onJoin(listener: (secret: string) => void): Unsubscribe;
@@ -83,13 +85,23 @@ export interface SteamServices {
   readonly available: boolean;
   /** Unlocks an achievement (its API name from the Steamworks partner site). */
   unlock(achievement: string): Promise<boolean>;
+  /** `true` when the player has the achievement (`false` outside Steam). */
   isUnlocked(achievement: string): Promise<boolean>;
   /** Locks it again (testing). */
   clear(achievement: string): Promise<boolean>;
   /** The signed-in player. */
-  player(): Promise<{ name: string; steamId: string } | undefined>;
+  player(): Promise<
+    | {
+        /** Steam persona name. */
+        name: string;
+        /** SteamID64, as a string. */
+        steamId: string;
+      }
+    | undefined
+  >;
   /** Rich presence key (`status`, `steam_display`, `steam_player_group`…). */
   setRichPresence(key: string, value?: string): Promise<void>;
+  /** Removes every rich presence key. */
   clearRichPresence(): Promise<void>;
   /** Opens the overlay (may not show in Electron, see the accepted limitations). */
   openOverlay(dialog: SteamOverlayDialog): Promise<void>;
@@ -180,7 +192,17 @@ export async function setFullscreen(game: Game, on: boolean): Promise<void> {
   await game.platform.invoke('window', 'setFullscreen', on);
 }
 
-/** `true` when the window (or the page, on the web) is fullscreen. */
+/**
+ * `true` when the window (or the page, on the web) is fullscreen. Use it to show the current state
+ * in a settings menu.
+ *
+ * @example
+ * ```ts
+ * import { isFullscreen } from '@blacklight/native';
+ *
+ * fullscreenToggle.checked = await isFullscreen(this.game);
+ * ```
+ */
 export async function isFullscreen(game: Game): Promise<boolean> {
   if (game.platform.name !== 'desktop') return !!document.fullscreenElement;
   return game.platform.invoke<boolean>('window', 'isFullscreen');

@@ -36,7 +36,10 @@ function toGamepad(
   } as unknown as Gamepad;
 }
 
-/** SDL pads by the index the input system sees. */
+/**
+ * @internal SDL pads by the index the input system sees. Created by the {@link desktop} plugin;
+ * games use {@link gamepad}.
+ */
 export class SdlGamepads {
   private states: SdlPadState[] = [];
   /** SDL id → stable small index (the lowest free one when a pad connects). */
@@ -56,6 +59,7 @@ export class SdlGamepads {
     }
   }
 
+  /** Replaces the pad list with the main process's latest report. */
   update(states: SdlPadState[]): void {
     const live = new Set(states.map((s) => s.id));
     for (const id of [...this.indices.keys()]) if (!live.has(id)) this.indices.delete(id);
@@ -119,7 +123,9 @@ export interface DesktopGamepad {
   readonly name: string | undefined;
   /** `xboxOne`, `ps5`, `nintendoSwitchPro`… */
   readonly type: string | null | undefined;
+  /** The pad has a light bar or LED that {@link DesktopGamepad.led} can color. */
   readonly hasLed: boolean;
+  /** The pad has trigger motors (Xbox One and later). */
   readonly hasRumbleTriggers: boolean;
   /** Always `false` for now: the SDL binding does not expose controller sensors. */
   readonly hasGyro: boolean;

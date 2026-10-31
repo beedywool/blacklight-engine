@@ -4,20 +4,28 @@ import { homedir } from 'node:os';
 import { dirname, join, relative, resolve, sep } from 'node:path';
 import type { SaveLocation } from '@blacklight/core/config';
 
-/** Platform files from the main process: one folder, relative `/` paths, atomic writes. */
+/**
+ * @internal Platform files from the main process: one folder, relative `/` paths, atomic writes.
+ * Behind `game.platform.files` in the desktop app.
+ */
 export interface DataFolder {
+  /** Absolute folder all paths are relative to. */
   readonly root: string;
+  /** Reads a file, or `undefined` when it does not exist. */
   read(path: string): Promise<Uint8Array | undefined>;
+  /** Writes a file atomically, creating parent folders. */
   write(path: string, data: Uint8Array): Promise<void>;
+  /** Deletes a file; a missing file is not an error. */
   remove(path: string): Promise<void>;
+  /** Paths of the files under `prefix`, sorted. */
   list(prefix?: string): Promise<string[]>;
 }
 
 const SEGMENT = /^[A-Za-z0-9_][A-Za-z0-9._ -]{0,127}$/;
 
 /**
- * Checks a path sent by the page: relative, `/`-separated, no `..`, no drive letters, short
- * segments of safe characters.
+ * @internal Checks a path sent by the page: relative, `/`-separated, no `..`, no drive letters,
+ * short segments of safe characters.
  *
  * @throws Error explaining what is wrong.
  */
@@ -35,7 +43,7 @@ export function checkRelativePath(path: string): string[] {
   return segments;
 }
 
-/** Replaces `~`, `%VAR%` and `$VAR` / `${VAR}` in a configured folder. */
+/** @internal Replaces `~`, `%VAR%` and `$VAR` / `${VAR}` in a configured folder. */
 export function expandPath(
   path: string,
   env: NodeJS.ProcessEnv = process.env,
@@ -48,7 +56,7 @@ export function expandPath(
 }
 
 /**
- * The OS standard data folder of a game (SV-02): `%APPDATA%\<id>`, `~/Library/Application
+ * @internal The OS standard data folder of a game (SV-02): `%APPDATA%\<id>`, `~/Library/Application
  * Support/<id>`, `$XDG_DATA_HOME/<id>` (default `~/.local/share/<id>`), or the configured folder.
  */
 export function defaultDataDir(
@@ -67,8 +75,9 @@ export function defaultDataDir(
 }
 
 /**
- * Files in `root`. Writes go to a temporary file in the same folder, are flushed to disk, then
- * renamed over the target: a crash leaves either the old or the new file, never half of one.
+ * @internal Files in `root`. Writes go to a temporary file in the same folder, are flushed to
+ * disk, then renamed over the target: a crash leaves either the old or the new file, never half of
+ * one.
  */
 export function dataFolder(root: string): DataFolder {
   const absolute = (path: string) => {

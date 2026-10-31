@@ -20,7 +20,19 @@ import type { AppManifest } from '../main/manifest';
 
 const require = createRequire(import.meta.url);
 
-/** Folder of an installed package (symlinks resolved), from @blacklight/native's point of view. */
+/**
+ * Folder of an installed package (symlinks resolved), from `@blacklight/native`'s point of view.
+ * The desktop targets use it to copy native addons and the engine's main process into the app.
+ *
+ * @throws Error when the package is not installed.
+ *
+ * @example
+ * ```ts
+ * import { packageDir } from '@blacklight/native/build';
+ *
+ * const sdl = packageDir('@kmamal/sdl'); // the real folder, behind pnpm's symlinks
+ * ```
+ */
 export function packageDir(name: string): string {
   // Some packages do not export ./package.json: walk up from the entry point instead.
   let dir = dirname(realpathSync(require.resolve(name)));
@@ -37,17 +49,49 @@ export function packageDir(name: string): string {
   throw new Error(`Cannot find the folder of ${name}; reinstall the game's dependencies.`);
 }
 
-/** Version of the Electron runtime the app is packaged with. */
+/**
+ * Version of the Electron runtime the app is packaged with: the `electron` package installed
+ * next to `@blacklight/native`.
+ *
+ * @example
+ * ```ts
+ * import { electronVersion } from '@blacklight/native/build';
+ *
+ * console.log(`Packaging with Electron ${electronVersion()}`);
+ * ```
+ */
 export function electronVersion(): string {
   return (require('electron/package.json') as { version: string }).version;
 }
 
-/** Path of the local Electron executable (for dev runs and bytecode compilation). */
+/**
+ * Path of the local Electron executable, for dev runs and bytecode compilation.
+ *
+ * @example
+ * ```ts
+ * import { spawn } from 'node:child_process';
+ * import { electronBinary } from '@blacklight/native/build';
+ *
+ * spawn(electronBinary(), ['.blacklight/desktop/app'], { stdio: 'inherit' });
+ * ```
+ */
 export function electronBinary(): string {
   return require('electron') as string;
 }
 
-/** The manifest the main process reads, from the game's validated configuration. */
+/**
+ * The manifest the main process reads (`blacklight.json`), from the game's validated
+ * configuration. Security settings are resolved for `release`; Steam is kept only for the Steam
+ * target.
+ *
+ * @example
+ * ```ts
+ * import { resolveConfig } from '@blacklight/core/config';
+ * import { appManifest } from '@blacklight/native/build';
+ *
+ * const manifest = appManifest(resolveConfig(config), { release: true, steam: false });
+ * ```
+ */
 export function appManifest(
   config: ResolvedGameConfig,
   options: { release: boolean; steam?: boolean; devServer?: string; natives?: string[] },
@@ -74,9 +118,11 @@ export function appManifest(
   };
 }
 
+/** Options of {@link stageApp}. */
 export interface StageOptions {
   /** Output folder (emptied first). */
   appDir: string;
+  /** Written to `blacklight.json` (see {@link appManifest}). */
   manifest: AppManifest;
   /** Web build to embed; omitted for dev runs against the Vite server. */
   webDist?: string;
@@ -87,13 +133,29 @@ export interface StageOptions {
   /** Link native modules instead of copying them (dev runs). */
   link?: boolean;
   /** Main-process files of game modules (`defineNative`), copied to `natives/`. */
-  natives?: { name: string; file: string }[];
+  natives?: {
+    /** Module name, used as the file name in `natives/`. */
+    name: string;
+    /** Bundled CommonJS file of the module's main-process part. */
+    file: string;
+  }[];
 }
 
 /**
  * Writes the app folder electron-builder packages: `package.json`, `main.cjs` (the engine's main
  * process), `preload.cjs`, `blacklight.json`, the web build in `game/`, and native addons in
  * `native_modules/` (kept out of `node_modules` so electron-builder does not try to rebuild them).
+ *
+ * @example
+ * ```ts
+ * import { appManifest, stageApp } from '@blacklight/native/build';
+ *
+ * stageApp({
+ *   appDir: '.blacklight/desktop/app',
+ *   manifest: appManifest(resolved, { release: true }),
+ *   webDist: 'dist',
+ * });
+ * ```
  */
 export function stageApp(options: StageOptions): void {
   const { appDir, manifest } = options;
@@ -154,7 +216,16 @@ export function stageApp(options: StageOptions): void {
   }
 }
 
-/** `true` when a staged app exists with a web build. */
+/**
+ * `true` when a staged app exists with a web build, so a dev run can reuse it.
+ *
+ * @example
+ * ```ts
+ * import { isStaged, stageApp } from '@blacklight/native/build';
+ *
+ * if (!isStaged(appDir)) stageApp({ appDir, manifest, webDist: 'dist' });
+ * ```
+ */
 export function isStaged(appDir: string): boolean {
   return (
     existsSync(join(appDir, 'blacklight.json')) && existsSync(join(appDir, 'game', 'index.html'))

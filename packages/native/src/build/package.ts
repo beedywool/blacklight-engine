@@ -10,17 +10,32 @@ import { electronVersion } from './stage';
  * encrypted cookies, the app loaded only from a validated ASAR, no extra `file://` privileges.
  */
 export const RELEASE_FUSES = {
+  /** `ELECTRON_RUN_AS_NODE` is ignored: the executable cannot be used as a plain Node.js. */
   runAsNode: false,
+  /** Cookies on disk are encrypted with an OS-protected key. */
   enableCookieEncryption: true,
+  /** `NODE_OPTIONS` is ignored, so it cannot preload code into the main process. */
   enableNodeOptionsEnvironmentVariable: false,
+  /** `--inspect` and similar switches are ignored: no debugger can attach to the main process. */
   enableNodeCliInspectArguments: false,
+  /** The ASAR archive is checked against the hash embedded in the executable. */
   enableEmbeddedAsarIntegrityValidation: true,
+  /** The app loads only from `app.asar`, never from a loose `app/` folder. */
   onlyLoadAppFromAsar: true,
+  /** `file://` pages get no privileges beyond a normal web page. */
   grantFileProtocolExtraPrivileges: false,
 } as const;
 
 /** Package formats per OS (PF-03). `dir` is the unpacked app (tests, Steam depots). */
-export const DESKTOP_TARGETS: Record<DesktopOs, { target: string; arch: string[] }[]> = {
+export const DESKTOP_TARGETS: Record<
+  DesktopOs,
+  {
+    /** electron-builder target name (`nsis`, `dmg`, `AppImage`…). */
+    target: string;
+    /** CPU architectures built for this target. */
+    arch: string[];
+  }[]
+> = {
   win: [
     { target: 'nsis', arch: ['x64'] },
     { target: 'portable', arch: ['x64'] },
@@ -35,14 +50,17 @@ export const DESKTOP_TARGETS: Record<DesktopOs, { target: string; arch: string[]
   ],
 };
 
+/** Options of {@link packageApp} and {@link builderConfig}. */
 export interface PackageOptions {
+  /** OS to package for. */
   os: DesktopOs;
   /** Staged app folder (see `stageApp`). */
   appDir: string;
   /** Where installers go. */
   outDir: string;
-  /** Game id (reverse domain) and display name. */
+  /** Game id (reverse domain), used as the app id and the deep-link scheme. */
   id: string;
+  /** Display name of the app and its installers. */
   name: string;
   /** Turn the release fuses on. */
   fuses: boolean;
@@ -54,10 +72,29 @@ export interface PackageOptions {
   arch?: string[];
   /** 512×512 (or larger) PNG used for every icon. */
   icon?: string;
+  /** Environment read for signing credentials. @defaultValue `process.env` */
   env?: NodeJS.ProcessEnv;
 }
 
-/** electron-builder configuration of a Blacklight game. */
+/**
+ * electron-builder configuration of a Blacklight game: targets per OS, ASAR with native addons
+ * unpacked, release fuses, signing as {@link signingPlan} reports it, and the deep-link scheme.
+ *
+ * @example
+ * ```ts
+ * import { builderConfig } from '@blacklight/native/build';
+ *
+ * const config = builderConfig({
+ *   os: 'linux',
+ *   appDir: '.blacklight/desktop/app',
+ *   outDir: 'release',
+ *   id: 'com.studio.game',
+ *   name: 'My Game',
+ *   fuses: true,
+ * });
+ * config.linux?.target; // [{ target: 'AppImage', … }, { target: 'deb', … }]
+ * ```
+ */
 export function builderConfig(options: PackageOptions): Configuration {
   const plan = signingPlan(options.os, options.env);
   const sign = (options.sign ?? true) && plan.sign;
@@ -111,9 +148,17 @@ export function builderConfig(options: PackageOptions): Configuration {
 }
 
 /**
- * Packages a staged app with electron-builder.
+ * Packages a staged app with electron-builder, using {@link builderConfig}. Certificates in the
+ * environment are hidden from electron-builder when `sign` is `false`.
  *
  * @returns The files produced.
+ *
+ * @example
+ * ```ts
+ * import { packageApp } from '@blacklight/native/build';
+ *
+ * const files = await packageApp({ os: 'win', appDir, outDir: 'release', id, name, fuses: true });
+ * ```
  */
 export async function packageApp(options: PackageOptions): Promise<string[]> {
   const { build, Platform } = await import('electron-builder');
@@ -138,7 +183,18 @@ export async function packageApp(options: PackageOptions): Promise<string[]> {
   }
 }
 
-/** Fuse states of an Electron executable, by fuse name (`'enabled'` / `'disabled'`). */
+/**
+ * Fuse states of an Electron executable, by fuse name (`'enabled'`, `'disabled'` or `'removed'`).
+ * Used to verify that a packaged release has {@link RELEASE_FUSES}.
+ *
+ * @example
+ * ```ts
+ * import { readFuses } from '@blacklight/native/build';
+ *
+ * const fuses = await readFuses('release/linux-unpacked/my-game');
+ * fuses.RunAsNode; // 'disabled'
+ * ```
+ */
 export async function readFuses(
   executable: string,
 ): Promise<Record<string, 'enabled' | 'disabled' | 'removed'>> {

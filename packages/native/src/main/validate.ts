@@ -5,6 +5,12 @@
 export interface Validator<T> {
   /** Human-readable shape, used in error messages. */
   readonly description: string;
+  /**
+   * Returns `value` typed when it has the expected shape.
+   *
+   * @param path - Where the value sits, for the error message (`"scores.submit argument 1"`).
+   * @throws ValidationError when it does not.
+   */
   parse(value: unknown, path: string): T;
 }
 
@@ -20,7 +26,22 @@ export type InferArgs<A extends readonly Validator<unknown>[]> = {
 export type JsonValue =
   string | number | boolean | null | JsonValue[] | { [key: string]: JsonValue };
 
-/** An argument from the page does not have the declared shape. */
+/**
+ * An argument from the page does not have the declared shape. The message names the argument,
+ * the expected shape and what came instead, without echoing the value itself.
+ *
+ * @example
+ * ```ts
+ * import { ValidationError, v } from '@blacklight/native/main';
+ *
+ * try {
+ *   v.integer({ min: 0 }).parse(-1, 'scores.submit argument 2');
+ * } catch (error) {
+ *   if (error instanceof ValidationError) console.warn(error.message);
+ *   // "scores.submit argument 2 must be an integer from 0 to …, got number -1"
+ * }
+ * ```
+ */
 export class ValidationError extends Error {
   constructor(path: string, expected: string, value: unknown) {
     super(`${path} must be ${expected}, got ${describeValue(value)}`);
@@ -55,6 +76,7 @@ const DEFAULT_MAX_BYTES = 64 * 1024 * 1024;
  * ```
  */
 export const v = {
+  /** A string of `min`–`max` characters (default 0–10 000), optionally matching `pattern`. */
   string(options: { max?: number; min?: number; pattern?: RegExp } = {}): Validator<string> {
     const max = options.max ?? DEFAULT_MAX_STRING;
     const min = options.min ?? 0;
@@ -72,6 +94,7 @@ export const v = {
     });
   },
 
+  /** A finite number, optionally in `min`–`max` and whole. */
   number(options: { min?: number; max?: number; integer?: boolean } = {}): Validator<number> {
     const min = options.min ?? -Number.MAX_VALUE;
     const max = options.max ?? Number.MAX_VALUE;
@@ -92,10 +115,12 @@ export const v = {
     });
   },
 
+  /** A whole number, optionally in `min`–`max`. */
   integer(options: { min?: number; max?: number } = {}): Validator<number> {
     return v.number({ ...options, integer: true });
   },
 
+  /** `true` or `false`. */
   boolean(): Validator<boolean> {
     return make('a boolean', (value, path) => {
       if (typeof value !== 'boolean') throw new ValidationError(path, 'a boolean', value);
@@ -124,6 +149,7 @@ export const v = {
     });
   },
 
+  /** An array of at most `max` items (default 10 000), each checked by `item`. */
   array<T>(item: Validator<T>, options: { max?: number } = {}): Validator<T[]> {
     const max = options.max ?? DEFAULT_MAX_ITEMS;
     const description = `an array of at most ${max} × ${item.description}`;
@@ -169,6 +195,7 @@ export const v = {
     });
   },
 
+  /** `undefined`, or a value `inner` accepts. */
   optional<T>(inner: Validator<T>): Validator<T | undefined> {
     return make(`${inner.description} or undefined`, (value, path) =>
       value === undefined ? undefined : inner.parse(value, path),

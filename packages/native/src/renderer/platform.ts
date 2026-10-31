@@ -4,11 +4,21 @@ import type { NativeBridge } from '../bridge';
 /**
  * `game.platform` in the desktop app: files in the OS data folder (atomic writes in the main
  * process), the save key from the OS keystore (Electron `safeStorage`), native calls over the IPC
- * bridge. Installed by the {@link desktop} plugin.
+ * bridge. Installed by the {@link desktop} plugin; games reach it as `game.platform`.
+ *
+ * @example
+ * ```ts
+ * if (this.game.platform.name === 'desktop') {
+ *   await this.game.platform.files.write('screenshots/last.png', png);
+ *   await this.game.platform.openUrl('https://example.com/patch-notes');
+ * }
+ * ```
  */
 export class DesktopPlatform implements Platform {
+  /** Always `'desktop'`. */
   readonly name = 'desktop' as const;
   readonly steam: boolean;
+  /** Files in the game's OS data folder, written atomically by the main process. */
   readonly files: PlatformFiles;
   private readonly events = new EventBus<Record<string, unknown>>();
   private key: Promise<CryptoKey> | undefined;

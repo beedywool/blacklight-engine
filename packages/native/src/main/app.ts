@@ -46,6 +46,7 @@ import { heightForRatio, windowSizes } from './window';
 /** Permissions a game page may get; everything else (camera, location, notifications…) is denied. */
 const ALLOWED_PERMISSIONS = new Set(['fullscreen', 'pointerLock', 'clipboard-sanitized-write']);
 
+/** Options of {@link startApp}. */
 export interface StartOptions {
   /** Folder holding `blacklight.json`, `preload.cjs` and the web build. @defaultValue the main script's folder */
   appDir?: string;
