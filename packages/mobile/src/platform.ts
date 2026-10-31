@@ -23,7 +23,10 @@ export interface MobileEvents {
   /** The app came back to the foreground. */
   resume: undefined;
   /** The app was opened by a link (custom scheme or app link), at launch or while running. */
-  deeplink: { url: string };
+  deeplink: {
+    /** The full link, e.g. `my-game://invite/42` or `https://example.com/play/42`. */
+    url: string;
+  };
 }
 
 /**
@@ -38,8 +41,10 @@ export interface MobileEvents {
  * ```
  */
 export class MobilePlatform implements Platform {
+  /** `'android'` or `'ios'`. */
   readonly name: PlatformName;
   readonly steam = false;
+  /** The game's files in app-private storage, with atomic writes. */
   readonly files: CapacitorFiles;
   private readonly modules = new Map<string, NativeModule>();
   private readonly listeners = new Map<string, Set<(payload: unknown) => void>>();

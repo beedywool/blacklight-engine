@@ -68,7 +68,16 @@ function userKey(value: unknown): string {
 
 /**
  * `secure-storage`: strings kept by the Android Keystore (encrypted shared preferences) or the
- * iOS Keychain. `get(key) → string | null`, `set(key, value)`, `remove(key)`, `keys()`.
+ * iOS Keychain. `get(key) → string | null`, `set(key, value)`, `remove(key)`, `keys()`. Keys
+ * starting with {@link RESERVED_PREFIX} belong to the engine and are refused. Built into
+ * {@link MobilePlatform}; games call it through `platform.invoke`.
+ *
+ * @example
+ * ```ts
+ * const platform = this.game.platform;
+ * await platform.invoke('secure-storage', 'set', 'refreshToken', token);
+ * const saved = await platform.invoke<string | null>('secure-storage', 'get', 'refreshToken');
+ * ```
  */
 export function secureStorageModule(plugins: Pick<MobilePlugins, 'secureStorage'>): NativeModule {
   const store = plugins.secureStorage;
@@ -111,7 +120,16 @@ export interface SqliteChanges {
  * - `close(database)`
  *
  * The protocol of `@blacklight/module-sqlite`; parameters are strings, numbers, booleans (1 / 0),
- * `null` or `Uint8Array`.
+ * `null` or `Uint8Array`. Built into {@link MobilePlatform}; games normally use
+ * `@blacklight/module-sqlite`, which calls it.
+ *
+ * @example
+ * ```ts
+ * const platform = this.game.platform;
+ * await platform.invoke('sqlite', 'open', 'game.db');
+ * await platform.invoke('sqlite', 'execute', 'game.db', 'INSERT INTO scores VALUES (?, ?)', ['ada', 3]);
+ * const rows = await platform.invoke('sqlite', 'query', 'game.db', 'SELECT * FROM scores');
+ * ```
  */
 export function sqliteModule(plugins: Pick<MobilePlugins, 'sqlite' | 'platform'>): NativeModule {
   const db = plugins.sqlite;
@@ -197,6 +215,13 @@ export function sqliteModule(plugins: Pick<MobilePlugins, 'sqlite' | 'platform'>
 /**
  * `haptics`: `impact(style = 'medium')` with `light | medium | heavy`, `notification(type)` with
  * `success | warning | error`, `vibrate(ms = 300)`, `selection()` (a light tick for focus moves).
+ * Built into {@link MobilePlatform}; games call it through `platform.invoke`.
+ *
+ * @example
+ * ```ts
+ * await this.game.platform.invoke('haptics', 'impact', 'heavy');
+ * await this.game.platform.invoke('haptics', 'notification', 'success');
+ * ```
  */
 export function hapticsModule(plugins: Pick<MobilePlugins, 'haptics'>): NativeModule {
   const haptics = plugins.haptics;
@@ -223,7 +248,14 @@ export function hapticsModule(plugins: Pick<MobilePlugins, 'haptics'>): NativeMo
 /**
  * `app`: `info() → { id, name, version, build }`, `exit()`, `minimize()` (Android),
  * `orientation('landscape' | 'portrait' | 'any')`, `keepAwake(on)`, `statusBar(visible)`,
- * `launchUrl() → string | undefined`.
+ * `launchUrl() → string | undefined`. Built into {@link MobilePlatform}; games call it through
+ * `platform.invoke`.
+ *
+ * @example
+ * ```ts
+ * const { version } = await this.game.platform.invoke<{ version: string }>('app', 'info');
+ * await this.game.platform.invoke('app', 'orientation', 'landscape');
+ * ```
  */
 export function appModule(
   plugins: Pick<
@@ -255,8 +287,11 @@ export function appModule(
 
 /** A leaderboard row, as `scores(board, limit)` returns it. */
 export interface LeaderboardRow {
+  /** 1-based rank on the board. */
   rank: number;
+  /** Player display name. */
   name: string;
+  /** Submitted score. */
   score: number;
 }
 
@@ -266,7 +301,15 @@ export interface LeaderboardRow {
  * (top of the all-time public board); plus `signIn() → { authenticated, playerId?, displayName? }`,
  * `progress(id, current, total)` (Game Center reports the percentage; Play Games sets the steps of
  * an incremental achievement to `current`) and `show()` (the system achievements screen). Calls
- * that need a player sign in first, showing the system sign-in when needed.
+ * that need a player sign in first, showing the system sign-in when needed. Each backend throws on
+ * the other OS. Games normally use `@blacklight/module-achievements`, which calls it.
+ *
+ * @example
+ * ```ts
+ * const service = this.game.platform.name === 'ios' ? 'gamecenter' : 'playgames';
+ * await this.game.platform.invoke(service, 'unlock', 'first_win');
+ * await this.game.platform.invoke(service, 'submitScore', 'high_scores', 1200);
+ * ```
  */
 export function gamesModule(
   plugins: Pick<MobilePlugins, 'games' | 'platform'>,

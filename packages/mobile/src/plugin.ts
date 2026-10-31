@@ -46,7 +46,15 @@ const queued = new WeakMap<object, Map<string, number>>();
  * before the game has read it). The value goes through `virtual`, so menus and game code see
  * one `pressed` whatever the bindings. A tap that comes while the previous one is still down waits
  * for it, then gets its own press after it has been up for a read: two quick back presses close
- * two menus.
+ * two menus. The mobile plugin uses it for the Android back button; on-screen buttons can use it
+ * too.
+ *
+ * @example
+ * ```ts
+ * import { tapAction } from '@blacklight/mobile';
+ *
+ * pauseButton.addEventListener('pointerdown', () => tapAction(this.game, 'pause'));
+ * ```
  */
 export function tapAction(game: Game, action: string, hold = 100): void {
   if (!game.input.hasAction(action)) return;
