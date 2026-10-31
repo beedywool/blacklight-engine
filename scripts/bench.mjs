@@ -1,4 +1,4 @@
-// Benchmark results (e2e/bench.spec.ts, e2e/cold-start.spec.ts): the best and the median of several runs, comparison with
+// Benchmark results (e2e/bench.spec.ts, e2e/cold-start.spec.ts, e2e/bench-android.spec.ts): the best and the median of several runs, comparison with
 // the committed baseline (e2e/bench-baseline.json), and the command that copies results into it.
 //
 //   node scripts/bench.mjs update bench-results/*.json
@@ -26,6 +26,8 @@ export const GATED = {
   heapMb: 'lower',
   // NF-02 (e2e/cold-start.spec.ts): process launch or page navigation to the entry scene's first frame.
   coldStartMs: 'lower',
+  // NF-03 (e2e/bench-android.spec.ts): peak memory (PSS) of the app's processes during a match.
+  peakPssMb: 'lower',
 };
 
 /**
@@ -39,9 +41,11 @@ const FRAME_RATES = new Set(['fps', 'low1Fps']);
 /**
  * Gated metrics judged on the median run instead of the best one. Cold starts on a desktop come in
  * two modes (about 20 % of launches are 20 % faster, the CPU's state at that moment), so the best
- * of five depends on whether a fast launch happened; the median stays within a few percent.
+ * of five depends on whether a fast launch happened; the median stays within a few percent. PSS
+ * splits shared pages between the processes that map them, so another app can lower a session's
+ * figure as well as raise it: the best session is no closer to the game's own memory.
  */
-export const MEDIAN_GATED = new Set(['coldStartMs']);
+export const MEDIAN_GATED = new Set(['coldStartMs', 'peakPssMb']);
 
 /**
  * Smallest change that can count as a regression, per metric. The cold-start mark lands on a

@@ -1,4 +1,5 @@
-// The comparison behind the NF-01 and NF-02 regression checks (e2e/bench.spec.ts, e2e/cold-start.spec.ts).
+// The comparison behind the NF-01, NF-02 and NF-03 regression checks (e2e/bench.spec.ts,
+// e2e/cold-start.spec.ts, e2e/bench-android.spec.ts).
 import { mkdtempSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -56,6 +57,15 @@ describe('benchmark regression check', () => {
     expect(rows(857).map((row) => row.regressed)).toEqual([false]);
     expect(rows(859).map((row) => row.regressed)).toEqual([true]);
     expect(rows(600).map((row) => row.regressed)).toEqual([false]);
+  });
+
+  it('gates peak memory on the median session, lower is better', () => {
+    const sessions = [{ peakPssMb: 256 }, { peakPssMb: 245 }, { peakPssMb: 260 }];
+    const entry = { best: best(sessions), median: summarize(sessions) };
+    expect(gatedValues(entry)).toEqual({ peakPssMb: 256 });
+    const rows = (current) => compare({ peakPssMb: 256 }, { peakPssMb: current });
+    expect(rows(281).map((row) => row.regressed)).toEqual([false]);
+    expect(rows(282).map((row) => row.regressed)).toEqual([true]);
   });
 
   it('never counts a start time change under two display frames as a regression', () => {
