@@ -15,7 +15,14 @@ export const SIMULATION_FILES = [
 
 /** The plugin object: rules and flat configs. */
 export interface BlacklightPlugin extends ESLint.Plugin {
-  configs: { recommended: Linter.Config[] };
+  /** Ready-made flat configs, to spread into `eslint.config.js`. */
+  configs: {
+    /**
+     * Turns on `blacklight/deterministic` for {@link SIMULATION_FILES} (whole files) and for
+     * marked classes and files everywhere else.
+     */
+    recommended: Linter.Config[];
+  };
 }
 
 const plugin: BlacklightPlugin = {

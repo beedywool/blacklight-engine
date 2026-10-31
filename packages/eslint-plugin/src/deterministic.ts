@@ -48,11 +48,17 @@ const IN_DMATH = new Set([
 /** Comment that makes a whole file simulation code in `scope: 'marked'`. */
 export const FILE_MARKER = '@blacklight-deterministic';
 
+/**
+ * Options of the `blacklight/deterministic` rule, which reports what would make online simulation
+ * code differ between players: `Math.random`, `crypto` values, the wall clock (`Date.now`,
+ * `performance.now`), and `Math.sin`, `**` and the other math that may differ between engines.
+ */
 export interface DeterministicOptions {
   /**
    * `'file'`: the whole file is simulation code (use it with `files` globs). `'marked'`: only
    * classes with `static deterministic = true` and files containing the comment
    * `@blacklight-deterministic`.
+   * @defaultValue `'file'`
    */
   scope?: 'file' | 'marked';
 }
