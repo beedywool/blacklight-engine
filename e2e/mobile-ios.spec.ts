@@ -42,15 +42,23 @@ async function until(
   check: (s: Record<string, string>) => boolean,
 ): Promise<Record<string, string>> {
   let last: Record<string, string> | undefined;
-  await expect
-    .poll(
-      () => {
-        last = status();
-        return last ? check(last) : false;
-      },
-      { timeout: 60_000 },
-    )
-    .toBe(true);
+  try {
+    await expect
+      .poll(
+        () => {
+          last = status();
+          return last ? check(last) : false;
+        },
+        { timeout: 60_000 },
+      )
+      .toBe(true);
+  } catch (error) {
+    // Without the last status the failure says only "false", which cannot tell a deep link that
+    // never arrived from a save that failed after it did.
+    throw new Error(`${(error as Error).message}\nLast status.json: ${JSON.stringify(last)}`, {
+      cause: error,
+    });
+  }
   return last!;
 }
 

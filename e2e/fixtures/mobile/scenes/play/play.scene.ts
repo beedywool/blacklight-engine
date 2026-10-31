@@ -145,21 +145,27 @@ export default class Play extends Scene {
   }
 
   private save(taps: number) {
-    this.saving = this.saving.then(async () => {
-      const iv = crypto.getRandomValues(new Uint8Array(12));
-      const sealed = new Uint8Array(
-        await crypto.subtle.encrypt(
-          { name: 'AES-GCM', iv },
-          await this.key(),
-          new TextEncoder().encode(String(taps)),
-        ),
-      );
-      const file = new Uint8Array(12 + sealed.length);
-      file.set(iv);
-      file.set(sealed, 12);
-      await this.game.platform.files.write(SAVE, file);
-      this.report({ saved: String(taps) });
-    });
+    this.saving = this.saving
+      .then(async () => {
+        const iv = crypto.getRandomValues(new Uint8Array(12));
+        const sealed = new Uint8Array(
+          await crypto.subtle.encrypt(
+            { name: 'AES-GCM', iv },
+            await this.key(),
+            new TextEncoder().encode(String(taps)),
+          ),
+        );
+        const file = new Uint8Array(12 + sealed.length);
+        file.set(iv);
+        file.set(sealed, 12);
+        await this.game.platform.files.write(SAVE, file);
+        this.report({ saved: String(taps) });
+      })
+      .catch((error: unknown) => {
+        // Report instead of leaving an unhandled rejection: a failed encrypt or write (a Keychain
+        // key the app cannot read, say) would otherwise stall `saved` with no reason in status.json.
+        this.report({ saveError: (error as Error).message });
+      });
   }
 
   update() {

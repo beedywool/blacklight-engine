@@ -35,7 +35,7 @@ jobs:
       # PF-09: the build workflow create-blacklight writes into every game (and this file).
       - if: runner.os == 'Linux'
         run: |
-          bash <(curl -sSfL https://raw.githubusercontent.com/rhysd/actionlint/v1.7.7/scripts/download-actionlint.bash) 1.7.7
+          bash <(curl -sSfL https://raw.githubusercontent.com/rhysd/actionlint/v1.7.12/scripts/download-actionlint.bash) 1.7.12
           ./actionlint -color packages/create/shared/_github/workflows/build.yml .github/workflows/ci.yml
       - run: pnpm --filter blacklight-template-empty build
       - run: pnpm --filter blacklight-template-persona-menu typecheck
@@ -114,7 +114,10 @@ jobs:
           disable-animations: true
           emulator-options: -no-window -no-audio -no-boot-anim -no-snapshot -gpu swiftshader_indirect
           script: |
-            BLACKLIGHT_E2E_ANDROID=1 pnpm exec playwright test e2e/mobile-android.spec.ts
+            # Outside the spec: a cold Gradle build does not fit the 180 s Playwright hook timeout.
+            pnpm --dir e2e/fixtures/mobile exec blacklight build --target android --sqlite
+            pnpm --dir templates/persona-menu exec blacklight build --target android
+            BLACKLIGHT_E2E_ANDROID=1 BLACKLIGHT_E2E_ANDROID_PREBUILT=1 pnpm exec playwright test e2e/mobile-android.spec.ts
             BLACKLIGHT_E2E_ANDROID=1 BLACKLIGHT_BENCH_RUNNER=github-android-emulator pnpm exec playwright test --project=bench bench-android
       - uses: actions/upload-artifact@v5
         if: always()

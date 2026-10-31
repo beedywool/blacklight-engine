@@ -66,9 +66,15 @@ async function tap(page: Page, cssX: number, cssY: number): Promise<void> {
 }
 
 test.beforeAll(async () => {
-  // --sqlite: native SQLite in the fixture, which drives the raw `sqlite` protocol.
-  run('pnpm', ['exec', 'blacklight', 'build', '--target', 'android', '--sqlite'], fixture);
-  run('pnpm', ['exec', 'blacklight', 'build', '--target', 'android'], template);
+  // CI builds the APKs before this file runs: Playwright gives a `beforeAll` hook the project
+  // timeout (180 s in playwright.config.ts), which a cold Gradle build does not fit, and
+  // `test.setTimeout` on the file does not reach hooks. A local run builds them here, which needs
+  // a warm Gradle cache.
+  if (!process.env.BLACKLIGHT_E2E_ANDROID_PREBUILT) {
+    // --sqlite: native SQLite in the fixture, which drives the raw `sqlite` protocol.
+    run('pnpm', ['exec', 'blacklight', 'build', '--target', 'android', '--sqlite'], fixture);
+    run('pnpm', ['exec', 'blacklight', 'build', '--target', 'android'], template);
+  }
   [device] = await _android.devices({ omitDriverInstall: true });
   if (!device) throw new Error('No Android device: start an emulator first (adb devices).');
   // The system's "viewing full screen" tip would cover the game on first launch.
@@ -235,15 +241,33 @@ test('a signed release build runs with WebView inspection off (SEC-07)', async (
   rmSync(keys, { recursive: true, force: true });
   expect(build.status).toBe(0);
 
-  install(join(fixture, 'release/android/mobile-gate-1.2.3.apk'), FIXTURE_ID);
+  const apk = join(fixture, 'release/android/mobile-gate-1.2.3.apk');
+  install(apk, FIXTURE_ID);
   adb('shell', 'am', 'start', '-W', '-n', `${FIXTURE_ID}/.MainActivity`);
   await expect
     .poll(() => adb('shell', 'pidof', FIXTURE_ID).trim(), { timeout: 30_000 })
     .not.toBe('');
   const pid = adb('shell', 'pidof', FIXTURE_ID).trim();
-  // Give the WebView time to start; a debug build has opened its DevTools socket by then.
-  await new Promise((wait) => setTimeout(wait, 5000));
-  expect(adb('shell', 'cat', '/proc/net/unix')).not.toContain(`webview_devtools_remote_${pid}`);
+  // What the installed APK asks for, read from the APK: Capacitor only turns inspection on when
+  // this is true.
+  const packaged = spawnSync('unzip', ['-p', apk, 'assets/capacitor.config.json'], {
+    encoding: 'utf8',
+  });
+  expect(packaged.status).toBe(0);
+  const config = JSON.parse(packaged.stdout) as {
+    android: { webContentsDebuggingEnabled: boolean };
+  };
+  expect(config.android.webContentsDebuggingEnabled).toBe(false);
+  // A released game is not a debuggable package either (`run-as` and the debugger refuse one).
+  expect(adb('shell', 'dumpsys', 'package', FIXTURE_ID)).not.toContain('flags=[ DEBUGGABLE');
+  // Android exposes every WebView on a userdebug build to DevTools whatever the app sets
+  // (`Build.IS_DEBUGGABLE`), and the CI emulator image is one. The socket check is for user builds,
+  // which is what players install.
+  if (adb('shell', 'getprop', 'ro.debuggable').trim() === '0') {
+    // Give the WebView time to start; a debug build has opened its DevTools socket by then.
+    await new Promise((wait) => setTimeout(wait, 5000));
+    expect(adb('shell', 'cat', '/proc/net/unix')).not.toContain(`webview_devtools_remote_${pid}`);
+  }
   expect(adb('shell', 'dumpsys', 'activity', 'activities')).toContain(
     `${FIXTURE_ID}/.MainActivity`,
   );

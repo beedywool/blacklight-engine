@@ -1,0 +1,30 @@
+# Every checkout uses LF, so the Prettier check (`pnpm lint`) reports the same result on Linux,
+# macOS and Windows: GitHub's Windows runners default to `core.autocrlf=true` and would otherwise
+# turn every tracked text file into CRLF before Prettier sees it.
+* text=auto eol=lf
+
+# Binary fixtures and assets stay byte-for-byte; `text=auto` detects them, this only makes it
+# explicit for the formats the engine ships and the tests compare byte counts on.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.webp binary
+*.gif binary
+*.ico binary
+*.icns binary
+*.ogg binary
+*.mp3 binary
+*.wav binary
+*.mp4 binary
+*.webm binary
+*.ttf binary
+*.otf binary
+*.woff binary
+*.woff2 binary
+*.wasm binary
+*.zip binary
+*.apk binary
+*.aab binary
+*.jar binary
+*.keystore binary
+*.sav binary

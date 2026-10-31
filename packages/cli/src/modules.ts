@@ -1,4 +1,4 @@
-import { existsSync, readFileSync, readdirSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync, realpathSync } from 'node:fs';
 import { builtinModules, createRequire } from 'node:module';
 import { dirname, join, relative, resolve, sep } from 'node:path';
 import type { Plugin, ViteDevServer } from 'vite';
@@ -261,16 +261,29 @@ export function moduleDependencies(root: string, modules: ResolvedModule[]): str
   return [...include].sort();
 }
 
+/** `realpathSync`, but a path that no longer exists is compared as written. */
+function realpath(path: string): string {
+  try {
+    return realpathSync(path);
+  } catch {
+    return resolve(path);
+  }
+}
+
 /**
  * Vite plugin for modules: serves `virtual:blacklight/modules` (the modules listed in
  * `game.config.ts`) and stops the build when game code imports a Node module.
  */
 export function blacklightModules(options: { root: string }): Plugin {
-  const root = resolve(options.root);
+  // Real paths on both sides: on macOS a game under `/var/folders` (a symlink to
+  // `/private/var/folders`) and on any OS a repository reached through a symlink would otherwise
+  // compare two spellings of the same directory and never match, which silently lets Node imports
+  // through to Vite's browser stubs (MOD-04).
+  const root = realpath(options.root);
   const isGameFile = (file: string | undefined): file is string =>
     !!file &&
     !file.startsWith('\0') &&
-    resolve(file).startsWith(root + sep) &&
+    realpath(file).startsWith(root + sep) &&
     !file.includes(`${sep}node_modules${sep}`) &&
     !file.includes('/node_modules/') &&
     !file.includes(`${sep}.blacklight${sep}`);
