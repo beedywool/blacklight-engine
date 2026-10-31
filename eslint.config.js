@@ -42,7 +42,7 @@ export default tseslint.config(
   },
   {
     // Engine packages export named symbols only; games may use default exports (CLAUDE.md).
-    files: ['packages/*/src/**/*.ts'],
+    files: ['packages/*/src/**/*.ts', 'packages/modules/*/src/**/*.ts'],
     ignores: ['**/*.d.ts'],
     rules: {
       'no-restricted-syntax': [
@@ -50,5 +50,10 @@ export default tseslint.config(
         { selector: 'ExportDefaultDeclaration', message: 'Engine packages use named exports.' },
       ],
     },
+  },
+  {
+    // The API check's own test proves it reports `any` (scripts/api-check.test.mjs).
+    files: ['scripts/fixtures/api-check/**'],
+    rules: { '@typescript-eslint/no-explicit-any': 'off' },
   },
 );

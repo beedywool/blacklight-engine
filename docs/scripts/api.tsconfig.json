@@ -9,6 +9,10 @@
     "skipLibCheck": true,
     "types": ["node"]
   },
-  "include": ["../../packages/*/dist/**/*.d.ts", "../../packages/modules/*/dist/**/*.d.ts"],
+  "include": [
+    "../../packages/*/dist/**/*.d.ts",
+    "../../packages/*/dist/**/*.d.cts",
+    "../../packages/modules/*/dist/**/*.d.ts"
+  ],
   "exclude": ["../../packages/vscode/**"]
 }
