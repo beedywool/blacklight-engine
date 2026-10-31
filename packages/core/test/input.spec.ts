@@ -89,6 +89,42 @@ describe('InputManager', () => {
     expect(() => input.player(9)).toThrow(/1 to 8/);
   });
 
+  it('rumbles only the pads of the player, with clamped strengths', () => {
+    const effects: [number, unknown][] = [];
+    const rumbling = (index: number) =>
+      Object.assign(pad(index), {
+        vibrationActuator: {
+          playEffect: (type: string, params: unknown) => {
+            effects.push([index, { type, ...(params as object) }]);
+            return Promise.resolve('complete');
+          },
+        },
+      }) as Gamepad;
+    const pads = [rumbling(0), rumbling(1)];
+    const input = new InputManager({}, undefined, () => pads);
+    input.update();
+    input.assignPad(2, 1);
+    input.player(2).rumble(2, -1, 300);
+    expect(effects).toEqual([
+      [
+        1,
+        { type: 'dual-rumble', startDelay: 0, duration: 300, strongMagnitude: 1, weakMagnitude: 0 },
+      ],
+    ]);
+    // Once player 1 owns pad 0, its rumble goes there only.
+    input.assignPad(1, 0);
+    effects.length = 0;
+    input.player(1).rumble(0.5);
+    expect(effects.map(([index]) => index)).toEqual([0]);
+    // A player who leaves frees its pads; player 1 never leaves.
+    input.leave(2);
+    input.leave(1);
+    expect(input.joinedPlayers.map((p) => p.number)).toEqual([1]);
+    effects.length = 0;
+    input.player(2).rumble(1);
+    expect(effects).toEqual([]);
+  });
+
   it('rebinds, persists and resets', () => {
     const saved = new Map<string, unknown>();
     const settings = {
