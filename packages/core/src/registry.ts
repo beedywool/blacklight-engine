@@ -1,19 +1,48 @@
 import type { GameObject, GameObjectClass } from './objects/game-object';
 
+/** Imports an object module on demand; its default export is the object class. */
 export type ObjectLoader = () => Promise<{ default: GameObjectClass }>;
 
 /** Object classes discovered in the project, loaded on demand. */
 export interface ObjectRegistry {
   /** `objects/<name>/<name>.object.ts`, by PascalCase name. */
-  global: Record<string, { path: string; load: ObjectLoader }>;
+  global: Record<
+    string,
+    {
+      /** Project folder of the object (`objects/big-enemy`). */
+      path: string;
+      /** Imports the object's module. */
+      load: ObjectLoader;
+    }
+  >;
   /** `scenes/<scene>/objects/<name>/<name>.object.ts`, by scene then name. */
-  scenes: Record<string, Record<string, { path: string; load: ObjectLoader }>>;
+  scenes: Record<
+    string,
+    Record<
+      string,
+      {
+        /** Project folder of the object (`scenes/level/objects/door`). */
+        path: string;
+        /** Imports the object's module. */
+        load: ObjectLoader;
+      }
+    >
+  >;
 }
 
 const GLOBAL = /(?:^|\/)objects\/([^/]+)\/([^/]+)\.object\.[cm]?[jt]s$/;
 const LOCAL = /(?:^|\/)scenes\/([^/]+)\/objects\/([^/]+)\/([^/]+)\.object\.[cm]?[jt]s$/;
 
-/** `big-enemy` → `BigEnemy`. */
+/**
+ * Turns a folder name into the registry name of its object: `big-enemy` → `BigEnemy`.
+ *
+ * @example
+ * ```ts
+ * import { pascalCase } from '@blacklight/core';
+ *
+ * pascalCase('big-enemy'); // 'BigEnemy'
+ * ```
+ */
 export function pascalCase(folder: string): string {
   return folder
     .split(/[-_\s]+/)
@@ -27,6 +56,15 @@ export function pascalCase(folder: string): string {
  * `scenes/*\/objects/*\/*.object.ts` into a registry. Objects are named after their folder.
  *
  * @throws Error when a file name does not match its folder.
+ * @example
+ * ```ts
+ * import { createGame, objectsFromGlob } from '@blacklight/core';
+ *
+ * const objects = objectsFromGlob(
+ *   import.meta.glob(['./objects/*\/*.object.ts', './scenes/*\/objects/*\/*.object.ts']),
+ * );
+ * await createGame(config, { scenes, objects, mount: document.getElementById('game')! });
+ * ```
  */
 export function objectsFromGlob(modules: Record<string, () => Promise<unknown>>): ObjectRegistry {
   const registry: ObjectRegistry = { global: {}, scenes: {} };

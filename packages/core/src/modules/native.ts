@@ -5,9 +5,15 @@ import type { Platform } from '../platform';
  * function, returning a promise. Built from the definition's type only, so importing it with
  * `import type` keeps Node code out of the game bundle.
  */
-export type NativeApi<D> = D extends { readonly functions: infer F }
+export type NativeApi<D> = D extends {
+  /** The functions the native part exposes, by name. */
+  readonly functions: infer F;
+}
   ? {
-      [K in keyof F]: F[K] extends { run(context: never, ...args: infer A): infer R }
+      [K in keyof F]: F[K] extends {
+        /** The function's implementation in the native process. */
+        run(context: never, ...args: infer A): infer R;
+      }
         ? (...args: A) => Promise<Awaited<R>>
         : never;
     }

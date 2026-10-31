@@ -4,11 +4,15 @@ import type { SaveManager } from './manager';
 
 /** A slot as the UI's save/load screens list it (`SaveSlotInfo` of `@blacklight/ui`). */
 export interface ScreenSlotInfo {
+  /** Slot name. */
   id: string;
   /** When it was written, ms since the epoch. */
   savedAt: number;
+  /** Free text (chapter, place). */
   label?: string;
+  /** One line of detail (last line of dialogue, party level). */
   summary?: string;
+  /** Small image of the game (data URL). */
   thumbnail?: string;
   /** Play time in seconds. */
   playTime?: number;
@@ -19,12 +23,17 @@ export type ScreenSlotMeta = Omit<ScreenSlotInfo, 'id' | 'savedAt'>;
 
 /** The `SaveSlots` interface of `@blacklight/ui`, implemented over `game.save`. */
 export interface ScreenSlots {
+  /** Slots that can be loaded (directly or from their backup). */
   list(): Promise<ScreenSlotInfo[]>;
+  /** Saves the current game into slot `id`. */
   save(id: string, meta: ScreenSlotMeta): Promise<void>;
+  /** Loads slot `id`, falling back to its backup when the file was modified or damaged. */
   load(id: string): Promise<void>;
+  /** Deletes slot `id`. */
   delete(id: string): Promise<void>;
 }
 
+/** Options of {@link screenSlots}: extra state to store and how to resume after a load. */
 export interface ScreenSlotsOptions {
   /** Extra state to store before each save (`{ dialogue: dialogue.state() }`), merged into `save.data`. */
   collect?(): Partial<SaveData> | Promise<Partial<SaveData>>;

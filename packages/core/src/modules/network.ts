@@ -3,7 +3,9 @@ import type { PlatformFiles } from '../platform';
 
 /** Online state as modules see it. */
 export interface NetworkEvents {
+  /** The game can reach servers again. */
   online: void;
+  /** The browser lost its connection, or a request could not reach its server. */
   offline: void;
 }
 
@@ -45,9 +47,23 @@ interface StoredItem<T> {
 /** Events of an {@link OfflineQueue}. */
 export interface QueueEvents<T> {
   /** An item was delivered. */
-  sent: { item: T; attempts: number };
+  sent: {
+    /** The delivered item. */
+    item: T;
+    /** Attempts it took, 1 when it went through at once. */
+    attempts: number;
+  };
   /** An attempt failed; the item stays queued (`willRetry`) or is dropped. */
-  failed: { item: T; error: unknown; attempts: number; willRetry: boolean };
+  failed: {
+    /** The item that failed. */
+    item: T;
+    /** What the handler threw. */
+    error: unknown;
+    /** Attempts so far, this one included. */
+    attempts: number;
+    /** `false` when the item was dropped (`DropItem`, or `maxAttempts` reached). */
+    willRetry: boolean;
+  };
   /** Everything queued was delivered. */
   drained: void;
 }
@@ -67,6 +83,7 @@ export interface QueueEvents<T> {
  * ```
  */
 export class OfflineQueue<T> {
+  /** `sent`, `failed` and `drained`: delivery progress, for logs and UI. */
   readonly events = new EventBus<QueueEvents<T>>();
   private items: StoredItem<T>[] = [];
   private readonly loaded: Promise<void>;
@@ -216,7 +233,23 @@ export class OfflineQueue<T> {
   }
 }
 
-/** `fetch` rejects with a `TypeError` when the request never reached a server. */
+/**
+ * Whether `error` means the request never reached a server (`fetch` rejects with a `TypeError`),
+ * as opposed to a server that answered with an error. Report the first with
+ * `context.network.reportFailure()`: the game goes offline and queues wait.
+ *
+ * @example
+ * ```ts
+ * import { isNetworkError } from '@blacklight/core';
+ *
+ * try {
+ *   await fetch('https://api.example.com/scores');
+ * } catch (error) {
+ *   if (isNetworkError(error)) context.network.reportFailure();
+ *   else throw error;
+ * }
+ * ```
+ */
 export function isNetworkError(error: unknown): boolean {
   return error instanceof TypeError || (error as { name?: string } | null)?.name === 'NetworkError';
 }
@@ -231,9 +264,24 @@ export type ModuleNetwork = Pick<
  * Online state and offline queues, shared by every module of a game (`context.network`). The
  * state follows the browser (`navigator.onLine` and its events) and the results of queued
  * requests: a request that cannot reach its server marks the game offline until one succeeds or
- * the browser reports a connection.
+ * the browser reports a connection. The game creates it; modules use it as `context.network`.
+ *
+ * @example
+ * ```ts
+ * import { defineModule } from '@blacklight/core';
+ *
+ * export const presence = defineModule({
+ *   name: 'presence',
+ *   version: '1.0.0',
+ *   setup({ network, log }) {
+ *     network.on('offline', () => log.warn('offline: scores wait in their queue'));
+ *     return { get online() { return network.online; } };
+ *   },
+ * });
+ * ```
  */
 export class Network {
+  /** `online` and `offline` transitions; {@link Network.on} listens to them too. */
   readonly events = new EventBus<NetworkEvents>();
   private browserOnline: boolean;
   private failing = false;

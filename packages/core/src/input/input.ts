@@ -4,6 +4,7 @@ import type { ActionName } from '../register';
 import { DEFAULT_ACTIONS, parseBinding, type Binding, type ParsedBinding } from './bindings';
 import { GamepadReader, PAD_BUTTONS, type PadState } from './gamepad';
 
+/** A kind of input device. Button prompts and menus follow the last one used. */
 export type Device = 'keyboard' | 'mouse' | 'touch' | 'gamepad';
 
 /** `input` in `game.config.ts`. */
@@ -14,15 +15,38 @@ export interface InputConfig {
   deadzone?: number;
 }
 
+/** Events of `game.input.events`. */
 export interface InputEvents {
   /** The player used another kind of device (to switch button prompts). */
   device: Device;
-  gamepadconnected: { index: number; id: string };
-  gamepaddisconnected: { index: number; id: string };
+  /** A gamepad was plugged in or woke up. */
+  gamepadconnected: {
+    /** Index of the pad, as in `input.gamepads`. */
+    index: number;
+    /** Name the browser or SDL reports for the pad. */
+    id: string;
+  };
+  /** A gamepad was unplugged. */
+  gamepaddisconnected: {
+    /** Index the pad had. */
+    index: number;
+    /** Name the browser or SDL reported for the pad. */
+    id: string;
+  };
   /** Bindings changed (rebinding or reset). */
-  bindings: { action: string | undefined };
+  bindings: {
+    /** The rebound action, `undefined` when every action was reset. */
+    action: string | undefined;
+  };
   /** A new local player joined (see `input.join`). */
-  join: { player: number; device: Device; pad?: number };
+  join: {
+    /** Number of the new player (2–8). */
+    player: number;
+    /** Device the player joined with. */
+    device: Device;
+    /** Index of the joining gamepad, when `device` is `'gamepad'`. */
+    pad?: number;
+  };
 }
 
 /** Pointer position in virtual pixels of the screen (not of the camera's world). */
@@ -58,8 +82,11 @@ const IDLE: ActionState = { value: 0, held: false, pressed: false, released: fal
 export class PlayerInput {
   /** Joined players own devices; player 1 starts with every device. */
   joined = false;
+  /** Whether this player reads the keyboard. */
   keyboard = false;
+  /** Whether this player reads the mouse. */
   mouse = false;
+  /** Whether this player reads touch input and on-screen controls. */
   touch = false;
   /** Gamepad indices, or `'any'` for every connected pad. */
   pads: Set<number> | 'any' = new Set();
@@ -70,6 +97,7 @@ export class PlayerInput {
   private states = new Map<string, ActionState>();
 
   constructor(
+    /** Player number, 1–8. */
     readonly number: number,
     private readonly manager: InputManager,
   ) {}
@@ -174,11 +202,28 @@ export interface InputSettings {
 
 /**
  * Keyboard, mouse, touch and gamepads mapped to named actions, for up to 8 local players.
- * Read through `this.input` in scenes and objects; state changes once per fixed step.
+ * Read through `this.input` in scenes and objects; state changes once per fixed step. The
+ * shortcuts `pressed`, `held`, `value`, `axis` and `vector` read player 1.
+ *
+ * @example
+ * ```ts
+ * import { GameObject } from '@blacklight/core';
+ *
+ * export class Hero extends GameObject {
+ *   update() {
+ *     const move = this.game.input.vector('left', 'right', 'up', 'down');
+ *     this.velocity.set(move.x * 300, move.y * 300);
+ *     if (this.game.input.pressed('jump')) this.game.input.player(1).rumble(0.4, 0.2, 120);
+ *   }
+ * }
+ * ```
  */
 export class InputManager {
+  /** Device changes, gamepad connections, rebinding and joining players. */
   readonly events = new EventBus<InputEvents>();
+  /** The 8 local players, player 1 first; see {@link InputManager.join}. */
   readonly players: PlayerInput[];
+  /** Pointer position and buttons, in virtual pixels of the screen. */
   readonly pointer: PointerState = {
     x: 0,
     y: 0,
@@ -189,7 +234,9 @@ export class InputManager {
   };
   /** Touch points in virtual screen pixels, by pointer id. */
   readonly touches = new Map<number, Point>();
+  /** Last kind of device any player used. */
   lastDevice: Device = 'keyboard';
+  /** Stick dead zone, 0–1: smaller deflections read as 0. */
   deadzone: number;
   /**
    * While `true` (a modal UI screen is open), game code reads every action as idle; the UI reads
@@ -262,22 +309,27 @@ export class InputManager {
     return this.players.filter((p) => p.joined);
   }
 
-  // Player 1 shortcuts.
+  /** Player 1's action went down during the last step. */
   pressed(action: ActionName): boolean {
     return this.players[0]!.pressed(action);
   }
+  /** Player 1's action is down. */
   held(action: ActionName): boolean {
     return this.players[0]!.held(action);
   }
+  /** Player 1's action went up during the last step. */
   released(action: ActionName): boolean {
     return this.players[0]!.released(action);
   }
+  /** Player 1's analog value 0–1 (sticks, triggers); 0 or 1 for keys. */
   value(action: ActionName): number {
     return this.players[0]!.value(action);
   }
+  /** −1 to 1 from two opposite actions of player 1: `axis('left', 'right')`. */
   axis(negative: ActionName, positive: ActionName): number {
     return this.players[0]!.axis(negative, positive);
   }
+  /** Player 1's direction from four actions, length at most 1. */
   vector(left: ActionName, right: ActionName, up: ActionName, down: ActionName): Vector2 {
     return this.players[0]!.vector(left, right, up, down);
   }
@@ -292,6 +344,7 @@ export class InputManager {
     return Object.keys(this.bindings);
   }
 
+  /** Whether an action with this name is configured. */
   hasAction(action: string): boolean {
     return action in this.bindings;
   }
@@ -414,6 +467,10 @@ export class InputManager {
 
   // Device events, called by the DOM listeners (or by tests).
 
+  /**
+   * Feeds a key press, as the DOM listener does; tests call it to simulate input. `code` is a
+   * `KeyboardEvent.code` (`'Space'`, `'KeyJ'`).
+   */
   keyDown(code: string, repeat = false): void {
     if (this.capture && !repeat) return this.capture(code);
     const key = this.keys.get(code) ?? { down: false, presses: 0 };
@@ -423,6 +480,7 @@ export class InputManager {
     this.setDevice('keyboard');
   }
 
+  /** Feeds a key release (see {@link InputManager.keyDown}). */
   keyUp(code: string): void {
     const key = this.keys.get(code);
     if (key) key.down = false;
@@ -436,6 +494,10 @@ export class InputManager {
     this.touches.clear();
   }
 
+  /**
+   * Feeds a pointer press, as the DOM listener does; tests call it to simulate clicks and taps.
+   * `button` follows `PointerEvent.button` (0 left, 2 right); `at` is in virtual screen pixels.
+   */
   pointerDown(id: number, type: PointerState['type'], button: number, at: Point): void {
     if (this.capture && type === 'mouse') {
       this.capture(`Mouse:${['Left', 'Middle', 'Right', 'Back', 'Forward'][button] ?? 'Left'}`);
@@ -457,6 +519,7 @@ export class InputManager {
     }
   }
 
+  /** Feeds a pointer release (see {@link InputManager.pointerDown}). */
   pointerUp(id: number, type: PointerState['type'], button: number, at: Point): void {
     this.pointerMove(id, type, at);
     if (type === 'touch') this.touches.delete(id);
@@ -469,6 +532,7 @@ export class InputManager {
     this.pointerReleases++;
   }
 
+  /** Feeds a pointer move, `at` in virtual screen pixels (see {@link InputManager.pointerDown}). */
   pointerMove(id: number, type: PointerState['type'], at: Point): void {
     this.pointer.x = at.x;
     this.pointer.y = at.y;

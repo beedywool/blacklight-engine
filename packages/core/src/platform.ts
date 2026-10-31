@@ -9,9 +9,11 @@ export type PlatformName = 'web' | 'desktop' | 'android' | 'ios';
  * web. Paths are relative and `/`-separated.
  */
 export interface PlatformFiles {
+  /** Reads a file, `undefined` when it does not exist. */
   read(path: string): Promise<Uint8Array | undefined>;
   /** Replaces the file atomically (temporary file + rename where the file system allows it). */
   write(path: string, data: Uint8Array): Promise<void>;
+  /** Deletes a file. */
   remove(path: string): Promise<void>;
   /** Paths starting with `prefix`. */
   list(prefix?: string): Promise<string[]>;
@@ -31,9 +33,11 @@ export interface PlatformFiles {
  * `defineNative` register their own names.
  */
 export interface Platform {
+  /** Where the game runs. */
   readonly name: PlatformName;
   /** Started by the Steam client. */
   readonly steam: boolean;
+  /** The game's private data folder. */
   readonly files: PlatformFiles;
   /**
    * Per-install AES-GCM key for saves, kept by the OS keystore (Electron `safeStorage`, iOS
@@ -66,6 +70,14 @@ function request<T>(req: IDBRequest<T>): Promise<T> {
 /**
  * The web platform: files and the save key in IndexedDB (in memory when IndexedDB is missing, as
  * in tests), native calls answered by registered web fallbacks.
+ *
+ * @example
+ * ```ts
+ * import { WebPlatform } from '@blacklight/core';
+ *
+ * const platform = new WebPlatform('com.example.mygame');
+ * await platform.files.write('notes.txt', new TextEncoder().encode('hello'));
+ * ```
  */
 export class WebPlatform implements Platform {
   readonly name: PlatformName = 'web';

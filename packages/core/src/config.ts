@@ -20,6 +20,10 @@ import type { ModulesConfig } from './modules/define';
  */
 export type ResolutionMode = 'extend' | 'letterbox';
 
+/**
+ * The design resolution: the size of the virtual screen the game is drawn for, and how it is
+ * scaled to the real screen.
+ */
 export interface ResolutionConfig {
   /** Design width in virtual pixels. */
   width: number;
@@ -54,6 +58,7 @@ export interface GameConfig {
   version: string;
   /** Name of the first scene (the folder name under `scenes/`). */
   entry: string;
+  /** Design size in virtual pixels and how it fits the screen. */
   resolution: ResolutionConfig;
   /** Logic steps per second. @defaultValue `60` */
   tickRate?: number;
@@ -72,14 +77,21 @@ export interface GameConfig {
   /** Seed of `game.random` and of every scene's generator. Omitted: a new seed each run. */
   seed?: string | number;
   /** UI layer defaults (`@blacklight/ui`); the player's saved choices win. */
-  ui?: { theme?: string; scale?: number };
+  ui?: {
+    /** Theme name (`'persona'`, or one registered by the game). */
+    theme?: string;
+    /** UI scale factor; `1` is the design size. */
+    scale?: number;
+  };
   /** Save slots, autosave, encryption, migrations, folder (see the Saves guide). */
   save?: SaveConfig;
   /** Release-build hardening; every measure is on by default in release, off in dev. */
   security?: SecurityConfig | false;
   /** Desktop window. */
   window?: WindowConfig;
+  /** Steam app id, achievements and depots (`@blacklight/native`). */
   steam?: SteamConfig;
+  /** Discord Rich Presence (`@blacklight/native`). */
   discord?: DiscordConfig;
   /**
    * Modules to set up, each with its options (checked by the module's schema at startup).
@@ -97,9 +109,18 @@ export interface GameConfig {
    * language has no file; `fallback` fills keys missing from the current language.
    * @defaultValue `{ default: 'en', fallback: 'en' }`
    */
-  locales?: { default?: string; fallback?: string };
+  locales?: {
+    /** Language used when the player's language has no file. */
+    default?: string;
+    /** Language whose keys fill those missing from the current language. */
+    fallback?: string;
+  };
 }
 
+/**
+ * The configuration after {@link resolveConfig}: defaults filled in and every field checked. The
+ * running game reads it as `game.config`.
+ */
 export interface ResolvedGameConfig
   extends
     Required<
@@ -109,6 +130,7 @@ export interface ResolvedGameConfig
       >
     >,
     Pick<GameConfig, 'input' | 'seed' | 'ui' | 'modules' | 'mobile' | 'locales' | DesktopKeys> {
+  /** Design resolution with its defaults applied. */
   resolution: Required<ResolutionConfig>;
 }
 
@@ -117,14 +139,44 @@ type DesktopKeys = 'save' | 'security' | 'window' | 'steam' | 'discord';
 /**
  * Declares the game configuration. It returns its argument unchanged; its role is to give
  * `game.config.ts` complete types and completion.
+ *
+ * @example
+ * ```ts
+ * // game.config.ts
+ * import { defineConfig } from '@blacklight/core/config';
+ *
+ * export default defineConfig({
+ *   name: 'My Game',
+ *   id: 'com.example.mygame',
+ *   version: '1.0.0',
+ *   entry: 'title',
+ *   resolution: { width: 1920, height: 1080 },
+ * });
+ * ```
  */
 export function defineConfig(config: GameConfig): GameConfig {
   return config;
 }
 
-/** Thrown when `game.config.ts` is invalid. `issues` holds one readable line per problem. */
+/**
+ * Thrown when `game.config.ts` is invalid. `issues` holds one readable line per problem.
+ *
+ * @example
+ * ```ts
+ * import { ConfigError, resolveConfig } from '@blacklight/core/config';
+ *
+ * try {
+ *   resolveConfig({ name: 'My Game' });
+ * } catch (error) {
+ *   if (error instanceof ConfigError) console.error(error.issues.join('\n'));
+ * }
+ * ```
+ */
 export class ConfigError extends Error {
-  constructor(readonly issues: string[]) {
+  constructor(
+    /** One line per problem, naming the field and how to fix it. */
+    readonly issues: string[],
+  ) {
     super(`game.config.ts is invalid:\n${issues.map((issue) => `  - ${issue}`).join('\n')}`);
     this.name = 'ConfigError';
   }
@@ -146,6 +198,15 @@ function isPositiveInteger(value: unknown): value is number {
  * fixes them in one pass instead of one error per reload.
  *
  * @throws {@link ConfigError} listing every invalid field and how to fix it.
+ *
+ * @example
+ * ```ts
+ * import { resolveConfig } from '@blacklight/core/config';
+ * import config from './game.config';
+ *
+ * const resolved = resolveConfig(config);
+ * resolved.tickRate; // 60 unless set
+ * ```
  */
 export function resolveConfig(input: unknown): ResolvedGameConfig {
   const issues: string[] = [];

@@ -29,7 +29,19 @@ const STICKS: Record<string, [number, 1 | -1]> = {
   RightStickDown: [3, 1],
 };
 
-/** Parses a binding string. @throws Error explaining the accepted forms. */
+/**
+ * Parses a binding string into the device and button or axis it reads. `resolveConfig` uses it to
+ * report invalid bindings in `game.config.ts`.
+ *
+ * @throws Error explaining the accepted forms.
+ * @example
+ * ```ts
+ * import { parseBinding } from '@blacklight/core';
+ *
+ * parseBinding('Pad:LeftStickLeft'); // { device: 'gamepad', axis: 0, sign: -1 }
+ * parseBinding('KeyJ'); // { device: 'keyboard', code: 'KeyJ' }
+ * ```
+ */
 export function parseBinding(binding: Binding): ParsedBinding {
   if (binding === 'Touch') return { device: 'touch' };
   const [prefix, name = ''] = binding.includes(':') ? binding.split(':', 2) : ['Key', binding];
@@ -47,7 +59,16 @@ export function parseBinding(binding: Binding): ParsedBinding {
   );
 }
 
-/** Readable form of a binding for menus (`KeyA` → `A`, `Pad:LT` → `LT`). */
+/**
+ * Readable form of a binding for menus (`KeyA` → `A`, `Pad:LT` → `LT`).
+ *
+ * @example
+ * ```ts
+ * import { bindingLabel } from '@blacklight/core';
+ *
+ * const labels = this.game.input.bindingsOf('jump').map(bindingLabel); // ['Space', 'Z', 'A']
+ * ```
+ */
 export function bindingLabel(binding: Binding): string {
   const parsed = parseBinding(binding);
   switch (parsed.device) {

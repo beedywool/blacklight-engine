@@ -21,15 +21,18 @@ export class Settings {
     }
   }
 
+  /** Reads a setting, `undefined` when it was never set. */
   get<T>(key: string): T | undefined {
     return this.values[key] as T | undefined;
   }
 
+  /** Writes a JSON-serializable setting and saves every setting at once. */
   set(key: string, value: unknown): void {
     this.values[key] = value;
     this.save();
   }
 
+  /** Removes a setting, so the game's default applies again. */
   delete(key: string): void {
     delete this.values[key];
     this.save();

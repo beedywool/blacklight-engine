@@ -19,7 +19,9 @@ const MAC_LENGTH = 32;
 export interface SavePayload {
   /** Format version of `data` (`save.version` when it was written). */
   version: number;
+  /** Date, play time and labels shown in save/load screens. */
   meta: SaveMeta;
+  /** The game's saved data (`game.save.data`). */
   data: SaveData;
 }
 
@@ -46,12 +48,27 @@ export type SaveErrorCode =
 /**
  * A save that cannot be loaded. `hasBackup` tells whether the previous version of the slot can be
  * loaded instead (`game.save.load(slot, { backup: true })`).
+ *
+ * @example
+ * ```ts
+ * import { SaveError } from '@blacklight/core';
+ *
+ * try {
+ *   await this.game.save.load('1');
+ * } catch (error) {
+ *   if (error instanceof SaveError && error.hasBackup) await this.game.save.load('1', { backup: true });
+ *   else throw error;
+ * }
+ * ```
  */
 export class SaveError extends Error {
+  /** Whether the previous version of the slot can be loaded instead. */
   hasBackup = false;
   constructor(
+    /** Why the save could not be read. */
     readonly code: SaveErrorCode,
     message: string,
+    /** The slot, when the error concerns one. */
     readonly slot?: string,
   ) {
     super(message);
@@ -61,7 +78,9 @@ export class SaveError extends Error {
 
 /** How files are written: release builds encrypt and sign, dev builds write plain JSON. */
 export interface SaveCodec {
+  /** Encrypt the body with AES-256-GCM. */
   encryption: boolean;
+  /** Sign the file with HMAC-SHA-256 and refuse unsigned files. */
   integrity: boolean;
   /** AES-GCM key from `platform.saveKey()`. */
   key: () => Promise<CryptoKey>;
@@ -105,7 +124,21 @@ function hmacKey(key: CryptoKey): Promise<CryptoKey> {
   return derived;
 }
 
-/** Serializes a payload with the codec's protection. */
+/**
+ * Serializes a payload with the codec's protection: plain JSON when the codec has neither
+ * encryption nor integrity, the signed and/or encrypted container otherwise. The save manager
+ * calls it; tools use it to write save files.
+ *
+ * @example
+ * ```ts
+ * import { encodeSave } from '@blacklight/core';
+ *
+ * const file = await encodeSave(
+ *   { version: 1, meta: { date: Date.now(), playTime: 0 }, data: { gold: 10 } },
+ *   { encryption: false, integrity: false, key: () => platform.saveKey() },
+ * );
+ * ```
+ */
 export async function encodeSave(payload: SavePayload, codec: SaveCodec): Promise<Uint8Array> {
   if (!codec.encryption && !codec.integrity) {
     return encoder.encode(`${JSON.stringify(payload, null, 2)}\n`);
@@ -127,10 +160,17 @@ export async function encodeSave(payload: SavePayload, codec: SaveCodec): Promis
 }
 
 /**
- * Reads a save file.
+ * Reads a save file written by {@link encodeSave} with the same key.
  *
  * @throws {@link SaveError} `tampered` when a signature or the GCM tag does not match, or when the
  * codec requires protection and the file is plain; `corrupted` when it cannot be parsed.
+ * @example
+ * ```ts
+ * import { decodeSave } from '@blacklight/core';
+ *
+ * const payload = await decodeSave(file, { encryption: true, integrity: true, key: () => platform.saveKey() });
+ * console.log(payload.meta.date, payload.data);
+ * ```
  */
 export async function decodeSave(file: Uint8Array, codec: SaveCodec): Promise<SavePayload> {
   if (!hasMagic(file)) {
@@ -240,6 +280,7 @@ const PBKDF2_ITERATIONS = 600_000;
 export interface SaveExport {
   /** `id` of the game that wrote it. */
   game: string;
+  /** Exported saves by slot. */
   saves: Record<string, SavePayload>;
 }
 
@@ -256,7 +297,17 @@ async function passwordKey(password: string, salt: Uint8Array<ArrayBuffer>): Pro
   );
 }
 
-/** Encrypts saves with a password. */
+/**
+ * Encrypts saves with a password (PBKDF2 then AES-GCM), so a player can move them to another
+ * device; `game.save.export(password)` uses it.
+ *
+ * @example
+ * ```ts
+ * import { encodeExport } from '@blacklight/core';
+ *
+ * const file = await encodeExport({ game: 'com.example.mygame', saves: { '1': payload } }, 'hunter2');
+ * ```
+ */
 export async function encodeExport(content: SaveExport, password: string): Promise<Uint8Array> {
   if (password.length === 0) {
     throw new SaveError('password', 'An export needs a password: pass a non-empty string.');
@@ -273,10 +324,16 @@ export async function encodeExport(content: SaveExport, password: string): Promi
 }
 
 /**
- * Decrypts an export.
+ * Decrypts an export written by {@link encodeExport}.
  *
  * @throws {@link SaveError} `password` for a wrong password or a modified file, `corrupted` when it
  * is not an export.
+ * @example
+ * ```ts
+ * import { decodeExport } from '@blacklight/core';
+ *
+ * const { game, saves } = await decodeExport(file, 'hunter2');
+ * ```
  */
 export async function decodeExport(file: Uint8Array, password: string): Promise<SaveExport> {
   const headerLength = 5 + 16 + IV_LENGTH;

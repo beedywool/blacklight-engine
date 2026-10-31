@@ -13,6 +13,13 @@ const SCENE_PATH = /(?:^|\/)scenes\/([^/]+)\/([^/]+)\.scene\.[cm]?[jt]s$/;
  * scene name is its folder name.
  *
  * @throws Error when a file name does not match its folder (`scenes/title/menu.scene.ts`).
+ * @example
+ * ```ts
+ * import { createGame, scenesFromGlob } from '@blacklight/core';
+ *
+ * const scenes = scenesFromGlob(import.meta.glob('./scenes/*\/*.scene.ts'));
+ * await createGame(config, { scenes, mount: document.getElementById('game')! });
+ * ```
  */
 export function scenesFromGlob(
   modules: Record<string, () => Promise<unknown>>,

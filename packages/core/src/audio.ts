@@ -3,9 +3,14 @@ import { EventBus } from './events';
 import { clamp, type Point } from './math';
 import type { AssetKey } from './register';
 
+/**
+ * A volume bus. Every sound plays on one of `music`, `sfx`, `voice` or `ui`; `master` scales them
+ * all. Players set bus volumes in the options menu (`game.audio.volume('music', 0.5)`).
+ */
 export type Bus = 'master' | 'music' | 'sfx' | 'voice' | 'ui';
 const BUSES: Bus[] = ['master', 'music', 'sfx', 'voice', 'ui'];
 
+/** How a sound plays: bus, volume, pitch, looping, fade-in and position in the scene. */
 export interface PlayOptions {
   /** @defaultValue `'sfx'` */
   bus?: Exclude<Bus, 'master'>;
@@ -13,9 +18,11 @@ export interface PlayOptions {
   volume?: number;
   /** Playback rate (pitch). @defaultValue `1` */
   rate?: number;
+  /** Restart from `loopStart` at the end instead of stopping. @defaultValue `false` (`true` for music) */
   loop?: boolean;
   /** Loop section in seconds (music with an intro). */
   loopStart?: number;
+  /** End of the loop section in seconds. @defaultValue the end of the file */
   loopEnd?: number;
   /** Fade-in duration in ms. */
   fade?: number;
@@ -27,11 +34,13 @@ export interface PlayOptions {
 
 /** A playing sound. */
 export interface SoundHandle {
+  /** Key or path the sound was played with. */
   readonly key: string;
   /** Resolves when the sound ends or is stopped. */
   readonly ended: Promise<void>;
   /** Stops, optionally fading out over `fade` ms. */
   stop(fade?: number): void;
+  /** Changes the volume (0–1), optionally over `fade` ms. */
   setVolume(volume: number, fade?: number): void;
   /** Moves a positioned sound. */
   setPosition(at: Point): void;
@@ -62,6 +71,7 @@ export interface AudioSettings {
  * ```
  */
 export class AudioManager {
+  /** `play` when a sound starts, `music` when the music track changes (`key` undefined: stopped). */
   readonly events = new EventBus<AudioEvents>();
   /** Listener position for positioned sounds; the scene sets it to the camera center. */
   listener: Point = { x: 0, y: 0 };

@@ -23,21 +23,29 @@ export interface ModuleEvents {}
 
 /** Messages of one module, prefixed with its name; `debug` lines only show in dev builds. */
 export interface ModuleLogger {
+  /** Details for development; silent in builds. */
   debug(...args: unknown[]): void;
+  /** Normal events (connected, synced). */
   info(...args: unknown[]): void;
+  /** Something went wrong and the module recovered (retry, fallback). */
   warn(...args: unknown[]): void;
+  /** Something failed and the module could not recover. */
   error(...args: unknown[]): void;
 }
 
 /** JSON values a module keeps on the device (`modules/<name>/` in the game's data folder). */
 export interface ModuleStorage {
+  /** Reads a value, `undefined` when the key was never set. */
   get<T>(key: string): Promise<T | undefined>;
+  /** Writes a JSON-serializable value. */
   set(key: string, value: unknown): Promise<void>;
+  /** Deletes a value. */
   remove(key: string): Promise<void>;
 }
 
 /** A save slot as the save system describes it to modules. */
 export interface ModuleSaveSlot {
+  /** Slot name (`'1'`, `'auto'`). */
   slot: string;
   /** Last write, ms since the epoch. */
   updatedAt: number;
@@ -54,6 +62,7 @@ export interface ModuleSaveSlot {
  * ```
  */
 export interface ModuleSaves {
+  /** Every slot that holds a save. */
   slots(): Promise<ModuleSaveSlot[]>;
   /** Portable bytes of a slot, `undefined` when it is empty. */
   exportSlot(slot: string): Promise<Uint8Array | undefined>;
@@ -67,10 +76,18 @@ export interface ModuleSaves {
  * Module APIs by name, as `game.modules` exposes them. Filled by the CLI from `game.config.ts`
  * (`.blacklight/types.d.ts`); a plain record before the types are generated.
  */
-export type GameModules = Register extends { modules: infer M } ? M : Record<string, unknown>;
+export type GameModules = Register extends {
+  /** Module APIs by name, written by the CLI. */
+  modules: infer M;
+}
+  ? M
+  : Record<string, unknown>;
 
 /** Configuration of every module listed in `game.config.ts`, typed from the module definitions. */
-export type ModulesConfig = Register extends { moduleConfigs: infer M }
+export type ModulesConfig = Register extends {
+  /** Module configuration inputs by name, written by the CLI. */
+  moduleConfigs: infer M;
+}
   ? { [K in keyof M]: M[K] }
   : Record<string, object>;
 
@@ -80,6 +97,7 @@ export interface ModuleContext<Config = unknown> {
   readonly name: string;
   /** The module's configuration from `game.config.ts`, checked and with defaults. */
   readonly config: Config;
+  /** The running game. */
   readonly game: Game;
   /** Platform services: files, `invoke` for native calls, events, `openUrl`. */
   readonly platform: Platform;
@@ -91,6 +109,7 @@ export interface ModuleContext<Config = unknown> {
   readonly saves: ModuleSaves | undefined;
   /** Online state and offline queues with retry. */
   readonly network: ModuleNetwork;
+  /** Logger whose lines are prefixed with the module's name. */
   readonly log: ModuleLogger;
   /** Private JSON storage of this module on the device. */
   readonly storage: ModuleStorage;
@@ -108,6 +127,7 @@ export interface ModuleDefinition<
   ConfigInput = Config,
   Platforms extends readonly PlatformName[] = readonly PlatformName[],
 > {
+  /** Module name: the key under `game.modules` and `modules` in `game.config.ts`. */
   readonly name: Name;
   /** Semver version of the module. */
   readonly version: string;
@@ -125,9 +145,14 @@ export interface ModuleDefinition<
   readonly blacklightModule: true;
 }
 
-/** A definition of any module. */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export type AnyModuleDefinition = ModuleDefinition<string, any, any, any, readonly PlatformName[]>;
+/** A definition of any module, whatever its name, configuration, API and platforms. */
+export type AnyModuleDefinition = ModuleDefinition<
+  string,
+  unknown,
+  unknown,
+  unknown,
+  readonly PlatformName[]
+>;
 
 /**
  * API type of a module definition: `undefined` is added when the module only runs on some
@@ -189,12 +214,19 @@ export interface ModuleOptions<
   Api,
   Platforms extends readonly PlatformName[],
 > {
+  /** Lowercase name with dashes (`'high-scores'`): the key under `game.modules`. */
   name: Name;
+  /** Semver version of the module. */
   version: string;
+  /** Platforms the module runs on; omitted means all. Elsewhere it is skipped (API `undefined`). */
   platforms?: Platforms;
+  /** Schema of the module's entry in `game.config.ts` `modules`, built with `t`. */
   config?: Schema<Config, ConfigInput>;
+  /** Names of modules to set up before this one. */
   dependencies?: readonly string[];
+  /** Builds the module; the returned object becomes `game.modules.<name>`. */
   setup(context: ModuleContext<Config>): Api | Promise<Api>;
+  /** Called on shutdown with the API `setup` returned: close connections, flush queues. */
   dispose?(api: Api, context: ModuleContext<Config>): void | Promise<void>;
 }
 
@@ -245,7 +277,18 @@ export function defineModule<
   return { ...options, blacklightModule: true };
 }
 
-/** `true` when `value` was made by {@link defineModule}. */
+/**
+ * `true` when `value` was made by {@link defineModule}. Tools use it to find module definitions
+ * among a file's exports.
+ *
+ * @example
+ * ```ts
+ * import { isModuleDefinition } from '@blacklight/core';
+ * import * as exports from './modules/score/score.module';
+ *
+ * const modules = Object.values(exports).filter(isModuleDefinition);
+ * ```
+ */
 export function isModuleDefinition(value: unknown): value is AnyModuleDefinition {
   return (
     typeof value === 'object' &&
@@ -259,6 +302,13 @@ export function isModuleDefinition(value: unknown): value is AnyModuleDefinition
  * each module as a namespace).
  *
  * @throws Error naming the file and the module names it does export.
+ * @example
+ * ```ts
+ * import { pickModule } from '@blacklight/core';
+ * import * as http from '@blacklight/module-http';
+ *
+ * const definition = pickModule(http, 'http', '@blacklight/module-http');
+ * ```
  */
 export function pickModule(
   exports: Record<string, unknown>,

@@ -69,14 +69,23 @@ export interface SecurityConfig {
 
 /** {@link SecurityConfig} with the defaults of this build applied. */
 export interface ResolvedSecurity {
+  /** SEC-01: developer tools are blocked. */
   devtools: boolean;
+  /** SEC-02: Electron fuses and ASAR integrity are set. */
   fuses: boolean;
+  /** SEC-03: obfuscation level, `false` when off. */
   obfuscate: ObfuscationLevel | false;
+  /** SEC-04: main-process code is compiled to V8 bytecode. */
   bytecode: boolean;
+  /** SEC-05: watched value paths. */
   protect: string[];
+  /** SEC-06: a debugger pausing the game is detected. */
   debugger: boolean;
+  /** SEC-07: the mobile WebView cannot be inspected. */
   webview: boolean;
+  /** SEC-08: extra CSP sources, `false` when the policy is off. */
   csp: CspSources | false;
+  /** SEC-09: reaction to tampering when nothing listens to `game.on('tamper')`. */
   onTamper: 'restore' | 'quit';
 }
 
@@ -93,7 +102,18 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
-/** Checks `security` from `game.config.ts`; returns one readable line per problem. */
+/**
+ * Checks `security` from `game.config.ts`; returns one readable line per problem (empty when
+ * valid). `resolveConfig` calls it with the rest of the configuration.
+ *
+ * @example
+ * ```ts
+ * import { validateSecurityConfig } from '@blacklight/core';
+ *
+ * validateSecurityConfig({ obfuscate: 'max' });
+ * // ['`security.obfuscate` must be a boolean or "low", "medium", "high"']
+ * ```
+ */
 export function validateSecurityConfig(security: unknown): string[] {
   if (security === undefined || typeof security === 'boolean') return [];
   if (!isRecord(security)) {
@@ -197,6 +217,14 @@ export function resolveSecurity(
  *
  * `style-src 'unsafe-inline'` stays: Vue and the engine set element styles at runtime, which is not
  * script execution.
+ *
+ * @example
+ * ```ts
+ * import { contentSecurityPolicy } from '@blacklight/core/config';
+ *
+ * const policy = contentSecurityPolicy({ connect: ['https://api.example.com'] });
+ * // "default-src 'self'; … connect-src 'self' data: blob: https://api.example.com; …"
+ * ```
  */
 export function contentSecurityPolicy(sources: CspSources = {}): string {
   const list = (base: string[], extra: string[] = []) => [...base, ...extra].join(' ');

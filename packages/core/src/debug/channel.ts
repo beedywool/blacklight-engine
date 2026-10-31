@@ -10,9 +10,13 @@ export const DEBUG_EVENT = 'blacklight:debug';
 
 /** A tool asks one game (or every game when `target` is omitted). */
 export interface DebugRequest {
+  /** Message type. */
   kind: 'request';
+  /** Chosen by the tool; the response carries it back. */
   id: string;
+  /** Name of the method to run (`objects`, `inspect`, `pause`…). */
   method: string;
+  /** Arguments of the method. */
   params?: Record<string, unknown>;
   /** Client id of the game that should answer. */
   target?: string;
@@ -20,26 +24,38 @@ export interface DebugRequest {
 
 /** The game's answer to a request. */
 export interface DebugResponse {
+  /** Message type. */
   kind: 'response';
+  /** Id of the request being answered. */
   id: string;
+  /** Client id of the answering game. */
   client: string;
+  /** What the method returned, as JSON. */
   result?: unknown;
+  /** Error message when the method failed or does not exist. */
   error?: string;
 }
 
 /** Sent by the game without a request (`hello` when it starts). */
 export interface DebugEvent {
+  /** Message type. */
   kind: 'event';
+  /** Client id of the game sending it. */
   client: string;
+  /** Event name: `hello` at start, `scene` when the scene changes. */
   type: string;
+  /** Event payload, as JSON. */
   data?: unknown;
 }
 
+/** Any message of the debug channel, told apart by `kind`. */
 export type DebugMessage = DebugRequest | DebugResponse | DebugEvent;
 
 /** The part of `import.meta.hot` the channel uses. */
 export interface HotChannel {
+  /** Listens to a custom event from the dev server. */
   on(event: string, listener: (data: unknown) => void): void;
+  /** Sends a custom event to the dev server, which relays it to the tools. */
   send(event: string, data?: unknown): void;
 }
 
@@ -48,12 +64,19 @@ export type DebugMethod = (params: Record<string, unknown>) => unknown;
 
 /** One object in the live list. */
 export interface DebugObjectSummary {
+  /** Object id in its scene. */
   id: number;
+  /** Registered name of its class. */
   type: string;
+  /** Name of the scene it lives in. */
   scene: string;
+  /** Position, in world pixels. */
   x: number;
+  /** Position, in world pixels. */
   y: number;
+  /** Its layer, `undefined` for children of other objects. */
   layer: string | undefined;
+  /** Its tags. */
   tags: string[];
 }
 
@@ -224,7 +247,14 @@ export function installDebugChannel(
   game: Game,
   hot: HotChannel,
   options: { client?: string } = {},
-): { client: string; methods: Record<string, DebugMethod>; dispose(): void } {
+): {
+  /** Id of this game on the channel (from `?blacklight-client=` or random). */
+  client: string;
+  /** Methods tools can call, by name; add entries to expose your own. */
+  methods: Record<string, DebugMethod>;
+  /** Stops answering requests. */
+  dispose(): void;
+} {
   const client =
     options.client ??
     new URLSearchParams(globalThis.location?.search).get('blacklight-client') ??

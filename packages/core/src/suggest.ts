@@ -19,6 +19,13 @@ function distance(a: string, b: string): number {
 /**
  * Returns the candidates close to `name` (case-insensitive edit distance), best first. Used in
  * "unknown name" errors so a typo points at the right name.
+ *
+ * @example
+ * ```ts
+ * import { suggest } from '@blacklight/core';
+ *
+ * suggest('titel', ['title', 'level', 'credits']); // ['title']
+ * ```
  */
 export function suggest(name: string, candidates: Iterable<string>, max = 3): string[] {
   const target = name.toLowerCase();
@@ -31,7 +38,18 @@ export function suggest(name: string, candidates: Iterable<string>, max = 3): st
     .map(({ candidate }) => candidate);
 }
 
-/** "Did you mean …?" sentence, or an empty string when nothing is close. */
+/**
+ * "Did you mean …?" sentence, or an empty string when nothing is close. Append it to an error
+ * message about an unknown name.
+ *
+ * @example
+ * ```ts
+ * import { didYouMean } from '@blacklight/core';
+ *
+ * throw new Error(`Unknown scene "titel".${didYouMean('titel', ['title', 'level'])}`);
+ * // Unknown scene "titel". Did you mean "title"?
+ * ```
+ */
 export function didYouMean(name: string, candidates: Iterable<string>): string {
   const close = suggest(name, candidates);
   return close.length > 0 ? ` Did you mean ${close.map((c) => `"${c}"`).join(' or ')}?` : '';

@@ -13,9 +13,19 @@ export interface WindowConfig {
   /** @defaultValue `true` */
   resizable?: boolean;
   /** Smallest content size. @defaultValue half the design resolution */
-  minSize?: { width: number; height: number };
+  minSize?: {
+    /** Minimum content width, in screen pixels. */
+    width: number;
+    /** Minimum content height, in screen pixels. */
+    height: number;
+  };
   /** First windowed content size. @defaultValue the design resolution, scaled to fit the screen */
-  size?: { width: number; height: number };
+  size?: {
+    /** Content width, in screen pixels. */
+    width: number;
+    /** Content height, in screen pixels. */
+    height: number;
+  };
 }
 
 /** `steam` in `game.config.ts` (steam target). */
@@ -23,7 +33,14 @@ export interface SteamConfig {
   /** Steam App ID (480, "Spacewar", is Valve's test app). */
   appId: number;
   /** Depot IDs for the upload script, per OS. @defaultValue `appId + 1`, `+ 2`, `+ 3` */
-  depots?: { windows?: number; mac?: number; linux?: number };
+  depots?: {
+    /** Depot id of the Windows build. */
+    windows?: number;
+    /** Depot id of the macOS build. */
+    mac?: number;
+    /** Depot id of the Linux build. */
+    linux?: number;
+  };
 }
 
 /** `discord` in `game.config.ts` (Rich Presence on desktop). */
@@ -46,7 +63,18 @@ function isSize(value: unknown): boolean {
   );
 }
 
-/** Checks `window`, `steam` and `discord`; returns one readable line per problem. */
+/**
+ * Checks `window`, `steam` and `discord`; returns one readable line per problem (empty when the
+ * fields are valid). `resolveConfig` calls it; desktop tooling calls it on its own.
+ *
+ * @example
+ * ```ts
+ * import { validateDesktopConfig } from '@blacklight/core';
+ *
+ * validateDesktopConfig({ window: { minSize: { width: 0, height: 540 } } });
+ * // ['`window.minSize` must be `{ width, height }` in positive integers, …']
+ * ```
+ */
 export function validateDesktopConfig(input: {
   window?: unknown;
   steam?: unknown;

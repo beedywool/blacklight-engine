@@ -20,8 +20,11 @@ export type SaveMigration = (data: Record<string, unknown>) => Record<string, un
 
 /** Folder overrides per desktop OS. `~` and `%VAR%` / `$VAR` environment variables are expanded. */
 export interface SaveLocation {
+  /** Save folder on Windows. */
   windows?: string;
+  /** Save folder on macOS. */
   mac?: string;
+  /** Save folder on Linux. */
   linux?: string;
 }
 
@@ -45,7 +48,14 @@ export interface SaveConfig {
    * Writes the `'auto'` slot on its own: `true` saves on every scene change; `interval` (seconds of
    * play) saves periodically. @defaultValue `false`
    */
-  autosave?: boolean | { interval?: number; onSceneChange?: boolean };
+  autosave?:
+    | boolean
+    | {
+        /** Seconds of play between autosaves; `0` turns periodic saves off. @defaultValue `0` */
+        interval?: number;
+        /** Save when the scene changes. @defaultValue `false` */
+        onSceneChange?: boolean;
+      };
   /** AES-256-GCM with the per-install key. @defaultValue `true` in release builds, `false` in dev */
   encryption?: boolean;
   /** HMAC-SHA-256 over the whole file; plain files are refused. @defaultValue same as `encryption` */
@@ -63,12 +73,24 @@ export interface SaveConfig {
 
 /** {@link SaveConfig} with every default applied for this build. */
 export interface ResolvedSaveConfig {
+  /** Number of manual slots. */
   slots: number;
-  autosave: { interval: number; onSceneChange: boolean };
+  /** When the `'auto'` slot is written. */
+  autosave: {
+    /** Seconds of play between autosaves; `0` when periodic saves are off. */
+    interval: number;
+    /** Whether a scene change saves. */
+    onSceneChange: boolean;
+  };
+  /** Whether save files are encrypted. */
   encryption: boolean;
+  /** Whether save files are signed and unsigned files refused. */
   integrity: boolean;
+  /** Current format version of `save.data`. */
   version: number;
+  /** Migrations by target version. */
   migrations: Record<number, SaveMigration>;
+  /** Save folder override on desktop, `undefined` for the OS default. */
   location: string | SaveLocation | undefined;
 }
 
@@ -76,7 +98,17 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
-/** Checks `save` from `game.config.ts`; returns one readable line per problem. */
+/**
+ * Checks `save` from `game.config.ts`; returns one readable line per problem (empty when valid).
+ * `resolveConfig` calls it with the rest of the configuration.
+ *
+ * @example
+ * ```ts
+ * import { validateSaveConfig } from '@blacklight/core';
+ *
+ * validateSaveConfig({ slots: 0 }); // ['`save.slots` must be a positive integer, e.g. `slots: 3`']
+ * ```
+ */
 export function validateSaveConfig(save: unknown): string[] {
   if (save === undefined) return [];
   if (!isRecord(save)) return ['`save` must be an object, e.g. `save: { slots: 3 }`'];
@@ -149,6 +181,14 @@ export function validateSaveConfig(save: unknown): string[] {
 /**
  * Applies the defaults. Release builds encrypt and sign saves unless the config says otherwise;
  * dev builds write plain JSON (SV-07).
+ *
+ * @example
+ * ```ts
+ * import { resolveSaveConfig } from '@blacklight/core/config';
+ *
+ * resolveSaveConfig({ slots: 3 }, true).encryption; // true: release builds encrypt
+ * resolveSaveConfig({ slots: 3 }, false).encryption; // false: dev builds write plain JSON
+ * ```
  */
 export function resolveSaveConfig(
   save: SaveConfig | undefined,

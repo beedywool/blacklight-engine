@@ -9,6 +9,7 @@ import { applyFields, encodeFields } from '../serialize';
 
 /** What the generated HMR code sends when a scene or object module changes. */
 export interface HotUpdate {
+  /** Whether a scene or an object module changed. */
   kind: 'scene' | 'object';
   /** Scene folder name, or object registry name (PascalCase). */
   name: string;
@@ -41,6 +42,13 @@ const KEEP_STATICS = new Set(['length', 'name', 'prototype', 'objectName', 'obje
  * copied over, removed ones deleted, and the parent class follows `next`'s. Instances (and
  * subclasses) of `previous` keep their state and run the new code; references to the class held
  * by other modules stay valid.
+ *
+ * @example
+ * ```ts
+ * import { patchClass } from '@blacklight/core/debug';
+ *
+ * patchClass(OldEnemy, NewEnemy); // live OldEnemy instances now run NewEnemy's methods
+ * ```
  */
 export function patchClass(previous: Constructor, next: Constructor): void {
   // A subclass of the old version cannot become its own parent.
@@ -112,6 +120,15 @@ function sceneFields(scene: Scene<never>): string[] {
  * cameras, random state) and its own fields (`score`, `this.player`), so the game continues where
  * it was with the new code. Overlays and hosted scenes of that class are patched in place.
  * When the new `create()` throws, the running scene keeps going with the new methods.
+ *
+ * @example
+ * ```ts
+ * import { hotReplaceScene } from '@blacklight/core/debug';
+ *
+ * import.meta.hot?.accept(async (module) => {
+ *   if (module) await hotReplaceScene(game, 'level', module.default);
+ * });
+ * ```
  */
 export async function hotReplaceScene(
   game: Game,
@@ -157,6 +174,15 @@ export async function hotReplaceScene(
  * Applies a new version of an object class: later spawns use it, and live instances (of the class
  * and its subclasses) run the new methods and receive fields added to the class, keeping their
  * state (position, health, animation).
+ *
+ * @example
+ * ```ts
+ * import { hotReplaceObject } from '@blacklight/core/debug';
+ *
+ * import.meta.hot?.accept(async (module) => {
+ *   if (module) await hotReplaceObject(game, { name: 'Hero', path: 'objects/hero' }, module.default);
+ * });
+ * ```
  */
 export async function hotReplaceObject(
   game: Game,

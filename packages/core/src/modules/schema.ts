@@ -46,9 +46,25 @@ export type Infer<S> = S extends Schema<infer Out, unknown> ? Out : never;
 /** The type a schema accepts (keys with defaults are optional). */
 export type InferInput<S> = S extends Schema<unknown, infer In> ? In : never;
 
-/** Thrown by {@link Schema.parse}. `issues` holds one line per problem. */
+/**
+ * Thrown by {@link Schema.parse}. `issues` holds one line per problem.
+ *
+ * @example
+ * ```ts
+ * import { SchemaError, t } from '@blacklight/core';
+ *
+ * try {
+ *   t.object({ port: t.number({ integer: true }) }).parse({ port: 'x' });
+ * } catch (error) {
+ *   if (error instanceof SchemaError) console.error(error.issues); // ['`port` must be an integer, got "x"']
+ * }
+ * ```
+ */
 export class SchemaError extends Error {
-  constructor(readonly issues: string[]) {
+  constructor(
+    /** One line per problem, with the path of the value and what was expected. */
+    readonly issues: string[],
+  ) {
     super(issues.join('\n'));
     this.name = 'SchemaError';
   }
@@ -119,8 +135,11 @@ export interface StringOptions {
 
 /** Options of {@link t.number}. */
 export interface NumberOptions {
+  /** Smallest accepted value (included). */
   min?: number;
+  /** Largest accepted value (included). */
   max?: number;
+  /** Only whole numbers are accepted. */
   integer?: boolean;
 }
 
@@ -156,6 +175,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
  * ```
  */
 export const t = {
+  /** A string, optionally with a length, a pattern or an http(s) URL. */
   string(options: StringOptions = {}): Schema<string> {
     const parts = ['a string'];
     if (options.url) parts.push('holding an http(s) URL');
@@ -175,6 +195,7 @@ export const t = {
     });
   },
 
+  /** A finite number, optionally an integer within bounds. */
   number(options: NumberOptions = {}): Schema<number> {
     const parts = [options.integer ? 'an integer' : 'a number'];
     if (options.min !== undefined) parts.push(`>= ${options.min}`);
@@ -194,6 +215,7 @@ export const t = {
     );
   },
 
+  /** `true` or `false`. */
   boolean(): Schema<boolean> {
     return make(
       'a boolean',

@@ -18,11 +18,14 @@ export const PAD_BUTTONS = [
   'Right',
   'Home',
 ] as const;
+/** Name of a gamepad button in the Xbox layout (`'A'`, `'LT'`, `'Start'`…), as in `Pad:A`. */
 export type PadButton = (typeof PAD_BUTTONS)[number];
 
 /** A gamepad read in the standard layout, whatever its browser mapping. */
 export interface PadState {
+  /** Index of the pad (stable while it stays connected). */
   index: number;
+  /** Name the browser or SDL reports for the pad. */
   id: string;
   /** Button values 0–1 in {@link PAD_BUTTONS} order. */
   buttons: number[];

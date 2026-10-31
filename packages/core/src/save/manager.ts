@@ -24,12 +24,14 @@ import {
   type SavePayload,
 } from './format';
 import { screenSlots, type ScreenSlots, type ScreenSlotsOptions } from './ui-slots';
+import type { ModuleSaveSlot } from '../modules/define';
 
 /** A slot: `1`…`slots`, `'auto'`, or a name such as `'quick'` (letters, digits, `-`, `_`). */
 export type SaveSlot = number | string;
 
 /** One entry of {@link SaveManager.list}. */
 export interface SaveSlotInfo {
+  /** Slot name (`'1'`, `'auto'`, `'quick'`). */
   slot: string;
   /** `ok`, or why the slot cannot be loaded (`backup` may still be). */
   status: 'ok' | 'corrupted' | 'tampered' | 'version' | 'missing';
@@ -41,6 +43,7 @@ export interface SaveSlotInfo {
   hasBackup: boolean;
 }
 
+/** Options of `game.save.save()`: what slot lists show for the save. */
 export interface SaveOptions {
   /** `false` skips the picture, a string is used as is (data URL). @defaultValue `true` */
   thumbnail?: boolean | string;
@@ -52,25 +55,73 @@ export interface SaveOptions {
 
 /** Events of `game.save.events`. */
 export interface SaveEvents {
-  saved: { slot: string; meta: SaveMeta };
-  loaded: { slot: string; meta: SaveMeta; backup: boolean };
-  deleted: { slot: string };
+  /** A slot was written. */
+  saved: {
+    /** Slot name. */
+    slot: string;
+    /** Metadata written with it. */
+    meta: SaveMeta;
+  };
+  /** A slot was loaded into `game.save.data`. */
+  loaded: {
+    /** Slot name. */
+    slot: string;
+    /** Metadata of the loaded save. */
+    meta: SaveMeta;
+    /** Whether the backup (previous version) was loaded. */
+    backup: boolean;
+  };
+  /** A slot was deleted. */
+  deleted: {
+    /** Slot name. */
+    slot: string;
+  };
   /** A slot could not be read (status `corrupted` or `tampered`). */
-  rejected: { slot: string; error: SaveError };
+  rejected: {
+    /** Slot name. */
+    slot: string;
+    /** Why it was refused. */
+    error: SaveError;
+  };
+  /** A cloud sync finished. */
   synced: SyncReport;
 }
 
-/** What the save manager needs from the game (structural, so tests can pass a stub). */
+/**
+ * What the save manager needs from the game (structural, so tests can pass a stub). `Game`
+ * satisfies it.
+ */
 export interface SaveHost {
-  readonly config: { id: string; save?: SaveConfig };
+  /** The game's id (save folder) and `save` configuration. */
+  readonly config: {
+    /** Reverse-domain id of the game. */
+    id: string;
+    /** `save` from `game.config.ts`. */
+    save?: SaveConfig;
+  };
+  /** Where files go and where the save key comes from. */
   readonly platform: Platform;
+  /** Release build: encrypt and sign by default. */
   readonly release?: boolean;
+  /** Steps (play time, periodic autosave) and scene changes (autosave on scene change). */
   readonly events: {
+    /** Listens to fixed steps or scene changes. */
     on(event: 'step', listener: () => void): Unsubscribe;
     on(event: 'scene', listener: (payload: { name: string }) => void): Unsubscribe;
   };
-  readonly time: { readonly dt: number };
-  readonly scene?: { readonly name: string } | undefined;
+  /** The game clock. */
+  readonly time: {
+    /** Seconds per step. */
+    readonly dt: number;
+  };
+  /** The running scene, written into save metadata. */
+  readonly scene?:
+    | {
+        /** Scene name. */
+        readonly name: string;
+      }
+    | undefined;
+  /** The PixiJS application, used to take thumbnails when present. */
   readonly app?: unknown;
 }
 
@@ -103,7 +154,9 @@ export class SaveManager {
   slot: string | undefined;
   /** Play time of the current game in ms (game time, paused time excluded). */
   playTime = 0;
+  /** Saved, loaded, deleted, rejected slots and cloud syncs. */
   readonly events = new EventBus<SaveEvents>();
+  /** The `save` configuration with its defaults for this build. */
   readonly config: ResolvedSaveConfig;
 
   private queue: Promise<unknown> = Promise.resolve();
@@ -330,7 +383,7 @@ export class SaveManager {
   }
 
   /** Valid slots and when each was written (for modules; screens use {@link list}). */
-  async slots(): Promise<{ slot: string; updatedAt: number }[]> {
+  async slots(): Promise<ModuleSaveSlot[]> {
     return (await this.list())
       .filter((info) => info.status === 'ok' && info.meta)
       .map((info) => ({ slot: info.slot, updatedAt: info.meta!.date }));

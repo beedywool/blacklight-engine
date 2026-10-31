@@ -30,43 +30,79 @@ import { Tweens, type Tween, type TweenOptions } from './tween';
 export interface ScenePointer extends Point {
   /** Position on screen, in virtual pixels of the design area. */
   screen: Point;
+  /** The button (or finger) is held. */
   down: boolean;
+  /** The button went down during this step. */
   pressed: boolean;
+  /** The button went up during this step. */
   released: boolean;
 }
 
-/** Saved state of one object. */
+/** Saved state of one object, part of a {@link SceneSnapshot}. */
 export interface ObjectSnapshot {
+  /** The object's id in its scene, kept on restore. */
   id: number;
+  /** Registered name of the object's class, used to re-create it. */
   type: string;
+  /** Id of the parent object, `undefined` when the object sits on a layer. */
   parent: number | undefined;
+  /** Layer the object sits on (`'hud'` included), `undefined` when it has a parent object. */
   layer: string | undefined;
+  /** State every game object has. */
   core: {
+    /** Position, in world pixels. */
     x: number;
+    /** Position, in world pixels. */
     y: number;
+    /** Rotation, in radians. */
     rotation: number;
+    /** Horizontal scale. */
     scaleX: number;
+    /** Vertical scale. */
     scaleY: number;
+    /** Opacity, 0 to 1. */
     alpha: number;
+    /** Whether the object is drawn. */
     visible: boolean;
+    /** Draw order inside its layer. */
     zIndex: number;
+    /** Velocity, in pixels per second. */
     vx: number;
+    /** Velocity, in pixels per second. */
     vy: number;
+    /** Local player number (1–8) whose input the object reads. */
     player: number;
+    /** The object's tags. */
     tags: string[];
+    /** The hitbox, encoded. */
     hitbox: Encoded;
+    /** Collision settings (layer, mask, solid…), encoded. */
     collision: Encoded;
   };
   /** Engine state of the object's class (text, flips…). */
   state: Record<string, Encoded>;
+  /** The game's own fields (`static serialize`, or every own field), encoded. */
   data: Record<string, Encoded>;
-  behaviors: { enabled: boolean; data: Record<string, Encoded> }[];
+  /** State of each behavior, in the object's order. */
+  behaviors: {
+    /** Whether the behavior runs. */
+    enabled: boolean;
+    /** The behavior's own fields, encoded. */
+    data: Record<string, Encoded>;
+  }[];
+  /** Animation state of sprites with an animation sheet. */
   animation?: {
+    /** Playing animation. */
     name: string | undefined;
+    /** Current frame of the animation. */
     index: number;
+    /** Milliseconds spent on the current frame. */
     elapsed: number;
+    /** Whether a non-looping animation reached its end. */
     finished: boolean;
+    /** Whether the frames are mirrored horizontally. */
     flipX: boolean;
+    /** Playback speed multiplier. */
     speed: number;
   };
 }
@@ -76,32 +112,53 @@ export interface ObjectSnapshot {
  * valid in the same session (rollback).
  */
 export interface SceneSnapshot {
+  /** Name of the scene. */
   scene: string;
+  /** Fixed steps run since `create()`. */
   steps: number;
+  /** Id the next spawned object gets. */
   nextId: number;
+  /** State of the scene's random generator. */
   random: [number, number, number, number];
+  /** Every camera, main camera first. */
   cameras: {
+    /** Position, in world pixels. */
     x: number;
+    /** Position, in world pixels. */
     y: number;
+    /** Zoom factor. */
     zoom: number;
+    /** Rotation, in radians. */
     rotation: number;
+    /** Part of the screen the camera draws to, in fractions of the design size. */
     viewport: Rect;
+    /** World area the camera stays inside, `null` when unbounded. */
     bounds: Rect | null;
+    /** Id of the followed object. */
     follow: number | undefined;
+    /** How the camera follows it. */
     followOptions: FollowOptions;
   }[];
+  /** Every living object, in spawn order. */
   objects: ObjectSnapshot[];
+  /** Timers and collision memory: functions and live references, valid in this session only. */
   memory?: {
+    /** The scene's timers. */
     timers: TimersState;
+    /** Each object's timers, by object id. */
     objectTimers: Map<number, TimersState>;
+    /** Which pairs were touching, for enter and leave events. */
     collisions?: CollisionState;
   };
 }
 
 /** Audio bound to a scene: keys are looked up in the scene's folder first. */
 export interface SceneAudio {
+  /** Plays a sound effect by key (`'coin'`) or path. */
   play(key: AssetKey, options?: PlayOptions): SoundHandle;
+  /** Starts a music track, replacing the current one (cross-faded with `fade`). */
   music(key: AssetKey, options?: Omit<PlayOptions, 'bus' | 'at'>): SoundHandle;
+  /** Stops the music, fading out over `fade` milliseconds. */
   stopMusic(options?: { fade?: number }): void;
 }
 
@@ -131,7 +188,14 @@ export abstract class Scene<P = void> {
   /** Draw layers of the world, back to front. `'hud'` is always available and ignores cameras. */
   static layers: string[] = ['main'];
   /** World size: `onLeave`, `destroyOutsideLayout` and the default camera bounds. Defaults to the design size, without bounds. */
-  static size: { width: number; height: number } | undefined;
+  static size:
+    | {
+        /** World width, in pixels. */
+        width: number;
+        /** World height, in pixels. */
+        height: number;
+      }
+    | undefined;
 
   /** The running game. */
   game!: Game;
@@ -143,13 +207,19 @@ export abstract class Scene<P = void> {
   readonly world = new PixiContainer();
   /** Screen-space container drawn above the world (scores, HUD). */
   readonly hud = new PixiContainer();
+  /** Events of this scene, for the game's own messages; listeners go away with the scene. */
   readonly events = new EventBus<EventMap>();
+  /** Timers on the game clock; prefer {@link Scene.after} and {@link Scene.every}. */
   readonly timers = new Timers();
+  /** Running tweens; prefer {@link Scene.tween}. */
   readonly tweens = new Tweens();
+  /** Collision detection between the scene's objects: queries, raycasts, solid tiles. */
   readonly collisions: CollisionWorld;
+  /** Cleanups run when the scene ends; add unsubscribe functions and handles to it. */
   readonly disposables = new Disposables();
   /** Scene random generator, seeded from the game's. */
   random = new Random(0);
+  /** Every camera, main camera first; see {@link Scene.addCamera}. */
   readonly cameras: Camera[] = [];
   /** Fixed steps run since `create()`. */
   steps = 0;
@@ -213,6 +283,7 @@ export abstract class Scene<P = void> {
     return this.cameras[0]!;
   }
 
+  /** The game's input: actions, keys, gamepads, pointer (same as `game.input`). */
   get input(): InputManager {
     return this.game.input;
   }
@@ -470,6 +541,7 @@ export abstract class Scene<P = void> {
     return camera;
   }
 
+  /** Removes a camera added with {@link Scene.addCamera}. The main camera is never removed. */
   removeCamera(camera: Camera): void {
     if (this.cameras.length <= 1) return;
     const index = this.cameras.indexOf(camera);

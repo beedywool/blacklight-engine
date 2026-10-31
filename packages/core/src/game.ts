@@ -26,9 +26,10 @@ import { SecurityRuntime } from './security/runtime';
 import { Settings } from './settings';
 import { ModuleHost, type GameModules, type ModuleList } from './modules/index';
 import { didYouMean } from './suggest';
-import type { Rect } from './math';
+import type { Point, Rect } from './math';
 import { computeViewport, type Viewport } from './viewport';
 
+/** What {@link createGame} needs besides the configuration: scenes, objects, assets, mount point. */
 export interface CreateGameOptions {
   /** Scene loaders by name, usually from `scenesFromGlob(import.meta.glob(...))`. */
   scenes: Record<string, SceneLoader>;
@@ -79,18 +80,23 @@ export interface SceneUi {
   }): Promise<boolean>;
   /** Closes the top menu of this owner. */
   pop(result?: unknown): void;
+  /** Closes the top menu of this owner and pushes `screen` in its place. */
   replace(
     screen: unknown,
     props?: Record<string, unknown>,
     options?: Record<string, unknown>,
   ): UiScreenHandle;
+  /** Closes every screen of this owner. */
   closeAll(): void;
 }
 
 /** An open screen, as `SceneUi` returns it. */
 export interface UiScreenHandle {
+  /** Unique id of the open screen. */
   readonly id: number;
+  /** Closes the screen; `result` resolves {@link UiScreenHandle.result}. */
   close(result?: unknown): void;
+  /** Resolves with the screen's result when it closes. */
   readonly result: Promise<unknown>;
 }
 
@@ -106,9 +112,14 @@ export interface UiHost {
 export interface Transition {
   /** Duration of each half in ms (real time). */
   duration: number;
+  /**
+   * Draws the effect into `layer` (above the scenes, covering the design area of `size`) for
+   * `progress` from 0 (scene visible) to 1 (fully covered).
+   */
   draw(layer: PixiContainer, progress: number, size: { width: number; height: number }): void;
 }
 
+/** Options of `game.goto()`: how the scene change looks. */
 export interface GotoOptions {
   /**
    * `'none'`, `'fade'` (black), a name registered in `game.transitions` (`@blacklight/ui` adds
@@ -118,19 +129,39 @@ export interface GotoOptions {
   transition?: 'fade' | 'none' | (string & {}) | Transition;
 }
 
+/** Events of `game.events`, listened to with `game.on(name, listener)`. */
 export interface GameEvents {
   /** A scene started. */
-  scene: { name: string };
+  scene: {
+    /** Name of the scene. */
+    name: string;
+  };
+  /** `game.pause()` paused the logic. */
   pause: void;
+  /** `game.resume()` resumed the logic. */
   resume: void;
   /** Loading progress of the scene being loaded, 0–1. */
-  loading: { scene: string; progress: number };
+  loading: {
+    /** Name of the scene being loaded. */
+    scene: string;
+    /** Fraction of its files loaded, 0–1. */
+    progress: number;
+  };
   /** Every fixed step, after the scenes. */
-  step: { step: number };
+  step: {
+    /** Number of the step that just ran. */
+    step: number;
+  };
   /** The screen size or the viewport changed. */
-  resize: { viewport: Viewport };
+  resize: {
+    /** The new viewport. */
+    viewport: Viewport;
+  };
   /** Every displayed frame, paused or not (UI layers animate with it). */
-  frame: { deltaMS: number };
+  frame: {
+    /** Real milliseconds since the previous frame. */
+    deltaMS: number;
+  };
   /** Tampering detected (release builds): a listener replaces the default restore + log. */
   tamper: TamperEvent;
 }
@@ -185,26 +216,53 @@ const FADE: Transition = {
 /**
  * The running game: owns the renderer, the fixed-step loop, input, audio, assets and the scenes.
  * Created by {@link createGame}; scenes and objects reach it through `this.game`.
+ *
+ * @example
+ * ```ts
+ * import { Scene } from '@blacklight/core';
+ *
+ * export default class Title extends Scene {
+ *   update() {
+ *     if (this.input.pressed('confirm')) this.game.goto('level', { level: 1 }, { transition: 'fade' });
+ *     if (this.input.pressed('pause')) this.game.overlay('pause');
+ *   }
+ * }
+ * ```
  */
 export class Game {
+  /** The checked configuration from `game.config.ts`, defaults filled in. */
   readonly config: ResolvedGameConfig;
+  /** The PixiJS application: renderer, ticker and canvas (`game.app.canvas`). */
   readonly app = new Application();
   /** Holds the scenes, scaled and offset to the viewport. */
   readonly world = new PixiContainer();
+  /** Game-wide events (scene changes, pause, resize, steps); see {@link Game.on}. */
   readonly events = new EventBus<GameEvents>();
+  /** Player settings kept between sessions (volumes, bindings, UI choices). */
   readonly settings: Settings;
+  /** The game's files: load them and read them synchronously once loaded. */
   readonly assets: AssetStore;
+  /** Animation sheets of sprite classes, loaded with their scene. */
   readonly sheets: SheetCache;
+  /** Actions, keys, gamepads, pointer and local players. */
   readonly input: InputManager;
+  /** Sound effects and music with volume buses. */
   readonly audio: AudioManager;
   /** Game-wide seeded random generator (`config.seed`). */
   readonly random: Random;
+  /** Game clock: steps, game time, time scale (slow motion). */
   readonly time: GameTime;
+  /** Where the design area sits on the screen and its scale; updated on resize. */
   viewport!: Viewport;
   /** Current scene, `undefined` while the first scene loads. */
   scene: Scene<never> | undefined;
   /** Scenes opened over the current one, bottom first. */
-  readonly overlays: { scene: Scene<never>; pauseBelow: boolean }[] = [];
+  readonly overlays: {
+    /** The overlay scene. */
+    scene: Scene<never>;
+    /** Whether the scenes below it are paused while it is open. */
+    pauseBelow: boolean;
+  }[] = [];
   /** Device pixels per virtual pixel; text renders at this resolution. */
   textResolution = 1;
   /** `true` while paused by `pause()` (not by losing focus). */
@@ -397,6 +455,7 @@ export class Game {
     this.events.emit('pause');
   }
 
+  /** Resumes the game logic after {@link Game.pause}. */
   resume(): void {
     if (!this.paused) return;
     this.paused = false;
@@ -415,7 +474,7 @@ export class Game {
   }
 
   /** Converts a client (CSS) position to virtual pixels of the design area. */
-  toVirtual(clientX: number, clientY: number): { x: number; y: number } {
+  toVirtual(clientX: number, clientY: number): Point {
     const rect = this.app.canvas.getBoundingClientRect();
     const v = this.viewport;
     return {

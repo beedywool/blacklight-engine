@@ -4,15 +4,32 @@ import { protect, type ProtectedValue } from './protect';
 
 /** What the security runtime needs from the game (structural, so tests can pass a stub). */
 export interface SecurityHost {
+  /** Steps (value checks) and the `tamper` event. */
   readonly events: {
+    /** Listens to fixed steps. */
     on(event: 'step', listener: () => void): Unsubscribe;
+    /** Reports tampering to the game's listeners. */
     emit(event: 'tamper', payload: TamperEvent): void;
+    /** Number of `tamper` listeners: none means the default reaction. */
     count(event: 'tamper'): number;
   };
+  /** The running scene, whose objects and fields hold protected values. */
   readonly scene?: SecurityScene | undefined;
-  readonly overlays?: readonly { scene: SecurityScene }[];
-  readonly save?: { data: object };
-  readonly platform: { quit(): void };
+  /** Scenes opened over the running one. */
+  readonly overlays?: readonly {
+    /** The overlay scene. */
+    scene: SecurityScene;
+  }[];
+  /** The save system, for `save.<field>` paths. */
+  readonly save?: {
+    /** Current save data. */
+    data: object;
+  };
+  /** Closes the game for `onTamper: 'quit'`. */
+  readonly platform: {
+    /** Closes the app. */
+    quit(): void;
+  };
 }
 
 interface SecurityScene {
@@ -20,6 +37,7 @@ interface SecurityScene {
   findAll(name: string): object[];
 }
 
+/** Test hooks of {@link SecurityRuntime}: clock, debugger probe, event target. */
 export interface SecurityOptions {
   /** Clock for debugger detection (tests). @defaultValue `performance.now` */
   now?: () => number;
@@ -46,7 +64,15 @@ function defaultProbe(): void {
 /**
  * Runs the in-game measures of release builds: blocked developer-tools shortcuts and context menu
  * (SEC-01), protected values (SEC-05), debugger detection (SEC-06) and the tamper reaction
- * (SEC-09). Installed by the game at startup; `stop()` removes everything.
+ * (SEC-09). Installed by the game at startup as `game.security`; `stop()` removes everything.
+ *
+ * @example
+ * ```ts
+ * import { SecurityRuntime, resolveSecurity } from '@blacklight/core';
+ *
+ * const security = new SecurityRuntime(game, resolveSecurity({ protect: ['save.gold'] }, true));
+ * security.start();
+ * ```
  */
 export class SecurityRuntime {
   private readonly watched = new WeakMap<object, Map<string, ProtectedValue>>();
@@ -56,10 +82,12 @@ export class SecurityRuntime {
 
   constructor(
     private readonly host: SecurityHost,
+    /** The `security` configuration with this build's defaults. */
     readonly settings: ResolvedSecurity,
     private readonly options: SecurityOptions = {},
   ) {}
 
+  /** Starts the enabled measures: value checks, devtools blocking, debugger detection. */
   start(): void {
     const { settings } = this;
     if (settings.protect.length > 0) {
@@ -69,6 +97,7 @@ export class SecurityRuntime {
     if (settings.debugger) this.detectDebugger();
   }
 
+  /** Stops every measure and removes its listeners. */
   stop(): void {
     for (const dispose of this.cleanup.splice(0)) dispose();
   }

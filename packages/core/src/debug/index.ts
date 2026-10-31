@@ -33,6 +33,12 @@ const HELP = 'F3 overlay · F4 hitboxes · F6 pause · F7 step · F8 slow motion
  * hitboxes; pause, step-by-step and slow motion.
  *
  * @returns A function that removes it.
+ * @example
+ * ```ts
+ * import { installDebug } from '@blacklight/core/debug';
+ *
+ * if (import.meta.env.DEV) installDebug(game); // F3 shows the overlay
+ * ```
  */
 export function installDebug(game: Game): () => void {
   const panel = document.createElement('pre');

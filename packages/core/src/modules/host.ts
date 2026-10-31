@@ -21,7 +21,22 @@ export interface ModuleList {
   dev?: boolean;
 }
 
-/** Thrown when a module cannot start; the message says which one and how to fix it. */
+/**
+ * Thrown when a module cannot start; the message says which one and how to fix it. `createGame`
+ * rejects with it before the first scene starts.
+ *
+ * @example
+ * ```ts
+ * import { ModuleError, createGame } from '@blacklight/core';
+ *
+ * try {
+ *   await createGame(config, options);
+ * } catch (error) {
+ *   if (error instanceof ModuleError) showFatalError(error.message);
+ *   else throw error;
+ * }
+ * ```
+ */
 export class ModuleError extends Error {
   constructor(message: string) {
     super(message);
@@ -105,6 +120,9 @@ function order(definitions: AnyModuleDefinition[]): AnyModuleDefinition[] {
 /**
  * The modules of a running game: sets them up in dependency order with their checked
  * configuration and disposes them in reverse order on shutdown.
+ *
+ * @internal The game creates it from the generated module list; games use `game.modules` and
+ * modules their `context`.
  */
 export class ModuleHost {
   /** Module APIs by name (`game.modules`). */
