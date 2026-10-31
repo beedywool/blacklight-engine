@@ -412,6 +412,79 @@ function hypot(...values: number[]): number {
 }
 
 /**
+ * The members of {@link DMath}: `Math`'s constants and functions, with the same names and
+ * arguments.
+ */
+export interface DeterministicMath {
+  /** π, the same value as `Math.PI`. */
+  readonly PI: number;
+  /** Euler's number, the same value as `Math.E`. */
+  readonly E: number;
+  /** Natural logarithm of 2. */
+  readonly LN2: number;
+  /** Natural logarithm of 10. */
+  readonly LN10: number;
+  /** Base-2 logarithm of e. */
+  readonly LOG2E: number;
+  /** Base-10 logarithm of e. */
+  readonly LOG10E: number;
+  /** Square root of 2. */
+  readonly SQRT2: number;
+  /** Square root of 1/2. */
+  readonly SQRT1_2: number;
+  /** Sine of an angle in radians. */
+  readonly sin: (x: number) => number;
+  /** Cosine of an angle in radians. */
+  readonly cos: (x: number) => number;
+  /** Tangent of an angle in radians. */
+  readonly tan: (x: number) => number;
+  /** Arcsine in radians, in [-π/2, π/2]. */
+  readonly asin: (x: number) => number;
+  /** Arccosine in radians, in [0, π]. */
+  readonly acos: (x: number) => number;
+  /** Arctangent in radians, in (-π/2, π/2). */
+  readonly atan: (x: number) => number;
+  /** Angle of the point (x, y) from the x axis in radians, in (-π, π]; arguments are `(y, x)` like `Math.atan2`. */
+  readonly atan2: (y: number, x: number) => number;
+  /** e raised to a power. */
+  readonly exp: (x: number) => number;
+  /** Natural logarithm. */
+  readonly log: (x: number) => number;
+  /** Base-2 logarithm. */
+  readonly log2: (x: number) => number;
+  /** Base-10 logarithm. */
+  readonly log10: (x: number) => number;
+  /** `base` raised to `exponent`. */
+  readonly pow: (base: number, exponent: number) => number;
+  /** Cube root. */
+  readonly cbrt: (x: number) => number;
+  /** Square root of the sum of the squares of its arguments (vector length), without overflow. */
+  readonly hypot: (...values: number[]) => number;
+  /** Square root (`Math.sqrt`, exact by specification). */
+  readonly sqrt: (x: number) => number;
+  /** Absolute value (`Math.abs`). */
+  readonly abs: (x: number) => number;
+  /** Largest integer less than or equal to the value (`Math.floor`). */
+  readonly floor: (x: number) => number;
+  /** Smallest integer greater than or equal to the value (`Math.ceil`). */
+  readonly ceil: (x: number) => number;
+  /** Nearest integer, halves rounded up (`Math.round`). */
+  readonly round: (x: number) => number;
+  /** Integer part, fraction removed (`Math.trunc`). */
+  readonly trunc: (x: number) => number;
+  /** `1`, `-1`, `0` or `-0` depending on the sign (`Math.sign`). */
+  readonly sign: (x: number) => number;
+  /** Smallest argument (`Math.min`). */
+  readonly min: (...values: number[]) => number;
+  /** Largest argument (`Math.max`). */
+  readonly max: (...values: number[]) => number;
+  /** Nearest 32-bit float (`Math.fround`). */
+  readonly fround: (x: number) => number;
+  /** 32-bit integer multiplication (`Math.imul`). */
+  readonly imul: (a: number, b: number) => number;
+}
+
+/**
  * Math that returns the same bits on every JavaScript engine (V8 in Chrome, Electron and Android;
  * JavaScriptCore in Safari and iOS). Use it instead of `Math` in simulation code of online games,
  * where one different digit desynchronizes the players. The lint rule `blacklight/deterministic`
@@ -429,71 +502,38 @@ function hypot(...values: number[]): number {
  * this.velocity.set(DMath.cos(angle) * 200, DMath.sin(angle) * 200);
  * ```
  */
-export const DMath = Object.freeze({
-  /** π, the same value as `Math.PI`. */
+export const DMath: DeterministicMath = Object.freeze({
   PI,
-  /** Euler's number, the same value as `Math.E`. */
   E: 2.718281828459045,
-  /** Natural logarithm of 2. */
   LN2: 0.6931471805599453,
-  /** Natural logarithm of 10. */
   LN10: 2.302585092994046,
-  /** Base-2 logarithm of e. */
   LOG2E: 1.4426950408889634,
-  /** Base-10 logarithm of e. */
   LOG10E: 0.4342944819032518,
-  /** Square root of 2. */
   SQRT2: 1.4142135623730951,
-  /** Square root of 1/2. */
   SQRT1_2: 0.7071067811865476,
-  /** Sine of an angle in radians. */
   sin,
-  /** Cosine of an angle in radians. */
   cos,
-  /** Tangent of an angle in radians. */
   tan,
-  /** Arcsine in radians, in [-π/2, π/2]. */
   asin,
-  /** Arccosine in radians, in [0, π]. */
   acos,
-  /** Arctangent in radians, in (-π/2, π/2). */
   atan,
-  /** Angle of the point (x, y) from the x axis in radians, in (-π, π]; arguments are `(y, x)` like `Math.atan2`. */
   atan2,
-  /** e raised to a power. */
   exp,
-  /** Natural logarithm. */
   log,
-  /** Base-2 logarithm. */
   log2,
-  /** Base-10 logarithm. */
   log10,
-  /** `base` raised to `exponent`. */
   pow,
-  /** Cube root. */
   cbrt,
-  /** Square root of the sum of the squares of its arguments (vector length), without overflow. */
   hypot,
-  /** Square root (`Math.sqrt`, exact by specification). */
   sqrt: Math.sqrt,
-  /** Absolute value (`Math.abs`). */
   abs: Math.abs,
-  /** Largest integer less than or equal to the value (`Math.floor`). */
   floor: Math.floor,
-  /** Smallest integer greater than or equal to the value (`Math.ceil`). */
   ceil: Math.ceil,
-  /** Nearest integer, halves rounded up (`Math.round`). */
   round: Math.round,
-  /** Integer part, fraction removed (`Math.trunc`). */
   trunc: Math.trunc,
-  /** `1`, `-1`, `0` or `-0` depending on the sign (`Math.sign`). */
   sign: Math.sign,
-  /** Smallest argument (`Math.min`). */
   min: Math.min,
-  /** Largest argument (`Math.max`). */
   max: Math.max,
-  /** Nearest 32-bit float (`Math.fround`). */
   fround: Math.fround,
-  /** 32-bit integer multiplication (`Math.imul`). */
   imul: Math.imul,
 });
