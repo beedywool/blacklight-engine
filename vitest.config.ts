@@ -5,6 +5,9 @@ export default defineConfig({
     projects: [
       'packages/*',
       '!packages/modules',
+      // Core code that needs a real browser (WebGL, Web Audio, IndexedDB, DOM events): headless
+      // Chromium through Playwright.
+      'packages/core/vitest.browser.config.ts',
       'packages/modules/*',
       // Folders only: servers/ also holds docker-compose.yml.
       'servers/*/vitest.config.ts',

@@ -15,3 +15,4 @@ release/
 docs/public/runner/
 docs/api/
 bench-results/
+.vitest/
