@@ -19,19 +19,35 @@ const FACINGS: Facing[] = [
   'upright',
 ];
 
-/** Closest of the 8 facings for a direction. */
+/**
+ * Closest of the 8 facings for a direction, to pick a directional animation.
+ *
+ * @example
+ * ```ts
+ * import { facingOf } from '@blacklight/core';
+ *
+ * // In update(): `walk-upleft`, `walk-down`…
+ * if (this.velocity.length > 0) this.play(`walk-${facingOf(this.velocity.x, this.velocity.y)}`);
+ * ```
+ */
 export function facingOf(x: number, y: number): Facing {
   const index = Math.round(DMath.atan2(y, x) / (Math.PI / 4));
   return FACINGS[(index + 8) % 8]!;
 }
 
+/** Actions that move in each direction; the defaults are the actions of the same name. */
 export interface DirectionActions {
+  /** @defaultValue `'left'` */
   left?: ActionName;
+  /** @defaultValue `'right'` */
   right?: ActionName;
+  /** @defaultValue `'up'` */
   up?: ActionName;
+  /** @defaultValue `'down'` */
   down?: ActionName;
 }
 
+/** Options of {@link EightDirections} and {@link FourDirections}. */
 export interface DirectionsOptions {
   /** Top speed in px/s. */
   speed: number;
@@ -45,12 +61,26 @@ export interface DirectionsOptions {
 
 /**
  * Top-down movement driven by input. `facing` gives the last direction for animations.
+ *
+ * @example
+ * ```ts
+ * import { EightDirections, Sprite, behaviors } from '@blacklight/core';
+ *
+ * export class Player extends Sprite {
+ *   static behaviors = [behaviors.eightDirections({ speed: 240, acceleration: 1800 })];
+ *   update() {
+ *     const facing = this.behavior(EightDirections)!.facing;
+ *     this.play(this.velocity.length > 0 ? `walk-${facing}` : `idle-${facing}`);
+ *   }
+ * }
+ * ```
  */
 export class EightDirections extends Behavior<DirectionsOptions> {
   readonly name: string = 'eightDirections';
   override readonly ownsMovement = true;
   /** Last direction moved. */
   facing: Facing = 'down';
+  /** Moves along one axis at a time ({@link FourDirections}). */
   protected readonly fourWay: boolean = false;
 
   override update(object: GameObject, dt: number): void {
@@ -81,22 +111,54 @@ export class EightDirections extends Behavior<DirectionsOptions> {
   }
 }
 
-/** Like {@link EightDirections}, one axis at a time (grid-like games, classic RPGs). */
+/**
+ * Like {@link EightDirections}, one axis at a time (grid-like games, classic RPGs).
+ *
+ * @example
+ * ```ts
+ * import { Sprite, behaviors } from '@blacklight/core';
+ *
+ * export class Villager extends Sprite {
+ *   static behaviors = [behaviors.fourDirections({ speed: 120 })];
+ * }
+ * ```
+ */
 export class FourDirections extends EightDirections {
   override readonly name = 'fourDirections';
   protected override readonly fourWay = true;
 }
 
+/** Options of {@link TankRotation} (`behaviors.tankRotation`). */
 export interface TankOptions {
   /** Forward speed in px/s. */
   speed: number;
   /** Turn speed in degrees per second. */
   turnSpeed: number;
   /** forward = up, backward = down, turn = left/right by default. */
-  actions?: { forward?: ActionName; backward?: ActionName; left?: ActionName; right?: ActionName };
+  actions?: {
+    /** Drives forward. @defaultValue `'up'` */
+    forward?: ActionName;
+    /** Drives backward. @defaultValue `'down'` */
+    backward?: ActionName;
+    /** Turns counterclockwise. @defaultValue `'left'` */
+    left?: ActionName;
+    /** Turns clockwise. @defaultValue `'right'` */
+    right?: ActionName;
+  };
 }
 
-/** Turns with left/right and drives along its rotation with up/down (tanks, cars, ships). */
+/**
+ * Turns with left/right and drives along its rotation with up/down (tanks, cars, ships).
+ *
+ * @example
+ * ```ts
+ * import { Sprite, behaviors } from '@blacklight/core';
+ *
+ * export class Tank extends Sprite {
+ *   static behaviors = [behaviors.tankRotation({ speed: 160, turnSpeed: 120 })];
+ * }
+ * ```
+ */
 export class TankRotation extends Behavior<TankOptions> {
   readonly name = 'tankRotation';
   override readonly ownsMovement = true;
@@ -112,6 +174,7 @@ export class TankRotation extends Behavior<TankOptions> {
   }
 }
 
+/** Options of {@link Bullet} (`behaviors.bullet`). */
 export interface BulletOptions {
   /** px/s. */
   speed: number;
@@ -127,7 +190,19 @@ export interface BulletOptions {
   destroyOnSolid?: boolean;
 }
 
-/** Moves in a straight line (or an arc with gravity). */
+/**
+ * Moves in a straight line (or an arc with gravity), and is destroyed when it hits a solid.
+ *
+ * @example
+ * ```ts
+ * import { Sprite, behaviors } from '@blacklight/core';
+ *
+ * export class Arrow extends Sprite {
+ *   static behaviors = [behaviors.bullet({ speed: 600, gravity: 400, rotate: true })];
+ * }
+ * // this.spawn(Arrow, { x, y, rotation: aim }) flies along `aim`.
+ * ```
+ */
 export class Bullet extends Behavior<BulletOptions> {
   readonly name = 'bullet';
   override readonly ownsMovement = true;
@@ -155,16 +230,28 @@ export class Bullet extends Behavior<BulletOptions> {
   }
 }
 
+/** Options of {@link Bounce} (`behaviors.bounce`). */
 export interface BounceOptions {
   /** px/s. */
   speed: number;
-  /** Initial direction in degrees. */
+  /** Initial direction in degrees (0 = right, 90 = down). @defaultValue `45` */
   angle?: number;
   /** Bounce off the scene edges too. @defaultValue `true` */
   edges?: boolean;
 }
 
-/** Moves and bounces off solids and the scene edges (balls, pucks). */
+/**
+ * Moves and bounces off solids and the scene edges (balls, pucks).
+ *
+ * @example
+ * ```ts
+ * import { Sprite, behaviors } from '@blacklight/core';
+ *
+ * export class Ball extends Sprite {
+ *   static behaviors = [behaviors.bounce({ speed: 300, angle: 30 })];
+ * }
+ * ```
+ */
 export class Bounce extends Behavior<BounceOptions> {
   readonly name = 'bounce';
   override readonly ownsMovement = true;
@@ -191,12 +278,24 @@ export class Bounce extends Behavior<BounceOptions> {
   }
 }
 
-/** Scene-space bounds of an object's hitbox (its position when it has none). */
+/**
+ * Scene-space bounds of an object's hitbox (its position when it has none).
+ *
+ * @example
+ * ```ts
+ * import { boundsOf } from '@blacklight/core';
+ *
+ * // Is the player's hitbox entirely above the water line?
+ * const r = boundsOf(player);
+ * const dry = r.y + r.height < waterY;
+ * ```
+ */
 export function boundsOf(object: GameObject): Rect {
   const shape = object.worldShape();
   return shape ? shapeBounds(shape) : { x: object.x, y: object.y, width: 0, height: 0 };
 }
 
+/** Options of {@link FollowTarget} (`behaviors.followTarget`). */
 export interface FollowTargetOptions {
   /** Object or function giving the point to follow. */
   target: GameObject | (() => Point | undefined);
@@ -208,7 +307,22 @@ export interface FollowTargetOptions {
   rotate?: boolean;
 }
 
-/** Moves towards a target (homing enemies, pets, missiles). */
+/**
+ * Moves towards a target (homing enemies, pets, missiles). It stops when the target object is
+ * destroyed or the function returns `undefined`.
+ *
+ * @example
+ * ```ts
+ * import { FollowTarget, Sprite } from '@blacklight/core';
+ *
+ * export class Pet extends Sprite {
+ *   create() {
+ *     const owner = this.scene.find('Player')!;
+ *     this.addBehavior(new FollowTarget({ target: owner, speed: 180, stopDistance: 40 }));
+ *   }
+ * }
+ * ```
+ */
 export class FollowTarget extends Behavior<FollowTargetOptions> {
   readonly name = 'followTarget';
   override readonly ownsMovement = true;
@@ -235,6 +349,7 @@ export class FollowTarget extends Behavior<FollowTargetOptions> {
   }
 }
 
+/** Options of {@link PathFollow} (`behaviors.pathFollow`). */
 export interface PathOptions {
   /** Points to visit, in scene coordinates. */
   points: Point[];
@@ -248,12 +363,27 @@ export interface PathOptions {
   onComplete?: (object: GameObject) => void;
 }
 
-/** Follows a list of points. */
+/**
+ * Follows a list of points at a constant speed (platforms, patrol routes, conveyor items).
+ *
+ * @example
+ * ```ts
+ * import { Sprite, behaviors } from '@blacklight/core';
+ *
+ * export class Platform extends Sprite {
+ *   static collision = { solid: true };
+ *   static behaviors = [
+ *     behaviors.pathFollow({ points: [{ x: 200, y: 400 }, { x: 600, y: 400 }], speed: 80, mode: 'pingpong' }),
+ *   ];
+ * }
+ * ```
+ */
 export class PathFollow extends Behavior<PathOptions> {
   readonly name = 'pathFollow';
   override readonly ownsMovement = true;
   /** Index of the point being approached. */
   target = 0;
+  /** `true` once a `'once'` path reached its last point. */
   finished = false;
   private direction = 1;
 
@@ -291,18 +421,33 @@ export class PathFollow extends Behavior<PathOptions> {
   }
 }
 
+/** Options of {@link Patrol} (`behaviors.patrol`). */
 export interface PatrolOptions {
   /** Distance to walk each way from the start, in px. */
   distance: number;
   /** px/s. */
   speed: number;
-  /** @defaultValue `'x'` */
+  /** Axis to walk along. @defaultValue `'x'` */
   axis?: 'x' | 'y';
   /** Pause at each end, ms. */
   wait?: number;
 }
 
-/** Walks back and forth, turning around at the ends or when blocked (guards, enemies). */
+/**
+ * Walks back and forth, turning around at the ends or when blocked (guards, enemies).
+ *
+ * @example
+ * ```ts
+ * import { Patrol, Sprite, behaviors } from '@blacklight/core';
+ *
+ * export class Guard extends Sprite {
+ *   static behaviors = [behaviors.patrol({ distance: 160, speed: 60, wait: 800 })];
+ *   update() {
+ *     this.flipX = this.behavior(Patrol)!.direction < 0;
+ *   }
+ * }
+ * ```
+ */
 export class Patrol extends Behavior<PatrolOptions> {
   readonly name = 'patrol';
   override readonly ownsMovement = true;
@@ -338,6 +483,7 @@ export class Patrol extends Behavior<PatrolOptions> {
   }
 }
 
+/** Options of {@link SineWave} (`behaviors.sineWave`). */
 export interface SineOptions {
   /** Property to oscillate. @defaultValue `'y'` */
   property?: 'x' | 'y' | 'alpha' | 'angle' | 'scale';
@@ -349,7 +495,19 @@ export interface SineOptions {
   phase?: number;
 }
 
-/** Oscillates a property (floating pickups, breathing UI). */
+/**
+ * Oscillates a property (floating pickups, breathing UI). It adds to the property, so the object
+ * can move by other means at the same time.
+ *
+ * @example
+ * ```ts
+ * import { Sprite, behaviors } from '@blacklight/core';
+ *
+ * export class Coin extends Sprite {
+ *   static behaviors = [behaviors.sineWave({ property: 'y', amplitude: 6, period: 1.2 })];
+ * }
+ * ```
+ */
 export class SineWave extends Behavior<SineOptions> {
   readonly name = 'sineWave';
   private time = 0;

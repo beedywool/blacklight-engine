@@ -13,17 +13,46 @@ function inHud(object: GameObject): boolean {
   return false;
 }
 
-/** Pointer position in the object's coordinate space (screen for HUD objects, world otherwise). */
-export function pointerFor(
-  object: GameObject,
-): Point & { down: boolean; pressed: boolean; released: boolean } {
+/**
+ * Pointer position in the object's coordinate space (screen for HUD objects, world otherwise),
+ * with the button state. Pointer behaviors use it; call it in custom behaviors that must work in
+ * both the world and the HUD.
+ *
+ * @example
+ * ```ts
+ * import { hitTest, pointerFor } from '@blacklight/core';
+ *
+ * // In update(): highlight while the pointer is over the button.
+ * const p = pointerFor(this);
+ * this.alpha = hitTest(this, p) ? 1 : 0.7;
+ * ```
+ */
+export function pointerFor(object: GameObject): Point & {
+  /** A button or finger is held. */
+  down: boolean;
+  /** Went down this step. */
+  pressed: boolean;
+  /** Went up this step. */
+  released: boolean;
+} {
   const p = object.scene.pointer;
   return inHud(object)
     ? { ...p.screen, down: p.down, pressed: p.pressed, released: p.released }
     : p;
 }
 
-/** `true` when `point` (scene space) is inside the object's hitbox, or its display bounds without one. */
+/**
+ * `true` when `point` (scene space) is inside the object's hitbox, or its display bounds without
+ * one.
+ *
+ * @example
+ * ```ts
+ * import { hitTest } from '@blacklight/core';
+ *
+ * // Inside a scene: the cards under the pointer.
+ * const under = this.findAll('card').filter((card) => hitTest(card, this.pointer));
+ * ```
+ */
 export function hitTest(object: GameObject, point: Point): boolean {
   const shape = object.worldShape();
   if (shape)
@@ -42,22 +71,47 @@ export function hitTest(object: GameObject, point: Point): boolean {
   return object.getLocalBounds().rectangle.contains(local.x, local.y);
 }
 
+/** Options of {@link PointerBehavior} (`behaviors.pointer`). */
 export interface PointerOptions {
+  /** A button or finger went down on the object. */
   onDown?: (object: GameObject) => void;
+  /** The button or finger that went down on the object went up (anywhere). */
   onUp?: (object: GameObject) => void;
   /** Down and up on the object. */
   onClick?: (object: GameObject) => void;
+  /** The pointer moved over the object. */
   onEnter?: (object: GameObject) => void;
+  /** The pointer left the object. */
   onLeave?: (object: GameObject) => void;
   /** Drag the object with the pointer. */
   draggable?: boolean;
 }
 
-/** Click, hover and drag on an object with mouse or touch. */
+/**
+ * Click, hover and drag on an object with mouse or touch.
+ *
+ * @example
+ * ```ts
+ * import { Sprite, behaviors } from '@blacklight/core';
+ *
+ * export class PlayButton extends Sprite {
+ *   static behaviors = [
+ *     behaviors.pointer({
+ *       onEnter: (button) => button.scale.set(1.1),
+ *       onLeave: (button) => button.scale.set(1),
+ *       onClick: (button) => button.game.goto('level-1'),
+ *     }),
+ *   ];
+ * }
+ * ```
+ */
 export class PointerBehavior extends Behavior<PointerOptions> {
   readonly name: string = 'pointer';
+  /** The pointer is over the object. */
   hovered = false;
+  /** A press started on the object and is not released yet. */
   pressed = false;
+  /** The object follows the pointer (`draggable`). */
   dragging = false;
   private grab: Point = { x: 0, y: 0 };
 
@@ -91,11 +145,15 @@ export class PointerBehavior extends Behavior<PointerOptions> {
     }
   }
 
+  /** Subclass hook: a drag started. */
   protected dragStart(_object: GameObject): void {}
+  /** Subclass hook: the dragged object moved with the pointer. */
   protected dragMove(_object: GameObject): void {}
+  /** Subclass hook: the drag ended. */
   protected dragEnd(_object: GameObject): void {}
 }
 
+/** Options of {@link DragAndDrop} (`behaviors.dragAndDrop`). */
 export interface DragDropOptions {
   /** Snap to a grid of this size, or to the nearest of these points. */
   snap?: number | Point[];
@@ -105,10 +163,24 @@ export interface DragDropOptions {
   bounds?: Rect;
   /** Objects with this name or tag accept drops; the object returns to its start otherwise. */
   dropOn?: string;
+  /** Called after a drop, with the accepting object (`undefined` without `dropOn` or a target). */
   onDrop?: (object: GameObject, target: GameObject | undefined) => void;
 }
 
-/** Drag objects and drop them on a grid, on snap points or on targets (inventories, puzzles). */
+/**
+ * Drag objects and drop them on a grid, on snap points or on targets (inventories, puzzles).
+ *
+ * @example
+ * ```ts
+ * import { Sprite, behaviors } from '@blacklight/core';
+ *
+ * export class Gem extends Sprite {
+ *   static behaviors = [
+ *     behaviors.dragAndDrop({ dropOn: 'slot', onDrop: (gem, slot) => slot && gem.destroy() }),
+ *   ];
+ * }
+ * ```
+ */
 export class DragAndDrop extends PointerBehavior {
   override readonly name = 'dragAndDrop';
   private start: Point = { x: 0, y: 0 };
@@ -163,13 +235,23 @@ export class DragAndDrop extends PointerBehavior {
   }
 }
 
+/** Options of {@link VirtualJoystick} (`behaviors.virtualJoystick`). */
 export interface JoystickOptions {
   /** Knob travel radius in virtual px. @defaultValue `90` */
   radius?: number;
   /** Screen area where a touch starts the joystick. @defaultValue the left half */
   zone?: Rect;
   /** Actions set while pushed. @defaultValue left/right/up/down */
-  actions?: { left?: ActionName; right?: ActionName; up?: ActionName; down?: ActionName };
+  actions?: {
+    /** @defaultValue `'left'` */
+    left?: ActionName;
+    /** @defaultValue `'right'` */
+    right?: ActionName;
+    /** @defaultValue `'up'` */
+    up?: ActionName;
+    /** @defaultValue `'down'` */
+    down?: ActionName;
+  };
   /** Player whose actions it drives. @defaultValue `1` */
   player?: number;
   /** Show the joystick at its rest position when not touched. @defaultValue `false` */
@@ -179,6 +261,16 @@ export interface JoystickOptions {
 /**
  * On-screen joystick for touch screens: put it on an object in the `'hud'` layer. It feeds the
  * same actions as the keyboard and gamepads, so movement behaviors work unchanged.
+ *
+ * @example
+ * ```ts
+ * import { Container, behaviors } from '@blacklight/core';
+ *
+ * export class TouchStick extends Container {
+ *   static behaviors = [behaviors.virtualJoystick({ radius: 80 })];
+ * }
+ * // In the scene: this.spawn(TouchStick, { layer: 'hud', x: 200, y: 900 });
+ * ```
  */
 export class VirtualJoystick extends Behavior<JoystickOptions> {
   readonly name = 'virtualJoystick';

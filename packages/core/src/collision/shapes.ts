@@ -12,30 +12,96 @@ export type HitboxSpec =
   | 'auto'
   | 'none'
   | 'pixel'
-  | { type: 'box'; x?: number; y?: number; width: number; height: number }
-  | { type: 'circle'; x?: number; y?: number; radius: number }
-  | { type: 'polygon'; points: [number, number][] };
+  | {
+      /** An axis-aligned rectangle (it turns with the object). */
+      type: 'box';
+      /** Left edge relative to the object's position. @defaultValue `0` */
+      x?: number;
+      /** Top edge relative to the object's position. @defaultValue `0` */
+      y?: number;
+      /** Width in virtual pixels. */
+      width: number;
+      /** Height in virtual pixels. */
+      height: number;
+    }
+  | {
+      /** A circle; scaling uses the larger of the two scale factors. */
+      type: 'circle';
+      /** Center relative to the object's position. @defaultValue `0` */
+      x?: number;
+      /** Center relative to the object's position. @defaultValue `0` */
+      y?: number;
+      /** Radius in virtual pixels. */
+      radius: number;
+    }
+  | {
+      /** A convex polygon. */
+      type: 'polygon';
+      /** Corners as `[x, y]` pairs relative to the object's position, in order. */
+      points: [number, number][];
+    };
 
-/** A shape in scene coordinates. */
+/**
+ * A collision shape placed in scene coordinates, as returned by `GameObject.worldShape()` and
+ * tested by {@link collide}.
+ */
 export type WorldShape =
-  | { kind: 'box'; rect: Rect }
-  | { kind: 'circle'; x: number; y: number; radius: number }
-  | { kind: 'polygon'; points: Point[] }
-  | { kind: 'pixel'; rect: Rect; mask: PixelMask; flipX: boolean; flipY: boolean };
+  | {
+      /** An axis-aligned rectangle (a box hitbox of an object without rotation). */
+      kind: 'box';
+      /** The rectangle in scene coordinates. */
+      rect: Rect;
+    }
+  | {
+      /** A circle. */
+      kind: 'circle';
+      /** Center in scene coordinates. */
+      x: number;
+      /** Center in scene coordinates. */
+      y: number;
+      /** Radius in virtual pixels, after scaling. */
+      radius: number;
+    }
+  | {
+      /** A convex polygon (also a rotated box). */
+      kind: 'polygon';
+      /** Corners in scene coordinates, in order. */
+      points: Point[];
+    }
+  | {
+      /** Opaque pixels of a sprite frame. */
+      kind: 'pixel';
+      /** Area the mask covers in scene coordinates. */
+      rect: Rect;
+      /** Which pixels are solid. */
+      mask: PixelMask;
+      /** Whether the mask is mirrored horizontally. */
+      flipX: boolean;
+      /** Whether the mask is mirrored vertically. */
+      flipY: boolean;
+    };
 
 /** Opaque pixels of a frame, one byte per pixel. */
 export interface PixelMask {
+  /** Width in pixels. */
   width: number;
+  /** Height in pixels. */
   height: number;
+  /** `width × height` bytes, row by row from the top left: 1 for solid, 0 for empty. */
   data: Uint8Array;
 }
 
 /** Pixel hitbox in local space; `flipX` / `flipY` mirror the mask (mirrored sprite frames). */
 export interface LocalPixelShape {
+  /** A pixel hitbox. */
   type: 'pixel';
+  /** Area the mask covers, relative to the object's position. */
   rect: Rect;
+  /** Which pixels are solid. */
   mask: PixelMask;
+  /** Whether the mask is mirrored horizontally. */
   flipX?: boolean;
+  /** Whether the mask is mirrored vertically. */
   flipY?: boolean;
 }
 
@@ -118,7 +184,19 @@ function boundsOfPoints(points: Point[]): Rect {
   return { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
 }
 
-/** Axis-aligned bounds of a world shape. */
+/**
+ * Axis-aligned bounds of a world shape: a quick rectangle for culling, spatial queries or drawing
+ * a debug outline.
+ *
+ * @example
+ * ```ts
+ * import { shapeBounds } from '@blacklight/core';
+ *
+ * const shape = enemy.worldShape();
+ * // Lowest point of the enemy, whatever its hitbox.
+ * const bottom = shape ? shapeBounds(shape).y + shapeBounds(shape).height : enemy.y;
+ * ```
+ */
 export function shapeBounds(shape: WorldShape): Rect {
   switch (shape.kind) {
     case 'box':
@@ -152,7 +230,9 @@ export function translateShape(shape: WorldShape, dx: number, dy: number): World
 export interface Penetration {
   /** Unit normal pointing from the second shape towards the first. */
   nx: number;
+  /** Vertical part of the unit normal (`-1` pushes `a` up). */
   ny: number;
+  /** How far to move `a` along the normal so the shapes stop overlapping, in virtual pixels. */
   depth: number;
 }
 
@@ -339,7 +419,17 @@ function pixelTest(a: WorldShape, b: WorldShape): Penetration | undefined {
 
 /**
  * Tests two shapes. Returns how to push `a` out of `b`, or `undefined` when they do not overlap.
- * Touching edges do not count as overlapping.
+ * Touching edges do not count as overlapping. Objects already do this through `overlaps()` and
+ * `onCollide`; call it for shapes of your own (an attack area, a trigger zone).
+ *
+ * @example
+ * ```ts
+ * import { collide } from '@blacklight/core';
+ *
+ * const area = { kind: 'circle' as const, x: player.x, y: player.y, radius: 48 };
+ * const target = enemy.worldShape();
+ * if (target && collide(area, target)) enemy.destroy();
+ * ```
  */
 export function collide(a: WorldShape, b: WorldShape): Penetration | undefined {
   if (a.kind === 'pixel' || b.kind === 'pixel') return pixelTest(a, b);

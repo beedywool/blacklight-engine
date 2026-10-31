@@ -38,10 +38,15 @@ export class EventBus<Events extends object = EventMap> {
     return off;
   }
 
+  /** Removes a listener added with {@link on}; calling the function `on` returned does the same. */
   off<K extends keyof Events>(name: K, listener: Listener<Events[K]>): void {
     this.listeners.get(name)?.delete(listener as Listener<never>);
   }
 
+  /**
+   * Calls every listener of `name` with the payload, in the order they were added. Events typed
+   * `void` take no payload.
+   */
   emit<K extends keyof Events>(
     name: K,
     ...payload: Events[K] extends void ? [] : [Events[K]]
@@ -68,10 +73,25 @@ export class EventBus<Events extends object = EventMap> {
 /**
  * Collects unsubscribe functions and runs them all at once. Scenes and game objects own one, so
  * their listeners and timers stop when they are destroyed.
+ *
+ * @example
+ * ```ts
+ * import { Disposables } from '@blacklight/core';
+ *
+ * const cleanup = new Disposables();
+ * cleanup.add(game.events.on('pause', showMenu));
+ * cleanup.add(() => window.removeEventListener('blur', onBlur));
+ * // Later, all at once:
+ * cleanup.dispose();
+ * ```
  */
 export class Disposables {
   private readonly items = new Set<Unsubscribe>();
 
+  /**
+   * Keeps `dispose` until {@link dispose} runs. Returns a function that runs it now and forgets
+   * it.
+   */
   add(dispose: Unsubscribe): Unsubscribe {
     this.items.add(dispose);
     return () => {
@@ -80,6 +100,7 @@ export class Disposables {
     };
   }
 
+  /** Runs every collected function once and empties the collection. */
   dispose(): void {
     const items = [...this.items];
     this.items.clear();

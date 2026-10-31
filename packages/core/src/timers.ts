@@ -61,6 +61,7 @@ export class Timers {
     this.list = [];
   }
 
+  /** Number of pending timers. */
   get size(): number {
     return this.list.length;
   }

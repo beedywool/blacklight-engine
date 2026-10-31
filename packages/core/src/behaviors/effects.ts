@@ -1,6 +1,7 @@
 import type { GameObject } from '../objects/game-object';
 import { Behavior } from './behavior';
 
+/** Options of {@link Flash} (`behaviors.flash`). */
 export interface FlashOptions {
   /** On/off period in ms. @defaultValue `80` */
   interval?: number;
@@ -8,7 +9,22 @@ export interface FlashOptions {
   autoStart?: number;
 }
 
-/** Blinks the object (hit invulnerability, warnings). Call `start(ms)`. */
+/**
+ * Blinks the object (hit invulnerability, warnings). Call `start(ms)`.
+ *
+ * @example
+ * ```ts
+ * import { Flash, Sprite, behaviors } from '@blacklight/core';
+ *
+ * export class Player extends Sprite {
+ *   static behaviors = [behaviors.flash({ interval: 60 })];
+ *   hurt() {
+ *     const flash = this.behavior(Flash)!;
+ *     if (!flash.flashing) flash.start(1500);
+ *   }
+ * }
+ * ```
+ */
 export class Flash extends Behavior<FlashOptions> {
   readonly name = 'flash';
   /** Remaining flash time in ms. */
@@ -26,6 +42,7 @@ export class Flash extends Behavior<FlashOptions> {
     this.clock = 0;
   }
 
+  /** `true` while the object blinks. */
   get flashing(): boolean {
     return this.remaining > 0;
   }
@@ -39,17 +56,31 @@ export class Flash extends Behavior<FlashOptions> {
   }
 }
 
+/** Options of {@link Fade} (`behaviors.fade`); durations in ms. */
 export interface FadeOptions {
   /** Fade in over this many ms when attached. */
   fadeIn?: number;
   /** Then wait this long (ms) and fade out over `fadeOut` ms. */
   wait?: number;
+  /** Fade out over this many ms; omitted, the object only fades out on `fadeOut()`. */
   fadeOut?: number;
   /** Destroy the object once faded out; `false` keeps it, invisible, for a later `fadeIn()`. @defaultValue `true` */
   destroy?: boolean;
 }
 
-/** Fades the object in and/or out (popups, damage numbers, ghosts). */
+/**
+ * Fades the object in and/or out (popups, damage numbers, ghosts).
+ *
+ * @example
+ * ```ts
+ * import { Text, behaviors } from '@blacklight/core';
+ *
+ * // A damage number that appears, stays half a second and disappears.
+ * export class DamageNumber extends Text {
+ *   static behaviors = [behaviors.fade({ fadeIn: 100, wait: 500, fadeOut: 300 })];
+ * }
+ * ```
+ */
 export class Fade extends Behavior<FadeOptions> {
   readonly name = 'fade';
   private time = 0;

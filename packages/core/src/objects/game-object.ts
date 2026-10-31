@@ -28,12 +28,26 @@ export type SpawnProps<T> = {
       : K extends 'scale'
         ? never
         : K
-  ]?: T[K] extends Vector2 ? { x: number; y: number } : T[K];
+  ]?: T[K] extends Vector2
+    ? {
+        /** Horizontal component. */
+        x: number;
+        /** Vertical component. */
+        y: number;
+      }
+    : T[K];
 } & {
   /** Scene layer to add the object to. */
   layer?: string;
   /** Uniform scale or per-axis scale. */
-  scale?: number | { x: number; y: number };
+  scale?:
+    | number
+    | {
+        /** Horizontal scale. */
+        x: number;
+        /** Vertical scale. */
+        y: number;
+      };
 };
 
 /** Class of a game object, as passed to `spawn`. */
@@ -87,6 +101,7 @@ export class GameObject extends PixiContainer {
   declare private _ly: number;
   /** Position at the start of the current step, for display interpolation. */
   declare prevX: number;
+  /** Position at the start of the current step, for display interpolation. */
   declare prevY: number;
 
   /** Unique id within the scene, stable across snapshots. */
@@ -97,14 +112,21 @@ export class GameObject extends PixiContainer {
   readonly velocity = new Vector2();
   /** Local player number (1–8) whose input `this.input` reads. */
   player = 1;
+  /** Tags tested by `is()`, starting from `static tags`; add or remove them at run time. */
   readonly tags = new Set<string>();
+  /** Attached behaviors, in update order. Use `addBehavior` / `removeBehavior` to change them. */
   readonly behaviors: AnyBehavior[] = [];
+  /** Collision shape of this instance, from `static hitbox`; change it at run time (a crouch). */
   hitbox: HitboxSpec;
+  /** Collision layer, mask and solidity of this instance, a copy of `static collision`. */
   collision: CollisionSpec;
   /** Timers bound to the object: they stop when it is destroyed. */
   readonly timers = new Timers();
+  /** Cleanups run when the object is destroyed (listeners added with `listen()` land here). */
   readonly disposables = new Disposables();
+  /** Scene the object lives in, set before `create()`. */
   scene!: Scene<never>;
+  /** The running game, set before `create()`. */
   game!: Game;
 
   constructor() {

@@ -11,11 +11,26 @@ import type { HitboxSpec } from '../collision/shapes';
 import type { AssetKey } from '../register';
 import { GameObject } from './game-object';
 
-/** An empty object that groups others: move, rotate or fade them together. */
+/**
+ * An empty object that groups others: move, rotate or fade them together.
+ *
+ * @example
+ * ```ts
+ * import { Container } from '@blacklight/core';
+ *
+ * // Inside a scene: a ship made of parts (the game's Hull and Turret objects) that turn together.
+ * const ship = this.spawn(Container, { x: 400, y: 300 });
+ * ship.addChild(this.spawn(Hull), this.spawn(Turret));
+ * ship.rotation = Math.PI / 4;
+ * ```
+ */
 export class Container extends GameObject {}
 
+/** Options of the {@link Text} constructor; the same fields can be passed to `spawn(Text, …)`. */
 export interface TextOptions {
+  /** Initial text. @defaultValue `''` */
   text?: string;
+  /** Pixi text style: `fontFamily`, `fontSize`, `fill`, `align`… */
   style?: TextStyleOptions;
   /** Draw from a bitmap font (an `.fnt` file's family, or generated from a web font). */
   bitmap?: boolean;
@@ -34,6 +49,7 @@ export interface TextOptions {
 export class Text extends GameObject {
   /** Use bitmap fonts for every instance of the class. */
   static bitmap = false;
+  /** The displayed Pixi text, replaced when `bitmap` changes. */
   view: PixiText | BitmapText;
 
   constructor(options: TextOptions = {}) {
@@ -61,6 +77,7 @@ export class Text extends GameObject {
     old.destroy();
   }
 
+  /** Displayed text; numbers are converted to strings. */
   get text(): string {
     return this.view.text;
   }
@@ -68,6 +85,7 @@ export class Text extends GameObject {
     this.view.text = String(value);
   }
 
+  /** Pixi text style (`fontFamily`, `fontSize`, `fill`…); assign an object to change several. */
   get style() {
     return this.view.style;
   }
@@ -107,6 +125,7 @@ export class Text extends GameObject {
  */
 export class Graphics extends GameObject {
   static override hitbox: HitboxSpec = 'auto';
+  /** Pixi graphics to draw on (`rect`, `circle`, `fill`, `stroke`…). */
   readonly draw = new PixiGraphics();
 
   constructor() {
@@ -129,9 +148,13 @@ export class Graphics extends GameObject {
 export class Video extends GameObject {
   /** Video asset key or path; several formats of the same name are tried in order. */
   source: AssetKey | undefined;
+  /** Starts over at the end. Set it before the video loads. */
   loop = false;
+  /** Plays without sound; browsers only autoplay muted videos. Set it before the video loads. */
   muted = true;
+  /** The Pixi sprite showing the video frames. */
   readonly view = new PixiSprite();
+  /** The underlying `<video>` element once loaded, for its time, volume or events. */
   element: HTMLVideoElement | undefined;
 
   constructor() {
@@ -192,14 +215,17 @@ export class Video extends GameObject {
     this.view.texture = Texture.from(element);
   }
 
+  /** Starts or resumes playback; the promise rejects when the browser refuses (unmuted autoplay). */
   play(): Promise<void> {
     return this.element?.play() ?? Promise.resolve();
   }
 
+  /** Pauses playback at the current time. */
   pause(): void {
     this.element?.pause();
   }
 
+  /** `true` once a non-looping video reached its end. */
   get ended(): boolean {
     return this.element?.ended ?? false;
   }

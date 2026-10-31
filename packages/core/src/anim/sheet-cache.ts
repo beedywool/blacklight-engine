@@ -1,4 +1,4 @@
-import { Rectangle, Texture } from 'pixi.js';
+import { Rectangle, Texture, type TextureSource } from 'pixi.js';
 import {
   assetKey,
   IMAGE_EXTENSIONS,
@@ -18,9 +18,14 @@ import { gridSheet, isAsepriteJson, parseAseprite, parseGridName, type Sheet } f
 
 /** A sprite's frames ready to display. */
 export interface LoadedSheet {
+  /** Frames, tags and slices of the source. */
   sheet: Sheet;
-  textures: Texture[];
+  /** One texture per sheet frame, in sheet order. */
+  // The source's options are spelled out: Pixi's default for them is `any`.
+  textures: Texture<TextureSource<Record<string, unknown>>>[];
+  /** Playable animations by name. */
   animations: Map<string, ResolvedAnimation>;
+  /** Animation played on spawn (the file's `default`, else its first animation). */
   defaultAnimation: string | undefined;
   /** Pixel masks, computed on first use. */
   mask(frame: number): PixelMask | undefined;
@@ -47,7 +52,17 @@ function baseDirOf(type: typeof GameObject): string {
 
 /**
  * Builds and caches the sheets of sprite classes. Preloading a class loads its files; creating a
- * sprite then reads the prepared sheet synchronously.
+ * sprite then reads the prepared sheet synchronously. The game owns one as `game.sheets` and
+ * preloads the sprites of each scene; read it to show a sprite's frames elsewhere (a menu icon).
+ *
+ * @example
+ * ```ts
+ * import { Sprite as PixiSprite } from 'pixi.js';
+ *
+ * // Inside a scene that uses Player: its first frame as a HUD icon.
+ * const sheet = this.game.sheets.get(Player);
+ * if (sheet) this.hud.addChild(new PixiSprite(sheet.textures[0]));
+ * ```
  */
 export class SheetCache {
   private readonly sheets = new Map<string, LoadedSheet>();

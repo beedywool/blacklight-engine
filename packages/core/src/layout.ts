@@ -7,7 +7,9 @@ import type { Scene } from './scene';
 export interface LayoutObject {
   /** Object name (PascalCase folder name). */
   type: ObjectName | (string & {});
+  /** Horizontal position in virtual pixels. */
   x: number;
+  /** Vertical position in virtual pixels. */
   y: number;
   /** Scene layer; the scene's default layer when omitted. */
   layer?: string;
@@ -31,11 +33,29 @@ export interface LayoutObject {
  * ```
  */
 export interface SceneLayout {
+  /** Path or URL of the JSON Schema, for editors; ignored by the engine. */
   $schema?: string;
+  /** Objects to spawn, in order (later ones are drawn on top within a layer). */
   objects: LayoutObject[];
 }
 
-/** Spawns the objects of a layout in order; see {@link Scene.load}. */
+/**
+ * Spawns the objects of a layout in order and returns them; `scene.load(layout)` calls it. Use it
+ * directly to add a layout to a scene at run time (a room of a procedurally assembled level).
+ *
+ * @throws Error when `layout` is not the content of a `.layout.json` file or an entry lacks
+ *   `type`, `x` or `y`.
+ *
+ * @example
+ * ```ts
+ * import { loadLayout } from '@blacklight/core';
+ * import room from './rooms/treasure.layout.json';
+ *
+ * // Inside a scene:
+ * const objects = loadLayout(this, room);
+ * for (const object of objects) object.x += 1920; // place the room to the right
+ * ```
+ */
 export function loadLayout(scene: Scene<never>, layout: SceneLayout): GameObject[] {
   if (!layout || !Array.isArray(layout.objects)) {
     throw new Error(

@@ -28,7 +28,10 @@ export abstract class Behavior<Options extends object = object, O extends GameOb
   /** The object it is attached to, set by `attach`. */
   object!: O;
 
-  constructor(readonly options: Options) {}
+  constructor(
+    /** Options given to the factory (`behaviors.platformer({ … })`); read them in `update()`. */
+    readonly options: Options,
+  ) {}
 
   /** Called when the behavior is attached, after the object's properties are set. */
   attach(object: O): void {
@@ -44,11 +47,17 @@ export abstract class Behavior<Options extends object = object, O extends GameOb
 
 /** Any behavior, whatever its options and object type. */
 export interface AnyBehavior {
+  /** Name used by `object.behavior('name')`. */
   readonly name: string;
+  /** Disabled behaviors are not updated. */
   enabled: boolean;
+  /** The behavior moves the object itself, so the engine does not apply its `velocity`. */
   readonly ownsMovement: boolean;
+  /** Called when the behavior is attached to an object. */
   attach(object: never): void;
+  /** Called at every fixed step, before the object's own `update()`; `dt` is in seconds. */
   update(object: never, dt: number): void;
+  /** Called when the behavior is removed or the object destroyed. */
   detach(object: never): void;
 }
 

@@ -2,16 +2,19 @@ import type { ResolutionConfig } from './config';
 
 /** Where the design area lands on screen. All lengths in CSS pixels unless noted. */
 export interface Viewport {
-  /** Size of the canvas element. */
+  /** Width of the canvas element. */
   canvasWidth: number;
+  /** Height of the canvas element. */
   canvasHeight: number;
   /** CSS pixels per virtual pixel. */
   scale: number;
-  /** Position of the design area's top-left corner inside the canvas. */
+  /** Horizontal position of the design area's top-left corner inside the canvas. */
   originX: number;
+  /** Vertical position of the design area's top-left corner inside the canvas. */
   originY: number;
-  /** Visible area in virtual pixels (larger than the design area in `extend` mode). */
+  /** Visible width in virtual pixels (larger than the design width in `extend` mode). */
   visibleWidth: number;
+  /** Visible height in virtual pixels (larger than the design height in `extend` mode). */
   visibleHeight: number;
 }
 

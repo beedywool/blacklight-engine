@@ -4,6 +4,7 @@ import type { Sheet } from './sheets';
 
 /** Per-frame overrides of hitbox and pivot. */
 export interface FrameOverride {
+  /** Hitbox while this frame shows (an attack frame with a longer reach). */
   hitbox?: HitboxSpec;
   /** Pivot in frame pixels (the point placed at the object's position). */
   pivot?: Point;
@@ -15,10 +16,18 @@ export interface AnimationDef {
    * Frames: an Aseprite tag name, frame indices, or an inclusive range. Omitted: the Aseprite tag
    * with the animation's name, or every frame.
    */
-  frames?: string | number[] | { from: number; to: number };
+  frames?:
+    | string
+    | number[]
+    | {
+        /** First sheet frame index, included. */
+        from: number;
+        /** Last sheet frame index, included. */
+        to: number;
+      };
   /** Frames per second. Omitted: Aseprite frame durations, else the file's `fps`. */
   fps?: number;
-  /** @defaultValue `true` */
+  /** Starts over after the last frame. @defaultValue `true` */
   loop?: boolean;
   /** Plays forward then backward. */
   pingPong?: boolean;
@@ -28,7 +37,9 @@ export interface AnimationDef {
   next?: string;
   /** Events fired when a frame starts: frame index within this animation → event name(s). */
   events?: Record<string, string | string[]>;
+  /** Hitbox while this animation plays, instead of the file's or the object's. */
   hitbox?: HitboxSpec;
+  /** Pivot of this animation's frames, in frame pixels. */
   pivot?: Point;
   /** Overrides for some frames, by frame index within this animation. */
   frameOverrides?: Record<string, FrameOverride>;
@@ -51,6 +62,7 @@ export interface AnimationDef {
  * ```
  */
 export interface AnimationFile {
+  /** Path or URL of the JSON Schema, for editors; ignored by the engine. */
   $schema?: string;
   /**
    * Frame source relative to the object folder: an Aseprite JSON (`player.aseprite.json`), a grid
@@ -63,7 +75,9 @@ export interface AnimationFile {
   default?: string;
   /** Pivot for every frame, in frame pixels. Defaults to the frame center. */
   pivot?: Point;
+  /** Hitbox for every animation that does not set its own. */
   hitbox?: HitboxSpec;
+  /** Animations by name (`idle`, `walk-left`…), the names `play()` takes. */
   animations: Record<string, AnimationDef>;
 }
 
@@ -73,27 +87,50 @@ export interface AnimationFile {
  * `static animations`; validated against the schema in the editor.
  */
 export type AnimationFileInput = Omit<AnimationFile, 'hitbox' | 'animations'> & {
+  /** {@link AnimationFile.hitbox}, checked when the sprite loads. */
   hitbox?: unknown;
+  /** {@link AnimationFile.animations}, hitboxes checked when the sprite loads. */
   animations: Record<
     string,
     Omit<AnimationDef, 'hitbox' | 'frameOverrides'> & {
+      /** {@link AnimationDef.hitbox}, checked when the sprite loads. */
       hitbox?: unknown;
-      frameOverrides?: Record<string, { hitbox?: unknown; pivot?: Point }>;
+      /** {@link AnimationDef.frameOverrides}, hitboxes checked when the sprite loads. */
+      frameOverrides?: Record<
+        string,
+        {
+          /** {@link FrameOverride.hitbox}, checked when the sprite loads. */
+          hitbox?: unknown;
+          /** {@link FrameOverride.pivot}. */
+          pivot?: Point;
+        }
+      >;
     }
   >;
 };
 
+/**
+ * An animation ready to play: frames, durations and events resolved against the sheet by
+ * {@link resolveAnimations}. {@link Animator} plays them.
+ */
 export interface ResolvedAnimation {
+  /** Animation name from the file. */
   name: string;
   /** Sheet frame index of each step of the animation. */
   frames: number[];
   /** Duration of each step in ms. */
   durations: number[];
+  /** Starts over after the last frame. */
   loop: boolean;
+  /** Animation played when this one ends. */
   next?: string;
+  /** Event names fired when a step starts, by step index. */
   events: Map<number, string[]>;
+  /** Hitbox and pivot overrides, by step index. */
   overrides: Map<number, FrameOverride>;
+  /** Hitbox of the whole animation (the animation's or the file's). */
   hitbox?: HitboxSpec;
+  /** Pivot of the whole animation (the animation's or the file's), in frame pixels. */
   pivot?: Point;
 }
 
@@ -107,7 +144,23 @@ const MIRROR: Record<string, string> = {
   downright: 'downleft',
 };
 
-/** Builds playable animations from an animation file and its parsed sheet. */
+/**
+ * Builds playable animations from an animation file and its parsed sheet: picks the frames of
+ * each animation (Aseprite tag, indices or range), applies reverse and ping-pong and computes the
+ * frame durations. Sprites do this when they load; call it to play `.anim.json` files on
+ * something that is not a sprite.
+ *
+ * @throws Error when an animation names a tag the sheet lacks or a frame outside the sheet.
+ *
+ * @example
+ * ```ts
+ * import { gridSheet, resolveAnimations } from '@blacklight/core';
+ *
+ * const sheet = gridSheet({ width: 64, height: 64, spacing: 0 }, 256, 64); // 4 frames
+ * const animations = resolveAnimations({ animations: { spin: { fps: 12 } } }, sheet);
+ * animations.get('spin')!.frames; // [0, 1, 2, 3]
+ * ```
+ */
 export function resolveAnimations(
   file: AnimationFile,
   sheet: Sheet,
@@ -190,13 +243,28 @@ function pingPong(indices: number[]): number[] {
 /**
  * Finds what to play for `name` when it does not exist: the same action facing a near direction
  * (`walk-upleft` → `walk-up`), its horizontal mirror (`walk-left` → `walk-right` flipped), the
- * action without direction (`walk`), then `fallback`.
+ * action without direction (`walk`), then `fallback`. Returns `undefined` when nothing fits.
+ *
+ * @example
+ * ```ts
+ * import { findFallback } from '@blacklight/core';
+ *
+ * const names = new Set(['idle', 'walk-right']);
+ * findFallback('walk-left', (n) => names.has(n), 'idle'); // { name: 'walk-right', flipX: true }
+ * ```
  */
 export function findFallback(
   name: string,
   has: (name: string) => boolean,
   fallback: string | undefined,
-): { name: string; flipX: boolean } | undefined {
+):
+  | {
+      /** Animation to play. */
+      name: string;
+      /** Whether to mirror it horizontally. */
+      flipX: boolean;
+    }
+  | undefined {
   if (has(name)) return { name, flipX: false };
   const dash = name.lastIndexOf('-');
   const base = dash > 0 ? name.slice(0, dash) : name;
@@ -228,31 +296,56 @@ export interface AnimatorCallbacks {
 
 /**
  * Plays resolved animations on the fixed step. Pure logic, no rendering: the sprite reads
- * `sheetFrame` and `flipX` after each step.
+ * `sheetFrame` and `flipX` after each step. Every {@link Sprite} with a sheet has one as
+ * `sprite.animator`; games mostly use it for `speed` and `paused`.
+ *
+ * @example
+ * ```ts
+ * import { Animator, gridSheet, resolveAnimations } from '@blacklight/core';
+ *
+ * // Drive a plain Pixi sprite from an .anim.json, outside the scene objects.
+ * const sheet = gridSheet({ width: 64, height: 64, spacing: 0 }, 512, 64);
+ * const animations = resolveAnimations({ animations: { idle: { frames: { from: 0, to: 7 } } } }, sheet);
+ * const animator = new Animator(animations, {
+ *   frame: (frame) => (pixiSprite.texture = textures[frame]!),
+ *   end: () => {},
+ * });
+ * animator.play('idle');
+ * game.events.on('step', () => animator.step(1000 / 60));
+ * ```
  */
 export class Animator {
+  /** The playing animation, `undefined` before the first `play()`. */
   current: ResolvedAnimation | undefined;
   /** Index within the current animation. */
   index = 0;
+  /** Time spent on the current step, in ms. */
   elapsed = 0;
+  /** The animation plays mirrored (a fallback such as `walk-left` → `walk-right`). */
   flipX = false;
+  /** A non-looping animation reached its end; `play()` or `queue()` starts another. */
   finished = false;
   /** Speed multiplier. */
   speed = 1;
+  /** Holds the current frame; `step()` does nothing while `true`. */
   paused = false;
   private queued: string[] = [];
   private readonly warned = new Set<string>();
 
   constructor(
+    /** Animations by name, from {@link resolveAnimations}. */
     readonly animations: Map<string, ResolvedAnimation>,
     private readonly callbacks: AnimatorCallbacks,
+    /** Animation played when a requested one has no fallback; the first one by default. */
     readonly defaultName: string | undefined = animations.keys().next().value,
   ) {}
 
+  /** Name of the playing animation. */
   get name(): string | undefined {
     return this.current?.name;
   }
 
+  /** Sheet frame index shown now (0 before the first `play()`). */
   get sheetFrame(): number {
     return this.current?.frames[this.index] ?? 0;
   }

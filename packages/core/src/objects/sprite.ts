@@ -2,7 +2,7 @@ import { Sprite as PixiSprite, type Texture } from 'pixi.js';
 import { Animator, type AnimationFileInput } from '../anim/animator';
 import type { LoadedSheet } from '../anim/sheet-cache';
 import { IMAGE_EXTENSIONS } from '../assets';
-import type { HitboxSpec } from '../collision/shapes';
+import type { HitboxSpec, LocalPixelShape } from '../collision/shapes';
 import type { Unsubscribe } from '../events';
 import type { AnimationName, AssetKey } from '../register';
 import { GameObject } from './game-object';
@@ -141,6 +141,7 @@ export class Sprite extends GameObject {
     this.applyFlip();
   }
 
+  /** Mirrors the sprite vertically. */
   get flipY(): boolean {
     return this.flip.y;
   }
@@ -232,7 +233,9 @@ export class Sprite extends GameObject {
     return { type: 'box', x: left, y: top, width: frame.width, height: frame.height };
   }
 
-  protected override pixelHitbox() {
+  /** The opaque pixels of the current frame, placed like {@link Sprite.autoHitbox}. */
+  protected override pixelHitbox():
+    Exclude<HitboxSpec, 'auto' | 'none' | 'pixel'> | LocalPixelShape | undefined {
     const box = this.autoHitbox();
     const mask = this.loaded?.mask(this.animator?.sheetFrame ?? 0);
     if (!box || box.type !== 'box' || !mask) return box;
@@ -272,5 +275,21 @@ function mirror(spec: HitboxSpec, flipX: boolean, flipY: boolean): HitboxSpec {
   }
 }
 
-/** Same as {@link Sprite}, which already plays animations; the name reads better for animated objects. */
+/**
+ * Same as {@link Sprite}, which already plays animations; the name reads better for animated
+ * objects.
+ *
+ * @example
+ * ```ts
+ * import { AnimatedSprite } from '@blacklight/core';
+ * import anims from './bat.anim.json';
+ *
+ * export class Bat extends AnimatedSprite {
+ *   static animations = anims;
+ *   create() {
+ *     this.play('fly');
+ *   }
+ * }
+ * ```
+ */
 export class AnimatedSprite extends Sprite {}

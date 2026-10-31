@@ -1,11 +1,17 @@
 import type { Point, Rect } from './math';
 import type { Random } from './random';
 
+/** Options of {@link Camera.follow}. */
 export interface FollowOptions {
   /** 0–1: share of the distance covered each step (1 = locked). @defaultValue `0.15` */
   lerp?: number;
   /** Area around the center where the target moves without moving the camera. */
-  deadzone?: { width: number; height: number };
+  deadzone?: {
+    /** Width of the dead zone in world pixels. */
+    width: number;
+    /** Height of the dead zone in world pixels. */
+    height: number;
+  };
   /** Offset added to the target position (look ahead, look up). */
   offset?: Point;
 }
@@ -29,9 +35,13 @@ interface Followable {
  * ```
  */
 export class Camera {
+  /** World x at the center of the view. */
   x: number;
+  /** World y at the center of the view. */
   y: number;
+  /** Magnification: 2 shows half as much of the world, twice as big. */
   zoom = 1;
+  /** View rotation in radians. */
   rotation = 0;
   /** World area the view stays inside. */
   bounds: Rect | undefined;
@@ -46,7 +56,7 @@ export class Camera {
   private shakeLeft = 0;
   private shakeTotal = 0;
   /** Current shake offset, applied when drawing. */
-  readonly shakeOffset = { x: 0, y: 0 };
+  readonly shakeOffset: Point = { x: 0, y: 0 };
 
   constructor(
     /** Design size: the view size in world pixels at zoom 1 is this times the viewport fraction. */
@@ -64,6 +74,7 @@ export class Camera {
   get viewWidth(): number {
     return (this.visible().width * this.viewport.width) / this.zoom;
   }
+  /** View height in world pixels. */
   get viewHeight(): number {
     return (this.visible().height * this.viewport.height) / this.zoom;
   }
@@ -94,6 +105,7 @@ export class Camera {
     return this.followOptions;
   }
 
+  /** Stops following; the camera stays where it is. */
   unfollow(): void {
     this.target = undefined;
   }

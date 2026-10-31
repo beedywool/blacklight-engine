@@ -430,37 +430,70 @@ function hypot(...values: number[]): number {
  * ```
  */
 export const DMath = Object.freeze({
+  /** π, the same value as `Math.PI`. */
   PI,
+  /** Euler's number, the same value as `Math.E`. */
   E: 2.718281828459045,
+  /** Natural logarithm of 2. */
   LN2: 0.6931471805599453,
+  /** Natural logarithm of 10. */
   LN10: 2.302585092994046,
+  /** Base-2 logarithm of e. */
   LOG2E: 1.4426950408889634,
+  /** Base-10 logarithm of e. */
   LOG10E: 0.4342944819032518,
+  /** Square root of 2. */
   SQRT2: 1.4142135623730951,
+  /** Square root of 1/2. */
   SQRT1_2: 0.7071067811865476,
+  /** Sine of an angle in radians. */
   sin,
+  /** Cosine of an angle in radians. */
   cos,
+  /** Tangent of an angle in radians. */
   tan,
+  /** Arcsine in radians, in [-π/2, π/2]. */
   asin,
+  /** Arccosine in radians, in [0, π]. */
   acos,
+  /** Arctangent in radians, in (-π/2, π/2). */
   atan,
+  /** Angle of the point (x, y) from the x axis in radians, in (-π, π]; arguments are `(y, x)` like `Math.atan2`. */
   atan2,
+  /** e raised to a power. */
   exp,
+  /** Natural logarithm. */
   log,
+  /** Base-2 logarithm. */
   log2,
+  /** Base-10 logarithm. */
   log10,
+  /** `base` raised to `exponent`. */
   pow,
+  /** Cube root. */
   cbrt,
+  /** Square root of the sum of the squares of its arguments (vector length), without overflow. */
   hypot,
+  /** Square root (`Math.sqrt`, exact by specification). */
   sqrt: Math.sqrt,
+  /** Absolute value (`Math.abs`). */
   abs: Math.abs,
+  /** Largest integer less than or equal to the value (`Math.floor`). */
   floor: Math.floor,
+  /** Smallest integer greater than or equal to the value (`Math.ceil`). */
   ceil: Math.ceil,
+  /** Nearest integer, halves rounded up (`Math.round`). */
   round: Math.round,
+  /** Integer part, fraction removed (`Math.trunc`). */
   trunc: Math.trunc,
+  /** `1`, `-1`, `0` or `-0` depending on the sign (`Math.sign`). */
   sign: Math.sign,
+  /** Smallest argument (`Math.min`). */
   min: Math.min,
+  /** Largest argument (`Math.max`). */
   max: Math.max,
+  /** Nearest 32-bit float (`Math.fround`). */
   fround: Math.fround,
+  /** 32-bit integer multiplication (`Math.imul`). */
   imul: Math.imul,
 });

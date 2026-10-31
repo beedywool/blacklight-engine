@@ -2,16 +2,35 @@ import type { GameObject } from '../objects/game-object';
 import { boundsOf } from './movement';
 import { Behavior } from './behavior';
 
+/** Options of {@link AnchorToScreen} (`behaviors.anchorToScreen`). */
 export interface AnchorOptions {
   /** Horizontal screen position, 0 (left) to 1 (right). */
   x: number;
   /** Vertical screen position, 0 (top) to 1 (bottom). */
   y: number;
   /** Offset in virtual px. */
-  offset?: { x: number; y: number };
+  offset?: {
+    /** Horizontal offset in virtual px. */
+    x: number;
+    /** Vertical offset in virtual px. */
+    y: number;
+  };
 }
 
-/** Keeps a world object at a fixed place on screen whatever the camera does. */
+/**
+ * Keeps a world object at a fixed place on screen whatever the camera does. Objects in the
+ * `'hud'` layer are already fixed; use it for world objects that must stay in view (a boss health
+ * bar that still collides, a pointer target).
+ *
+ * @example
+ * ```ts
+ * import { Sprite, behaviors } from '@blacklight/core';
+ *
+ * export class Compass extends Sprite {
+ *   static behaviors = [behaviors.anchorToScreen({ x: 1, y: 0, offset: { x: -48, y: 48 } })];
+ * }
+ * ```
+ */
 export class AnchorToScreen extends Behavior<AnchorOptions> {
   readonly name = 'anchorToScreen';
   override readonly ownsMovement = true;
@@ -26,8 +45,22 @@ export class AnchorToScreen extends Behavior<AnchorOptions> {
   }
 }
 
-/** Leaving one edge of the scene brings the object back from the opposite edge (Asteroids). */
-export class WrapAroundScreen extends Behavior<{ margin?: number }> {
+/**
+ * Leaving one edge of the scene brings the object back from the opposite edge (Asteroids).
+ *
+ * @example
+ * ```ts
+ * import { Sprite, behaviors } from '@blacklight/core';
+ *
+ * export class Asteroid extends Sprite {
+ *   static behaviors = [behaviors.bounce({ speed: 90, edges: false }), behaviors.wrapAroundScreen()];
+ * }
+ * ```
+ */
+export class WrapAroundScreen extends Behavior<{
+  /** Distance in px beyond the edge before the object wraps. @defaultValue `0` */
+  margin?: number;
+}> {
   readonly name = 'wrapAroundScreen';
 
   override update(object: GameObject): void {
@@ -44,8 +77,23 @@ export class WrapAroundScreen extends Behavior<{ margin?: number }> {
   }
 }
 
-/** Destroys the object once it is fully outside the scene (plus `margin` px). */
-export class DestroyOutsideLayout extends Behavior<{ margin?: number }> {
+/**
+ * Destroys the object once it is fully outside the scene (plus `margin` px), so stray bullets and
+ * debris do not pile up.
+ *
+ * @example
+ * ```ts
+ * import { Sprite, behaviors } from '@blacklight/core';
+ *
+ * export class Laser extends Sprite {
+ *   static behaviors = [behaviors.bullet({ speed: 900 }), behaviors.destroyOutsideLayout()];
+ * }
+ * ```
+ */
+export class DestroyOutsideLayout extends Behavior<{
+  /** Distance in px beyond the scene bounds before the object is destroyed. @defaultValue `64` */
+  margin?: number;
+}> {
   readonly name = 'destroyOutsideLayout';
 
   override update(object: GameObject): void {

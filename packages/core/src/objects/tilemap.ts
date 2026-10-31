@@ -1,4 +1,5 @@
 import { Container as PixiContainer, Rectangle, Sprite as PixiSprite, Texture } from 'pixi.js';
+import type { Cell } from '../behaviors/grid';
 import type { SolidProvider } from '../collision/world';
 import { toWorld, type WorldShape } from '../collision/shapes';
 import type { Rect } from '../math';
@@ -10,10 +11,13 @@ import { GameObject } from './game-object';
 export interface Tileset {
   /** Tileset image (asset key or path). */
   image: AssetKey;
+  /** Width of one tile in pixels. */
   tileWidth: number;
+  /** Height of one tile in pixels. */
   tileHeight: number;
-  /** Pixels around the image and between tiles. */
+  /** Pixels around the image. @defaultValue `0` */
   margin?: number;
+  /** Pixels between tiles. @defaultValue `0` */
   spacing?: number;
   /** Solid tiles. Omitted: every tile is solid when the layer is `solid`. */
   solid?: number[];
@@ -22,14 +26,24 @@ export interface Tileset {
   /** Non-rectangular solid tiles (slopes): polygon points in tile pixels. */
   shapes?: Record<number, [number, number][]>;
   /** Animated tiles: tile → frames (tile numbers) and frame rate. */
-  animated?: Record<number, { frames: number[]; fps: number }>;
+  animated?: Record<
+    number,
+    {
+      /** Tile numbers shown in turn. */
+      frames: number[];
+      /** Frames per second. */
+      fps: number;
+    }
+  >;
 }
 
 /** A tile layer written by hand or exported from the VS Code scene editor. */
 export interface TilemapData {
+  /** Images and properties of the tiles. */
   tileset: Tileset;
-  /** Size in tiles. */
+  /** Width in tiles. */
   columns: number;
+  /** Height in tiles. */
   rows: number;
   /** Row-major tile numbers, `columns × rows` long; 0 = empty. */
   tiles: number[];
@@ -37,22 +51,60 @@ export interface TilemapData {
   solid?: boolean;
 }
 
-/** The subset of a Tiled JSON map the importer reads. */
+/**
+ * The subset of a Tiled JSON map (`.tmj`, embedded tilesets) the importer reads. Field names are
+ * Tiled's.
+ */
 export interface TiledMap {
+  /** Map width in tiles. */
   width: number;
+  /** Map height in tiles. */
   height: number;
+  /** Tile width in pixels. */
   tilewidth: number;
+  /** Tile height in pixels. */
   tileheight: number;
-  layers: { name: string; type: string; data?: number[]; width?: number; height?: number }[];
+  /** Layers; only `tilelayer` layers become tilemap layers. */
+  layers: {
+    /** Layer name in Tiled. */
+    name: string;
+    /** Layer type: `tilelayer`, `objectgroup`, `imagelayer` or `group`; only tile layers are read. */
+    type: string;
+    /** Row-major global tile ids of a tile layer (0 = empty, high bits = flips). */
+    data?: number[];
+    /** Layer width in tiles. */
+    width?: number;
+    /** Layer height in tiles. */
+    height?: number;
+  }[];
+  /** Tilesets embedded in the map; the importer uses the first one. */
   tilesets: {
+    /** Global id of the tileset's first tile. */
     firstgid: number;
+    /** Tileset image in Tiled; ignored, `fromTiled` takes the image as an argument. */
     image?: string;
+    /** Pixels around the image. */
     margin?: number;
+    /** Pixels between tiles. */
     spacing?: number;
+    /** Tiles with properties or animations. */
     tiles?: {
+      /** Local tile id (0-based within the tileset). */
       id: number;
-      properties?: { name: string; value: unknown }[];
-      animation?: { tileid: number; duration: number }[];
+      /** Custom properties (`solid`, `jumpThru` are read). */
+      properties?: {
+        /** Property name. */
+        name: string;
+        /** Property value. */
+        value: unknown;
+      }[];
+      /** Animation frames of the tile. */
+      animation?: {
+        /** Local tile id of the frame. */
+        tileid: number;
+        /** Frame duration in ms. */
+        duration: number;
+      }[];
     }[];
   }[];
 }
@@ -112,16 +164,19 @@ export class TilemapLayer extends GameObject implements SolidProvider {
     this.scene?.collisions.providers.delete(this);
   }
 
-  /** Width and height of a tile in pixels. */
+  /** Width of a tile in pixels (0 before a map is loaded). */
   get tileWidth(): number {
     return this.data?.tileset.tileWidth ?? 0;
   }
+  /** Height of a tile in pixels (0 before a map is loaded). */
   get tileHeight(): number {
     return this.data?.tileset.tileHeight ?? 0;
   }
+  /** Width of the map in tiles. */
   get columns(): number {
     return this.data?.columns ?? 0;
   }
+  /** Height of the map in tiles. */
   get rows(): number {
     return this.data?.rows ?? 0;
   }
@@ -179,7 +234,7 @@ export class TilemapLayer extends GameObject implements SolidProvider {
   }
 
   /** Cell under a point in scene coordinates. */
-  cellAt(x: number, y: number): { column: number; row: number } {
+  cellAt(x: number, y: number): Cell {
     const t = this.sceneTransform();
     return {
       column: Math.floor((x - t.x) / (this.tileWidth * t.scaleX)),
@@ -230,7 +285,7 @@ export class TilemapLayer extends GameObject implements SolidProvider {
   }
 
   /** Solid tiles overlapping `bounds`, in scene coordinates. */
-  solidShapes(bounds: Rect): { shape: WorldShape; jumpThru: boolean }[] {
+  solidShapes(bounds: Rect): ReturnType<SolidProvider['solidShapes']> {
     const data = this.data;
     if (!data || !this.alive) return [];
     const { tileset } = data;

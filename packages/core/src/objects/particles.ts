@@ -6,6 +6,7 @@ import { GameObject } from './game-object';
 
 type Range = number | [number, number];
 
+/** Settings of a {@link Particles} emitter, passed as `options` at spawn or to `configure()`. */
 export interface EmitterOptions {
   /** Particle image; a soft white dot when omitted. */
   texture?: AssetKey;
@@ -18,7 +19,12 @@ export interface EmitterOptions {
   /** Emission direction in degrees (0 = right, 90 = down). @defaultValue `[0, 360]` */
   angle?: Range;
   /** Acceleration in px/s². */
-  gravity?: { x: number; y: number };
+  gravity?: {
+    /** Horizontal acceleration in px/s². */
+    x: number;
+    /** Vertical acceleration in px/s² (positive pulls down). */
+    y: number;
+  };
   /** Scale at birth and at death. @defaultValue `[1, 1]` */
   scale?: [number, number];
   /** Alpha at birth and at death. @defaultValue `[1, 0]` */
@@ -28,7 +34,14 @@ export interface EmitterOptions {
   /** Spin in degrees per second. */
   spin?: Range;
   /** Spawn area around the emitter: a radius or a rectangle size. */
-  area?: number | { width: number; height: number };
+  area?:
+    | number
+    | {
+        /** Width of the spawn rectangle, centered on the emitter. */
+        width: number;
+        /** Height of the spawn rectangle, centered on the emitter. */
+        height: number;
+      };
   /** Most particles alive at once. @defaultValue `500` */
   max?: number;
   /** Additive blending for glows and sparks. */
@@ -60,8 +73,11 @@ let dotTexture: Texture | undefined;
  * ```
  */
 export class Particles extends GameObject {
+  /** Current settings; change them with `configure()` so the texture and blending follow. */
   options: EmitterOptions = {};
+  /** Emits `rate` particles per second while `true`; `burst()` works either way. */
   emitting = true;
+  /** The Pixi container that holds the particles. */
   readonly container = new ParticleContainer({
     dynamicProperties: { position: true, rotation: true, vertex: true, color: true },
   });

@@ -30,45 +30,77 @@ export interface CollisionSpec {
   blockedBySolids?: boolean;
 }
 
-/** A static source of solid shapes, such as a tilemap layer. */
+/**
+ * A static source of solid shapes, such as a tilemap layer. Add one to
+ * {@link CollisionWorld.providers} to block moving objects with shapes that are not game objects.
+ */
 export interface SolidProvider {
-  solidShapes(bounds: Rect): { shape: WorldShape; jumpThru: boolean }[];
+  /** Solid shapes overlapping `bounds` (scene coordinates); called for every blocked move. */
+  solidShapes(bounds: Rect): {
+    /** The solid shape in scene coordinates. */
+    shape: WorldShape;
+    /** Solid from above only (one-way platform). */
+    jumpThru: boolean;
+  }[];
 }
 
+/** One overlap between two objects, passed to `onCollide`. */
 export interface Contact {
+  /** The object this one overlaps. */
   other: GameObject;
   /** How to push this object out of the other. */
   penetration: Penetration;
 }
 
+/** What `scene.raycast()` hit first. */
 export interface RaycastHit {
+  /** The object hit, or `undefined` for a tilemap solid. */
   object: GameObject | undefined;
+  /** Where the segment enters the shape, in scene coordinates. */
   point: Point;
+  /** Distance from the start of the segment to `point`, in virtual pixels. */
   distance: number;
 }
 
+/** Result of `GameObject.move()`: which axes were blocked and by what. */
 export interface MoveResult {
-  /** Movement was stopped on that axis. */
+  /** Horizontal movement was stopped by a solid. */
   blockedX: boolean;
+  /** Vertical movement was stopped by a solid (landing, hitting a ceiling). */
   blockedY: boolean;
   /** Solid objects touched (tilemaps are not listed). */
   touched: GameObject[];
 }
 
+/** A side of the scene bounds or of a shape, as passed to `onLeave`. */
 export type Side = 'left' | 'right' | 'top' | 'bottom';
 
 /** Contacts and outside states by object id, from {@link CollisionWorld.capture}. */
 export interface CollisionState {
+  /** Ongoing overlaps as `[object id, other id, penetration]`. */
   readonly contacts: readonly (readonly [number, number, Penetration])[];
+  /** Objects fully outside the scene bounds, as `[object id, side]`. */
   readonly outside: readonly (readonly [number, Side])[];
 }
 
-/** Collision detection for one scene. */
+/**
+ * Collision detection for one scene: overlap events, solid movement, queries and raycasts. Each
+ * scene owns one as `scene.collisions`; games mostly use it through `GameObject.move()`,
+ * `onCollide`, `scene.query()` and `scene.raycast()`.
+ *
+ * @example
+ * ```ts
+ * // Inside a scene: everything an explosion at (x, y) touches.
+ * const hit = this.collisions.query({ kind: 'circle', x, y, radius: 64 }, (o) => o.is('enemy'));
+ * for (const enemy of hit) enemy.destroy();
+ * ```
+ */
 export class CollisionWorld {
   private readonly layerBits = new Map<string, number>([['default', 1]]);
   private readonly hash = new SpatialHash<GameObject>(128);
   private readonly contacts = new Map<GameObject, Map<GameObject, Penetration>>();
   private readonly outside = new Map<GameObject, Side>();
+  /** Static solids that are not game objects (tilemap layers add themselves). */
   readonly providers = new Set<SolidProvider>();
 
   constructor(private readonly objects: () => Iterable<GameObject>) {}

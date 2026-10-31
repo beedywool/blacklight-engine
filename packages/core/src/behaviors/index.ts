@@ -45,45 +45,64 @@ import {
  * ```
  */
 export const behaviors = {
+  /** Top-down movement in 8 directions from input ({@link EightDirections}). */
   eightDirections: (options: DirectionsOptions) => () => new EightDirections(options),
+  /** Top-down movement along one axis at a time ({@link FourDirections}). */
   fourDirections: (options: DirectionsOptions) => () => new FourDirections(options),
+  /** Side-view running and jumping with gravity ({@link Platformer}). */
   platformer:
     (options: PlatformerOptions = {}) =>
     () =>
       new Platformer(options),
+  /** Cell-by-cell movement with A* paths ({@link GridMovement}). */
   gridMovement: (options: GridOptions) => () => new GridMovement(options),
+  /** Hover, press and click callbacks from the mouse or touch ({@link PointerBehavior}). */
   pointer:
     (options: PointerOptions = {}) =>
     () =>
       new PointerBehavior(options),
+  /** Drag the object with the pointer ({@link DragAndDrop}). */
   dragAndDrop:
     (options: DragDropOptions = {}) =>
     () =>
       new DragAndDrop(options),
+  /** On-screen stick that drives direction actions on touch screens ({@link VirtualJoystick}). */
   virtualJoystick:
     (options: JoystickOptions = {}) =>
     () =>
       new VirtualJoystick(options),
+  /** Follows a list of points ({@link PathFollow}). */
   pathFollow: (options: PathOptions) => () => new PathFollow(options),
+  /** Walks back and forth ({@link Patrol}). */
   patrol: (options: PatrolOptions) => () => new Patrol(options),
+  /** Moves towards an object or a point ({@link FollowTarget}). */
   followTarget: (options: FollowTargetOptions) => () => new FollowTarget(options),
+  /** Moves in a straight line or an arc ({@link Bullet}). */
   bullet: (options: BulletOptions) => () => new Bullet(options),
+  /** Moves and bounces off solids and the scene edges ({@link Bounce}). */
   bounce: (options: BounceOptions) => () => new Bounce(options),
+  /** Turns and drives along its rotation ({@link TankRotation}). */
   tankRotation: (options: TankOptions) => () => new TankRotation(options),
+  /** Oscillates a property ({@link SineWave}). */
   sineWave: (options: SineOptions) => () => new SineWave(options),
+  /** Keeps the object at a position relative to the screen ({@link AnchorToScreen}). */
   anchorToScreen: (options: AnchorOptions) => () => new AnchorToScreen(options),
+  /** Leaving one side of the scene re-enters from the other; `margin` in px ({@link WrapAroundScreen}). */
   wrapAroundScreen:
     (options: { margin?: number } = {}) =>
     () =>
       new WrapAroundScreen(options),
+  /** Destroys the object once it is outside the scene bounds by more than `margin` px ({@link DestroyOutsideLayout}). */
   destroyOutsideLayout:
     (options: { margin?: number } = {}) =>
     () =>
       new DestroyOutsideLayout(options),
+  /** Blinks the object on `start(ms)` ({@link Flash}). */
   flash:
     (options: FlashOptions = {}) =>
     () =>
       new Flash(options),
+  /** Fades the object in and/or out ({@link Fade}). */
   fade:
     (options: FadeOptions = {}) =>
     () =>

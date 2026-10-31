@@ -3,6 +3,7 @@ import { approach } from '../math';
 import type { ActionName } from '../register';
 import { Behavior } from './behavior';
 
+/** Options of {@link Platformer} (`behaviors.platformer`); every field has a default. */
 export interface PlatformerOptions {
   /** Top running speed in px/s. @defaultValue `320` */
   speed?: number;
@@ -28,9 +29,18 @@ export interface PlatformerOptions {
   airJumps?: number;
   /** Steepest walkable slope, in px up per px sideways. @defaultValue `1` (45°) */
   climb?: number;
-  actions?: { left?: ActionName; right?: ActionName; jump?: ActionName };
+  /** Actions read from the object's player. */
+  actions?: {
+    /** Runs left. @defaultValue `'left'` */
+    left?: ActionName;
+    /** Runs right. @defaultValue `'right'` */
+    right?: ActionName;
+    /** Jumps; holding it longer jumps higher. @defaultValue `'jump'` */
+    jump?: ActionName;
+  };
 }
 
+/** What a {@link Platformer} is doing, named like the animations games usually draw for it. */
 export type PlatformerState = 'idle' | 'run' | 'jump' | 'fall';
 
 /**
@@ -51,8 +61,11 @@ export type PlatformerState = 'idle' | 'run' | 'jump' | 'fall';
 export class Platformer extends Behavior<PlatformerOptions> {
   readonly name = 'platformer';
   override readonly ownsMovement = true;
+  /** `true` while standing on a solid, a one-way platform or a slope. */
   onGround = false;
+  /** Current movement state, for animations (`this.play(move.state)`). */
   state: PlatformerState = 'idle';
+  /** Direction of the last horizontal input. */
   facing: 'left' | 'right' = 'right';
   /** Solid object stood on, if any. */
   platform: GameObject | undefined;

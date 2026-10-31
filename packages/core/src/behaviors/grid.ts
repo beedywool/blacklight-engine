@@ -3,14 +3,33 @@ import type { GameObject } from '../objects/game-object';
 import type { ActionName } from '../register';
 import { Behavior } from './behavior';
 
+/** A cell of a grid: column from the left, row from the top, both from 0. */
 export interface Cell {
+  /** Column, from 0 at the left. */
   column: number;
+  /** Row, from 0 at the top. */
   row: number;
 }
 
 /**
  * A* on a grid. Returns the cells from `start` (excluded) to `goal` (included), or `undefined`
- * when there is no path within `maxNodes` explored cells.
+ * when there is no path within `maxNodes` explored cells. {@link GridMovement.moveTo} uses it;
+ * call it directly for AI that plans without moving, or for grids that are not tilemaps.
+ *
+ * @param blocked - Whether a cell cannot be entered; also called for cells outside the grid.
+ * @param options - `diagonal` allows diagonal steps (never cutting a blocked corner); `maxNodes`
+ *   caps the search (default 5000) so an unreachable goal costs a bounded time.
+ *
+ * @example
+ * ```ts
+ * import { GridMovement, findPath } from '@blacklight/core';
+ *
+ * const path = findPath({ column: 1, row: 1 }, { column: 8, row: 5 }, (c, r) =>
+ *   walls.getTile(c, r) !== 0,
+ * );
+ * const grid = guard.behavior(GridMovement);
+ * if (path && grid) grid.path = path;
+ * ```
  */
 export function findPath(
   start: Cell,
@@ -84,6 +103,7 @@ export function findPath(
   return undefined;
 }
 
+/** Options of {@link GridMovement} (`behaviors.gridMovement`). */
 export interface GridOptions {
   /** Cell size in px. */
   cellSize: number;
@@ -91,7 +111,17 @@ export interface GridOptions {
   speed?: number;
   /** Allow diagonal steps for `moveTo`. */
   diagonal?: boolean;
-  actions?: { left?: ActionName; right?: ActionName; up?: ActionName; down?: ActionName };
+  /** Actions that step in each direction; the defaults are the actions of the same name. */
+  actions?: {
+    /** @defaultValue `'left'` */
+    left?: ActionName;
+    /** @defaultValue `'right'` */
+    right?: ActionName;
+    /** @defaultValue `'up'` */
+    up?: ActionName;
+    /** @defaultValue `'down'` */
+    down?: ActionName;
+  };
   /** Read input; turn off for objects driven only by `moveTo`. @defaultValue `true` */
   controlled?: boolean;
 }
@@ -99,6 +129,18 @@ export interface GridOptions {
 /**
  * Moves cell by cell (puzzle games, tactics, roguelikes). Cells blocked by solids are skipped;
  * `moveTo` finds a path with A*.
+ *
+ * @example
+ * ```ts
+ * import { GridMovement, Sprite, behaviors } from '@blacklight/core';
+ *
+ * export class Hero extends Sprite {
+ *   static behaviors = [behaviors.gridMovement({ cellSize: 32, speed: 8 })];
+ *   walkTo(column: number, row: number) {
+ *     this.behavior(GridMovement)?.moveTo(column, row);
+ *   }
+ * }
+ * ```
  */
 export class GridMovement extends Behavior<GridOptions> {
   readonly name = 'gridMovement';
@@ -114,6 +156,7 @@ export class GridMovement extends Behavior<GridOptions> {
     return { column: Math.floor(at.x / size), row: Math.floor(at.y / size) };
   }
 
+  /** `true` while walking to a cell or following a path. */
   get moving(): boolean {
     return this.target !== undefined || this.path.length > 0;
   }
