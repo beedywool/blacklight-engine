@@ -52,8 +52,11 @@ export default tseslint.config(
     },
   },
   {
-    // The API check's own test proves it reports `any` (scripts/api-check.test.mjs).
+    // The API check's own test proves it reports `any` and private `typeof` (scripts/api-check.test.mjs).
     files: ['scripts/fixtures/api-check/**'],
-    rules: { '@typescript-eslint/no-explicit-any': 'off' },
+    rules: {
+      '@typescript-eslint/no-explicit-any': 'off',
+      '@typescript-eslint/no-unused-vars': 'off',
+    },
   },
 );

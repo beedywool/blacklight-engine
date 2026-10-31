@@ -28,3 +28,7 @@ export interface Shape {
  */
 declare function thing(): void;
 export default thing;
+
+declare function createHidden(): { value: number };
+/** The API of a factory that is not exported: its shape stays out of the reference. */
+export type Hidden = ReturnType<typeof createHidden>;

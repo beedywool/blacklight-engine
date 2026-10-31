@@ -5,6 +5,7 @@
 //   - a top-level class or function has no `@example`,
 //   - a public type contains `any`,
 //   - an entry point has a default export,
+//   - a public type uses `typeof` of a declaration that is not exported (its shape would be hidden),
 //   - api-report.txt (one line per public symbol with its signature) is not up to date.
 // Symbols marked `@internal` are not public: tsup keeps the tag and TypeDoc leaves them out.
 //
@@ -145,64 +146,75 @@ function nameOf(reflection) {
   return rest.length ? `${module}: ${rest.join('.')}` : module;
 }
 
-/** Every `any` inside a type: yields nothing for a clean type. */
-function* anyIn(type) {
+/** A type and every type nested in it. Reflection types stop here: their members are checked one by one. */
+function* nestedTypes(type) {
   if (!type) return;
+  yield type;
   switch (type.type) {
-    case 'intrinsic':
-      if (type.name === 'any') yield type;
-      return;
-    case 'unknown':
-      if (/\bany\b/.test(type.name)) yield type;
-      return;
     case 'array':
     case 'optional':
     case 'rest':
-      yield* anyIn(type.elementType);
+      yield* nestedTypes(type.elementType);
       return;
     case 'union':
     case 'intersection':
-      for (const t of type.types) yield* anyIn(t);
+      for (const t of type.types) yield* nestedTypes(t);
       return;
     case 'tuple':
-      for (const t of type.elements) yield* anyIn(t);
+      for (const t of type.elements) yield* nestedTypes(t);
       return;
     case 'namedTupleMember':
-      yield* anyIn(type.element);
+      yield* nestedTypes(type.element);
       return;
     case 'reference':
-      for (const t of type.typeArguments ?? []) yield* anyIn(t);
+      for (const t of type.typeArguments ?? []) yield* nestedTypes(t);
       return;
     case 'conditional':
       for (const t of [type.checkType, type.extendsType, type.trueType, type.falseType]) {
-        yield* anyIn(t);
+        yield* nestedTypes(t);
       }
       return;
     case 'indexedAccess':
-      yield* anyIn(type.objectType);
-      yield* anyIn(type.indexType);
+      yield* nestedTypes(type.objectType);
+      yield* nestedTypes(type.indexType);
       return;
     case 'inferred':
-      yield* anyIn(type.constraint);
+      yield* nestedTypes(type.constraint);
       return;
     case 'mapped':
-      for (const t of [type.parameterType, type.templateType, type.nameType]) yield* anyIn(t);
+      for (const t of [type.parameterType, type.templateType, type.nameType]) yield* nestedTypes(t);
       return;
     case 'predicate':
-      yield* anyIn(type.targetType);
+      yield* nestedTypes(type.targetType);
       return;
     case 'query':
-      yield* anyIn(type.queryType);
+      yield* nestedTypes(type.queryType);
       return;
     case 'typeOperator':
-      yield* anyIn(type.target);
+      yield* nestedTypes(type.target);
       return;
     case 'templateLiteral':
-      for (const [t] of type.tail) yield* anyIn(t);
+      for (const [t] of type.tail) yield* nestedTypes(t);
       return;
-    // reflection: its members are reflections of the project, checked one by one.
-    // literal: no nested type.
   }
+}
+
+function isAny(type) {
+  return (
+    (type.type === 'intrinsic' && type.name === 'any') ||
+    (type.type === 'unknown' && /\bany\b/.test(type.name))
+  );
+}
+
+/**
+ * `typeof x` where `x` is not exported: the shape behind it reaches neither the API reference nor
+ * api-report.txt, and its members escape the other checks. Components compiled by vue-tsc are
+ * declared as `typeof __VLS_export`; their props are checked by vue-tsc in the templates instead.
+ */
+function isHiddenQuery(type) {
+  return (
+    type.type === 'query' && !type.queryType.reflection && !type.queryType.name.startsWith('__VLS_')
+  );
 }
 
 /** Types written on a reflection (its own, not its members'). */
@@ -251,12 +263,16 @@ export function findProblems({ project, modules }) {
         );
       }
     }
-    for (const type of typesOf(reflection)) {
-      if (anyIn(type).next().done) continue;
+    const nested = typesOf(reflection).flatMap((type) => [...nestedTypes(type)]);
+    if (nested.some(isAny)) {
       problems.push(
         `${nameOf(reflection)} (${kindName(reflection)}) uses \`any\` in its public type. Use a precise type, \`unknown\` or a type parameter.`,
       );
-      break;
+    }
+    for (const query of nested.filter(isHiddenQuery)) {
+      problems.push(
+        `${nameOf(reflection)} (${kindName(reflection)}) uses \`typeof ${query.queryType.name}\`, which is not exported: its shape is missing from the API reference and api-report.txt. Write the type out as a documented interface or type alias, or export ${query.queryType.name} with TSDoc.`,
+      );
     }
   }
   return { problems: [...new Set(problems)].sort(), symbols };

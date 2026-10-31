@@ -1,5 +1,6 @@
-// NF-06: the API check fails on an undocumented symbol, a missing example, `any` and a default
-// export, passes on a clean entry point, and covers every typed entry of every published package.
+// NF-06: the API check fails on an undocumented symbol, a missing example, `any`, a default export
+// and `typeof` of a private declaration, passes on a clean entry point, and covers every typed
+// entry of every published package.
 import { readdirSync, readFileSync, existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
@@ -39,6 +40,9 @@ describe('api-check', () => {
     expect(has(/^broken: loose\.value \(parameter\) uses `any`/)).toBe(true);
     expect(has(/^broken: loose \(call signature\) uses `any`/)).toBe(true);
     expect(has(/^broken: has a default export/)).toBe(true);
+    expect(
+      has(/^broken: Hidden \(type alias\) uses `typeof createHidden`, which is not exported/),
+    ).toBe(true);
     // Documented, with an example, typed: not reported.
     expect(has(/^broken: Shape \(interface\)/)).toBe(false);
     expect(has(/^broken: loose \(function\) has no/)).toBe(false);
