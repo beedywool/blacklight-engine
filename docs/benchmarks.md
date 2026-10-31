@@ -53,11 +53,42 @@ The same machine with the GPU turned off (SwiftShader, as on CI runners without 
 
 Limits: the spec makes the pages cross-origin isolated, but the Chromium build Playwright uses refuses `performance.measureUserAgentSpecificMemory()`, so `memoryMb` is recorded as `null` and the heap figure covers the JS heap only (no GPU textures, no DOM). The gate does not see a regression that only affects displayed frames and not frames run back to back (paint and compositing of the UI, GPU time); such a regression shows in the recorded frame work and, once it costs frames, in fps and 1 % low.
 
+### Android emulator (release app)
+
+`e2e/bench-android.spec.ts` runs the same fixture as a signed release Android app on an emulator or a device. It is part of `pnpm bench` and is skipped unless `BLACKLIGHT_E2E_ANDROID=1` is set and `adb devices` lists a booted emulator or a phone; CI runs it in the `android` job.
+
+```sh
+BLACKLIGHT_E2E_ANDROID=1 pnpm exec playwright test --project=bench bench-android        # NF-01, NF-02, NF-03
+BLACKLIGHT_E2E_ANDROID=1 pnpm exec playwright test --project=bench bench-android -g NF-01
+```
+
+The app is the APK that `blacklight build --target android --release` writes, signed with a throwaway key, with one change the spec makes and nothing else can: WebView inspection is turned back on in the APK's `capacitor.config.json`, and Gradle builds it again. A shipped release refuses DevTools on purpose (SEC-07), and a release build offers no other way out for the results: Capacitor's console logging is off, `run-as` refuses a non-debuggable app, and WebView does not give its trace events to Perfetto for non-debuggable apps on a user build. The change lives in the spec; the CLI, the engine and the templates have no switch for it. Each run starts a fresh app process (`am force-stop`, `am start`), connects over the DevTools protocol (Playwright's `_android`) during the warm-up, and reads the scene's result. The JS heap is taken after a garbage collection forced over the protocol, since a WebView page cannot call `gc()`; the scene's own `performance.memory` figure (coarse, before GC) is kept as `heapNoGcMb`. The memory of the app's processes (see NF-03) is recorded with each run. Five runs, gated as on desktop: the best run of `stepRelative` and of the heap, and fps and 1 % low because the baseline keeps up with the display. There is no absolute fps check: an emulator is not an A54.
+
+x86_64 emulator on this machine, not a reference phone: AVD `Medium_Phone_API_36.1` (Android 16, Google Play image, 1080×2400 at 420 dpi, 2 GB), started headless with `-gpu host` (the Radeon RX 6650 XT through the emulator's GLES translator), WebView 156.0.8078.47, host Ryzen 7 9700X, 2026-10-31. The app runs in landscape at 914×411 CSS pixels and 2.625×. Median of 5 runs (second of the two validation sessions):
+
+| Metric                                    | Emulator, release app | Gated          |
+| ----------------------------------------- | --------------------- | -------------- |
+| Average fps                               | 59.8                  | yes (best run) |
+| 1 % low fps                               | 59.5                  | yes (best run) |
+| p99 frame interval                        | 16.8 ms               | no             |
+| Game ticker work per frame                | 0.45 ms               | no             |
+| Frame run back to back                    | 0.237 ms              | no             |
+| `stepRelative` (frame / calibration loop) | 0.245                 | yes (best run) |
+| JS heap after GC (DevTools protocol)      | 8.7 MB                | yes (best run) |
+| JS heap, `performance.memory`, before GC  | 22 MB                 | no             |
+| PSS, app process + WebView renderer       | 100 + 128 = 230 MB    | no             |
+
+The emulator shows the 300 sprites and the animated screen at the display's 60 fps; the best run of each session had a 1 % low of 59.5, single runs dropped to 45. Across the two sessions the best `stepRelative` was 0.2249 and 0.2353 (+4.6 %); single runs ranged from 0.225 to 0.265. With 30 % of the frame's cost added as busy work (`?burn=`, the page reloaded at `https://localhost/?burn=<ms>` over DevTools, against clean runs reloaded at `https://localhost/`), `stepRelative` rose by 32.4 % and 29.2 % and the check reported a regression both times. `frameWorkMs` reads about 18 ms in a WebView although frames come every 16.7 ms: the message the scene posts from a frame runs only after the next one there, so the figure says nothing about the work and is recorded only.
+
+The WebView version matters more than anything the engine did: the Play Store updated WebView from 134 to 156 during this work, and `stepRelative` of the same APK fell from about 0.42 to 0.24. The WebView's major version is therefore part of the runner's name, so a new one starts a new baseline instead of comparing with the old one. CI uses a Google APIs image without the Play Store, whose WebView does not change.
+
+Limits: the emulator runs x86_64 code on a desktop CPU and draws through the desktop GPU, so its fps says nothing about an A54's; the reference phones are checked by hand (`MANUAL_TESTS.md`, "NF-01 on the reference phones", which includes running this spec on the A54). CI's emulator draws with SwiftShader, so its fps is compared only if its baseline reaches 55 fps.
+
 ## Start time (NF-02)
 
 Requirement: cold start under 3 s on desktop; first interactive screen under 5 s on mobile.
 
-The mobile half is not measured yet: it needs the Android emulator and is the next step of the benchmark work. This section covers the desktop half, for the two reference templates (party-game and visual-novel), as a packaged desktop app and as a web build in desktop Chromium.
+This section covers the desktop half, for the two reference templates (party-game and visual-novel), as a packaged desktop app and as a web build in desktop Chromium, then the mobile half on an Android emulator.
 
 Cold start is the time from launching the game to the first frame of its entry scene with the game taking input: the title screen is on screen and a key does something. The engine marks that moment with the user timing mark `blacklight:interactive`, set in the first frame after `data-blacklight-state` turns `running` (the entry scene is created and input is attached), once Pixi has rendered that frame. The mark also shows in DevTools' Performance panel, so a game's own start can be read the same way.
 
@@ -91,8 +122,35 @@ Proof that the check catches a slower start: the test `the regression check fail
 
 Limits: the numbers come from one Linux machine with a hardware GPU. CI measures Windows, macOS and Linux runners (virtual machines, software rendering), each against its own baseline, which the owner stores from the first green main run (`node scripts/bench.mjs update`); until then CI records the numbers and checks only the 3 s limit. Real Windows and Mac hardware and the first launch after a reboot are in `MANUAL_TESTS.md`. The web figure excludes download time, so it says how fast the engine starts a page, not how fast a game loads over a network.
 
+### Android emulator (release app)
+
+`e2e/bench-android.spec.ts` (see NF-01 above for the build and the DevTools connection) launches the release app of party-game and of visual-novel nine times each, after one unmeasured launch. Every launch starts from nothing: `am force-stop`, then `pm clear`, which deletes the app's data, its WebView cache and code cache, as on the first launch after installing. The spec runs `date +%s%N; am start -W -n <id>/.MainActivity` in one `adb shell` command and takes the device's clock just before `am start` as the launch. The end is the same `blacklight:interactive` mark as on desktop, read from the page as `performance.timeOrigin` plus the mark's `startTime`, on the same device clock. The spec connects to the WebView only once 5 s have passed since the launch, so a start under the limit is never slowed by the measure. The system's own launch time (`TotalTime` of `am start -W`, the activity's first frame, before the page exists) is recorded as `activityMs`. The gate is the desktop one with the mobile limit: the median under 5 s and within 10 % of the runner's baseline, nine more launches before failing, no change under two frames counted.
+
+x86_64 emulator on this machine (the AVD of NF-01, WebView 156), 2026-10-31. Median of 9 launches in the first session (the stored baseline) and the second:
+
+| Template     | Start to first interactive frame (median) | Range of single launches | Split (second session)                                      |
+| ------------ | ----------------------------------------- | ------------------------ | ----------------------------------------------------------- |
+| party-game   | 453 ms, then 431 ms                       | 355 to 568 ms            | 169 ms to navigation, 262 ms of page; activity drawn 222 ms |
+| visual-novel | 358 ms, then 377 ms (18 launches)         | 305 to 483 ms            | 179 ms to navigation, 205 ms of page; activity drawn 222 ms |
+
+Both templates are interactive in under a tenth of the 5 s limit on the emulator. Single launches spread by ±20 % around the median; in the second session the first nine launches of visual-novel came out more than 10 % above the baseline, the nine more the gate then measures brought the median of eighteen to +5.2 %, and the test passed. Proof that the check catches a slower start: the fixture is built twice, the second time with `VITE_BENCH_STARTUP_DELAY_MS` at 30 % of the first build's median start (125 and 129 ms); the median rose by 28.2 % and 17.4 % and was reported as a regression both times. Part of the busy-wait overlaps work the app does in parallel (the page starts while the activity is still being drawn), so a delay in the entry scene does not add all of its length; together with the spread above, a slowdown has to be about 20 % or more to fail reliably on the emulator.
+
+Limits: an x86_64 emulator with a fast desktop CPU and SSD starts apps much faster than an A54 reads and compiles from its flash, so these numbers show the engine's share, not a phone's start time. The OS file cache is not emptied (one unmeasured launch per app comes first, as on desktop); `pm clear` empties the app's caches only. The A54 and the iPhone 12 are measured by hand (`MANUAL_TESTS.md`, "NF-02 and NF-03 on the reference phones").
+
 ## Memory (NF-03)
 
 Requirement: under 300 MB on mobile for the party-game template.
 
-Not measured yet.
+`e2e/bench-android.spec.ts` plays three party sessions in the release app (built as in NF-01). Memory is the proportional set size (PSS, `dumpsys meminfo`, the share of shared pages each process is charged for) of two processes: the app's own (Java, Capacitor, WebView's browser side and its GPU thread) and the WebView renderer it binds, a sandboxed process with its own uid that holds the page: the JS heap, the DOM and the engine. The spec finds the renderer through `dumpsys activity services <package>`. Each session starts with `am force-stop` and `pm clear`, waits 8 s on the title screen and samples it before any DevTools connection. It then connects, gives the page four simulated gamepads (a fake Gamepad API, as in the web e2e tests; the release build has no `window.blacklight` to step), joins four players, starts Survival VS with the default settings and samples memory eight times over about 25 s of the match while the players run left and right. The gate: the highest sample of all sessions under 300 MB, and the median session's peak within 10 % of the runner's baseline (`peakPssMb`, judged on the median session because PSS moves with what other processes share, in either direction).
+
+x86_64 emulator on this machine (the AVD of NF-01, WebView 156), 2026-10-31, three sessions in each of two sessions of the spec:
+
+| Moment                    | App process | WebView renderer | Total (PSS)                            |
+| ------------------------- | ----------- | ---------------- | -------------------------------------- |
+| Title screen (median)     | 72 MB       | 76 to 78 MB      | 148 to 151 MB                          |
+| Four-player match, median |             |                  | 170 to 171 MB                          |
+| Four-player match, peak   | 74 to 76 MB | 97 to 102 MB     | 177 MB (highest sample, both sessions) |
+
+The peak is 59 % of the limit. The median session's peak was 173.4 MB, then 173.7 MB (+0.2 %); sessions within one run differed by at most 4 %. The renderer is more than half of the total, so the app process alone would understate the game. The figures during the match include the DevTools connection the spec needs to drive the players, so they are an upper bound. Right after the Play Store had updated WebView during this work, one session read 245 to 260 MB at the peak and 171 to 234 MB at the title, about 45 % more for the same APK; an hour later the figures above held in both sessions. The cause was not looked into (the new WebView not yet compiled in the background is the likely one). Such a session fails the 10 % check against the baseline without any change in the game: on a Play image, run the spec again once the update has settled. CI's image has no Play Store.
+
+Limits: the emulator draws through the host GPU, so textures and other GPU memory are not in its PSS (`Graphics: 0`); on a phone they are, and they add to the total. The A54 figure with the `Graphics` line, and the iPhone 12 (whose web content process WebKit accounts for separately), are measured by hand (`MANUAL_TESTS.md`, "NF-02 and NF-03 on the reference phones"). The session plays one mini-game for 25 s with four players; the other five mini-games and eight players are not part of the measure. For comparison, the NF-01 fixture (300 sprites at 2.625× in a 1920×1080 extended stage) takes 230 MB on the same emulator.
