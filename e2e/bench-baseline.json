@@ -57,6 +57,54 @@
         "heapMb": 10.02,
         "mainThreadMs": 1.12
       }
+    },
+    "cold-start-web-party-game": {
+      "gpu": "ANGLE (AMD, Vulkan 1.4.354 (AMD Radeon RX 6650 XT (RADV NAVI23) (0x000073EF)), radv)",
+      "date": "2026-10-31T12:07:17.012Z",
+      "best": {
+        "coldStartMs": 82.5
+      },
+      "median": {
+        "coldStartMs": 90.5,
+        "runningMs": 73.7,
+        "domContentLoadedMs": 45.4
+      }
+    },
+    "cold-start-desktop-party-game": {
+      "gpu": "ANGLE (AMD, Vulkan 1.4.354 (AMD Radeon RX 6650 XT (RADV NAVI23) (0x000073EF)), radv)",
+      "date": "2026-10-31T12:08:28.360Z",
+      "best": {
+        "coldStartMs": 589.2
+      },
+      "median": {
+        "coldStartMs": 775.2,
+        "navigationMs": 485.1,
+        "pageMs": 290
+      }
+    },
+    "cold-start-web-visual-novel": {
+      "gpu": "ANGLE (AMD, Vulkan 1.4.354 (AMD Radeon RX 6650 XT (RADV NAVI23) (0x000073EF)), radv)",
+      "date": "2026-10-31T12:08:32.069Z",
+      "best": {
+        "coldStartMs": 76.8
+      },
+      "median": {
+        "coldStartMs": 93.1,
+        "runningMs": 69.9,
+        "domContentLoadedMs": 43.7
+      }
+    },
+    "cold-start-desktop-visual-novel": {
+      "gpu": "ANGLE (AMD, Vulkan 1.4.354 (AMD Radeon RX 6650 XT (RADV NAVI23) (0x000073EF)), radv)",
+      "date": "2026-10-31T12:09:43.584Z",
+      "best": {
+        "coldStartMs": 592.4
+      },
+      "median": {
+        "coldStartMs": 732.7,
+        "navigationMs": 480.6,
+        "pageMs": 262.4
+      }
     }
   }
 }

@@ -103,7 +103,8 @@ function calibrate(): number {
  * timeline, gauge, counter). After `WARMUP_MS` it measures `MEASURE_MS` of displayed frames and
  * publishes a {@link BenchResult} as `window.blacklightBench` and as JSON in `data-bench` on the
  * game element. Query parameters: `?sprites=<n>` (default 300), `?burn=<ms>` adds busy work to
- * every frame (used to prove that the regression check fails). The result also shows at the bottom of
+ * every frame (used to prove that the regression check fails). The build-time variable
+ * `VITE_BENCH_STARTUP_DELAY_MS` adds busy work before the first frame (the NF-02 proof). The result also shows at the bottom of
  * the screen, for phones where the page cannot be inspected.
  */
 export default class Bench extends Scene {
@@ -112,6 +113,11 @@ export default class Bench extends Scene {
   private stripes!: Graphics;
 
   override create() {
+    // NF-02 regression proof (e2e/cold-start.spec.ts): startup work added at build time, since the
+    // packaged desktop app always opens the same URL.
+    const startupDelay = Number(import.meta.env.VITE_BENCH_STARTUP_DELAY_MS ?? 0);
+    const until = performance.now() + startupDelay;
+    while (performance.now() < until);
     delete this.game.mount.dataset.bench;
     delete window.blacklightBench;
     const sprites = Number(this.options.get('sprites') ?? 300);

@@ -19,5 +19,13 @@
       "@assets/*": ["./assets/*"]
     }
   },
-  "include": ["game.config.ts", "scenes", "objects", "ui", "modules", ".blacklight/types.d.ts"]
+  "include": [
+    "env.d.ts",
+    "game.config.ts",
+    "scenes",
+    "objects",
+    "ui",
+    "modules",
+    ".blacklight/types.d.ts"
+  ]
 }

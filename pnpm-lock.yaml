@@ -275,6 +275,9 @@ importers:
       '@blacklight/core':
         specifier: workspace:*
         version: link:../../../packages/core
+      '@blacklight/native':
+        specifier: workspace:*
+        version: link:../../../packages/native
       '@blacklight/ui':
         specifier: workspace:*
         version: link:../../../packages/ui

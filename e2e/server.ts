@@ -2,9 +2,19 @@ import { spawn, spawnSync, type ChildProcess } from 'node:child_process';
 
 const shell = process.platform === 'win32';
 
-/** Runs a command and throws when it fails. */
-export function run(command: string, args: string[], cwd: string): void {
-  const result = spawnSync(command, args, { cwd, stdio: 'inherit', shell });
+/** Runs a command and throws when it fails. `env` adds variables to this process's environment. */
+export function run(
+  command: string,
+  args: string[],
+  cwd: string,
+  env: Record<string, string> = {},
+): void {
+  const result = spawnSync(command, args, {
+    cwd,
+    stdio: 'inherit',
+    shell,
+    env: { ...process.env, ...env },
+  });
   if (result.status !== 0) throw new Error(`${command} ${args.join(' ')} failed in ${cwd}`);
 }
 

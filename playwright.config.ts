@@ -15,8 +15,13 @@ export default defineConfig({
   // Missing references (a new OS in CI) are written and the test passes; CI uploads them.
   updateSnapshots: 'missing',
   projects: [
-    { name: 'chromium', use: { ...devices['Desktop Chrome'] }, testIgnore: 'bench.spec.ts' },
-    // NF-01 benchmark: timings need an idle machine, so it runs on its own (`pnpm bench`).
-    { name: 'bench', testMatch: 'bench.spec.ts' },
+    {
+      name: 'chromium',
+      use: { ...devices['Desktop Chrome'] },
+      testIgnore: ['bench.spec.ts', 'cold-start.spec.ts'],
+    },
+    // NF-01 and NF-02 benchmarks: timings need an idle machine, so they run on their own
+    // (`pnpm bench`), one file at a time.
+    { name: 'bench', testMatch: ['bench.spec.ts', 'cold-start.spec.ts'], workers: 1 },
   ],
 });
