@@ -106,5 +106,81 @@
         "pageMs": 262.4
       }
     }
+  },
+  "linux-x64 · AMD Ryzen 7 9700X 8-Core Processor · sdk_gphone64_x86_64 Android 16 WebView 156 · Android Emulator OpenGL ES Translator (AMD Radeon RX 6650 XT (radeonsi, navi23, ACO, DRM 3.64, 7.3.0-5-cachyos))": {
+    "android-bench": {
+      "gpu": "sdk_gphone64_x86_64 Android 16 WebView 156 · Android Emulator OpenGL ES Translator (AMD Radeon RX 6650 XT (radeonsi, navi23, ACO, DRM 3.64, 7.3.0-5-cachyos))",
+      "date": "2026-10-31T13:22:54.472Z",
+      "best": {
+        "fps": 59.8,
+        "low1Fps": 59.52,
+        "stepRelative": 0.2249,
+        "heapMb": 8.59
+      },
+      "median": {
+        "sprites": 300,
+        "burnMs": 0,
+        "frames": 299,
+        "fps": 59.8,
+        "low1Fps": 59.52,
+        "frameMs": 16.67,
+        "p99FrameMs": 16.8,
+        "frameWorkMs": 18.42,
+        "frameWorkP50Ms": 18.3,
+        "frameWorkP99Ms": 19.7,
+        "gameMs": 0.51,
+        "gameP50Ms": 0.5,
+        "stepMs": 0.321,
+        "calibrationMs": 1.3,
+        "stepRelative": 0.2433,
+        "heapMb": 8.9,
+        "heapNoGcMb": 28.04,
+        "appPssMb": 100.5,
+        "rendererPssMb": 127.7,
+        "totalPssMb": 228.4
+      }
+    },
+    "android-cold-start-party-game": {
+      "gpu": "sdk_gphone64_x86_64 Android 16 WebView 156 · Android Emulator OpenGL ES Translator (AMD Radeon RX 6650 XT (radeonsi, navi23, ACO, DRM 3.64, 7.3.0-5-cachyos))",
+      "date": "2026-10-31T13:24:41.976Z",
+      "best": {
+        "coldStartMs": 423.5
+      },
+      "median": {
+        "coldStartMs": 452.8,
+        "navigationMs": 210.5,
+        "pageMs": 262.1,
+        "activityMs": 256
+      }
+    },
+    "android-cold-start-visual-novel": {
+      "gpu": "sdk_gphone64_x86_64 Android 16 WebView 156 · Android Emulator OpenGL ES Translator (AMD Radeon RX 6650 XT (radeonsi, navi23, ACO, DRM 3.64, 7.3.0-5-cachyos))",
+      "date": "2026-10-31T13:25:42.093Z",
+      "best": {
+        "coldStartMs": 304.9
+      },
+      "median": {
+        "coldStartMs": 358,
+        "navigationMs": 179.7,
+        "pageMs": 191.2,
+        "activityMs": 215
+      }
+    },
+    "android-memory-party-game": {
+      "gpu": "sdk_gphone64_x86_64 Android 16 WebView 156 · Android Emulator OpenGL ES Translator (AMD Radeon RX 6650 XT (radeonsi, navi23, ACO, DRM 3.64, 7.3.0-5-cachyos))",
+      "date": "2026-10-31T13:29:30.813Z",
+      "best": {
+        "peakPssMb": 170.5
+      },
+      "median": {
+        "titlePssMb": 150.6,
+        "titleAppPssMb": 72.3,
+        "titleRendererPssMb": 78.1,
+        "peakPssMb": 173.4,
+        "peakAppPssMb": 76.2,
+        "peakRendererPssMb": 97.2,
+        "matchMedianPssMb": 169.8
+      }
+    }
   }
 }
