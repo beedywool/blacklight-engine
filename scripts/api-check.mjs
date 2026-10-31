@@ -506,7 +506,11 @@ async function main() {
   if (update) {
     writeFileSync(reportFile, report);
     console.log('API check: api-report.txt written. Review its diff before committing.');
-  } else if (!existsSync(reportFile) || readFileSync(reportFile, 'utf8') !== report) {
+  } else if (
+    // A Windows checkout (core.autocrlf) turns the report's line endings into CRLF.
+    !existsSync(reportFile) ||
+    readFileSync(reportFile, 'utf8').replace(/\r\n/g, '\n') !== report
+  ) {
     failed = true;
     console.error(
       'API check: api-report.txt does not match the public API. Run `pnpm api:check --update` and review the diff: a removed or changed line is a breaking change (CONTRIBUTING.md, "Versions and releases").',
