@@ -1,4 +1,4 @@
-const EPSILON_MS = 1e-6;
+import { TIME_EPSILON_MS } from './time-epsilon';
 
 /**
  * Fixed-step accumulator. The game logic advances in equal steps whatever the display rate, so a
@@ -34,7 +34,7 @@ export class FixedStep {
     // Clamping before the loop caps catch-up after a stall (tab in background, breakpoint).
     this.accumulator += Math.min(Math.max(0, elapsedMs), this.stepMs * this.maxSteps);
     // The epsilon absorbs float drift: 144 frames of 1000/144 ms must make exactly 60 steps.
-    while (this.accumulator >= this.stepMs - EPSILON_MS) {
+    while (this.accumulator >= this.stepMs - TIME_EPSILON_MS) {
       step();
       this.accumulator = Math.max(0, this.accumulator - this.stepMs);
     }

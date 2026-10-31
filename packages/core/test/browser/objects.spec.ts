@@ -103,8 +103,22 @@ describe('TilemapLayer', () => {
       }[];
     const before = water().map((s) => s.texture.frame.x);
     expect(before).toEqual([24, 24]);
-    scene.game.step(9); // 150 ms at 10 fps: the second frame (tile 1)
+    const shown = () => water()[0]!.texture.frame.x;
+    // 10 fps: each frame lasts exactly six 60 Hz steps, though six steps of 1/60 s add up to a
+    // hair under 0.1 s in floating point.
+    scene.game.step(5);
+    expect(shown()).toBe(24);
+    scene.game.step(1);
     expect(water().map((s) => s.texture.frame.x)).toEqual([0, 0]);
+    scene.game.step(5);
+    expect(shown()).toBe(0);
+    scene.game.step(1);
+    expect(shown()).toBe(24);
+    // Still on time after a minute.
+    scene.game.step(3600 - 12 + 5);
+    expect(shown()).toBe(24);
+    scene.game.step(1);
+    expect(shown()).toBe(0);
     // Redrawing the chunk keeps one sprite per animated tile.
     layer.setTile(0, 0, 0);
     expect(water()).toHaveLength(1);
@@ -154,6 +168,25 @@ describe('Particles', () => {
     expect(smoke.count).toBe(10);
     smoke.configure({ rate: 60, emitting: false, lifetime: 10_000 });
     expect(smoke.emitting).toBe(false);
+  });
+
+  it('emits and expires on whole steps despite float drift', async () => {
+    const scene = await mainScene();
+    const drips = scene.spawn(Particles);
+    // One particle every six steps (10 per second), each living 200 ms (twelve steps).
+    drips.configure({ rate: 10, lifetime: 200, speed: 0 });
+    const counts: number[] = [];
+    for (let i = 0; i < 600; i++) {
+      scene.game.step(1);
+      counts.push(drips.count);
+    }
+    // The first particle is born on step 6. A particle ages on the step it is born and is gone on
+    // the step its age reaches 200 ms, so it shows for eleven steps: from then on, every six
+    // steps repeat the same counts, for ten seconds, with no step lost to rounding.
+    expect(counts.slice(0, 6)).toEqual([0, 0, 0, 0, 0, 1]);
+    const cycle = counts.slice(12, 18);
+    expect(cycle).toEqual([2, 2, 2, 2, 1, 2]);
+    for (let i = 12; i + 6 <= counts.length; i += 6) expect(counts.slice(i, i + 6)).toEqual(cycle);
   });
 
   it('replays the same way from the same seed', async () => {

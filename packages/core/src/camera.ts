@@ -1,5 +1,6 @@
 import type { Point, Rect } from './math';
 import type { Random } from './random';
+import { TIME_EPSILON_MS } from './time-epsilon';
 
 /** Options of {@link Camera.follow}. */
 export interface FollowOptions {
@@ -172,7 +173,8 @@ export class Camera {
     }
     this.clamp();
     if (this.shakeLeft > 0) {
-      this.shakeLeft = Math.max(0, this.shakeLeft - dtMs);
+      // The epsilon absorbs float drift, so a shake lasts a whole number of steps.
+      this.shakeLeft = this.shakeLeft - dtMs <= TIME_EPSILON_MS ? 0 : this.shakeLeft - dtMs;
       const power = this.shakeIntensity * (this.shakeLeft / this.shakeTotal);
       const random = this.random();
       this.shakeOffset.x = random.float(-power, power);

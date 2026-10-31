@@ -122,11 +122,14 @@ export class SimulatedNetwork {
   /** Moves the clock forward and delivers what arrived, in arrival order. */
   advance(ms: number): void {
     this.now += ms;
+    // 1 µs of slack absorbs float drift: three steps of 1000 / 60 ms may make 49.999… ms, and a
+    // 50 ms latency must not cost a fourth step.
+    const until = this.now + 1e-6;
     const due = this.queue
-      .filter((m) => m.at <= this.now)
+      .filter((m) => m.at <= until)
       .sort((a, b) => a.at - b.at || a.order - b.order);
     if (due.length === 0) return;
-    this.queue = this.queue.filter((m) => m.at > this.now);
+    this.queue = this.queue.filter((m) => m.at > until);
     for (const message of due) {
       const target = this.members.get(message.to);
       if (!target) continue;

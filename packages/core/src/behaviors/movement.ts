@@ -4,6 +4,7 @@ import { shapeBounds } from '../collision/shapes';
 import { angleDelta, approach, DEG, Vector2, type Point, type Rect } from '../math';
 import type { ActionName } from '../register';
 import { Behavior } from './behavior';
+import { TIME_EPSILON_MS } from '../time-epsilon';
 
 /** Facing names used for directional animations (`walk-upleft`). */
 export type Facing =
@@ -462,7 +463,8 @@ export class Patrol extends Behavior<PatrolOptions> {
   }
 
   override update(object: GameObject, dt: number): void {
-    if (this.waiting > 0) {
+    // The epsilon absorbs float drift: a 500 ms wait lasts exactly 30 steps at 60 Hz.
+    if (this.waiting > TIME_EPSILON_MS) {
       this.waiting -= dt * 1000;
       object.velocity.set(0, 0);
       return;

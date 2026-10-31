@@ -11,6 +11,7 @@ import {
   easeOut,
   spring as motionSpring,
 } from 'motion';
+import { TIME_EPSILON_MS } from './time-epsilon';
 
 /** Named easing curves (from Motion): `In` starts slow, `Out` ends slow, `back` overshoots. */
 export type EaseName =
@@ -189,12 +190,14 @@ export class Tween {
     if (this.done || this.paused) return;
     this.elapsed += ms;
     const delay = this.options.delay ?? 0;
-    if (this.elapsed < delay) return;
+    if (this.elapsed < delay - TIME_EPSILON_MS) return;
     // Start values are read when the tween starts, after its delay.
     this.tracks ??= Object.entries(this.to).map(([path, value]) =>
       resolveTrack(this.target, path, value),
     );
-    const t = Math.min(1, (this.elapsed - delay) / this.duration);
+    // The epsilon absorbs float drift: 18 steps of 1000 / 60 ms may make 299.999… ms.
+    const run = Math.max(0, this.elapsed - delay);
+    const t = run >= this.duration - TIME_EPSILON_MS ? 1 : run / this.duration;
     const backwards = this.options.yoyo && this.run % 2 === 1;
     const eased = this.fn(backwards ? 1 - t : t);
     for (const track of this.tracks)

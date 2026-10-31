@@ -1,4 +1,5 @@
 import type { Unsubscribe } from './events';
+import { TIME_EPSILON_MS } from './time-epsilon';
 
 /** Opaque timer state from {@link Timers.capture}. */
 export interface TimersState {
@@ -45,10 +46,12 @@ export class Timers {
   /** Advances by `ms` and fires the timers that are due, in order. */
   advance(ms: number): void {
     this.now += ms;
+    // The epsilon absorbs float drift: six steps of 1000 / 60 ms make 99.999… ms, not 100.
+    const until = this.now + TIME_EPSILON_MS;
     for (;;) {
       let due: Timer | undefined;
       for (const timer of this.list)
-        if (timer.at <= this.now && (!due || timer.at < due.at)) due = timer;
+        if (timer.at <= until && (!due || timer.at < due.at)) due = timer;
       if (!due) return;
       if (due.every > 0) due.at += due.every;
       else this.list = this.list.filter((timer) => timer !== due);

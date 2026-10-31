@@ -6,6 +6,7 @@ import type { Rect } from '../math';
 import { IMAGE_EXTENSIONS } from '../assets';
 import type { AssetKey } from '../register';
 import { GameObject } from './game-object';
+import { TIME_EPSILON_MS } from '../time-epsilon';
 
 /** Tile images and per-tile properties. Tile numbers start at 1; 0 is an empty cell. */
 export interface Tileset {
@@ -131,7 +132,8 @@ export class TilemapLayer extends GameObject implements SolidProvider {
   private chunks = new Map<number, PixiContainer>();
   private readonly animatedLayer = new PixiContainer();
   private animatedSprites: { sprite: PixiSprite; tile: number }[] = [];
-  private animationTime = 0;
+  /** Game time since the map was shown, in ms (whole steps add up exactly in ms, not in s). */
+  private animationMs = 0;
 
   constructor() {
     super();
@@ -276,10 +278,13 @@ export class TilemapLayer extends GameObject implements SolidProvider {
   protected override stepInternal(dt: number): void {
     const animated = this.data?.tileset.animated;
     if (!animated || this.animatedSprites.length === 0) return;
-    this.animationTime += dt;
+    this.animationMs += dt * 1000;
+    // The epsilon absorbs float drift: six steps of 1/60 s make 0.0999… s, so a 10 fps tile
+    // would change one step late.
+    const ms = this.animationMs + TIME_EPSILON_MS;
     for (const { sprite, tile } of this.animatedSprites) {
       const { frames, fps } = animated[tile]!;
-      const frame = frames[Math.floor(this.animationTime * fps) % frames.length]!;
+      const frame = frames[Math.floor((ms * fps) / 1000) % frames.length]!;
       sprite.texture = this.textures[frame - 1] ?? Texture.EMPTY;
     }
   }

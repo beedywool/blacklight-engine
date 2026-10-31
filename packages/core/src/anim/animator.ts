@@ -1,5 +1,6 @@
 import type { Point } from '../math';
 import type { HitboxSpec } from '../collision/shapes';
+import { TIME_EPSILON_MS } from '../time-epsilon';
 import type { Sheet } from './sheets';
 
 /** Per-frame overrides of hitbox and pivot. */
@@ -454,8 +455,9 @@ export class Animator {
     this.elapsed += ms * this.speed;
     for (;;) {
       const duration = animation.durations[this.index] ?? 100;
-      if (this.elapsed < duration) return;
-      this.elapsed -= duration;
+      // Six steps of 1000 / 60 ms make 99.999… ms: without the epsilon a 100 ms frame lasts 7.
+      if (this.elapsed < duration - TIME_EPSILON_MS) return;
+      this.elapsed = Math.max(0, this.elapsed - duration);
       if (this.index < animation.frames.length - 1) {
         this.index++;
         this.emitFrame();

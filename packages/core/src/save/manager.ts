@@ -25,6 +25,7 @@ import {
 } from './format';
 import { screenSlots, type ScreenSlots, type ScreenSlotsOptions } from './ui-slots';
 import type { ModuleSaveSlot } from '../modules/define';
+import { TIME_EPSILON_MS } from '../time-epsilon';
 
 /** A slot: `1`…`slots`, `'auto'`, or a name such as `'quick'` (letters, digits, `-`, `_`). */
 export type SaveSlot = number | string;
@@ -177,7 +178,7 @@ export class SaveManager {
       this.playTime += ms;
       const interval = this.config.autosave.interval * 1000;
       // The epsilon absorbs float drift: 60 steps of 1000/60 ms make 999.99… ms.
-      if (interval > 0 && (this.sinceAutosave += ms) >= interval - 1e-6) {
+      if (interval > 0 && (this.sinceAutosave += ms) >= interval - TIME_EPSILON_MS) {
         this.sinceAutosave = 0;
         void this.autosave().catch(() => undefined);
       }

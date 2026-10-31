@@ -1,5 +1,6 @@
 import type { GameObject } from '../objects/game-object';
 import { Behavior } from './behavior';
+import { TIME_EPSILON_MS } from '../time-epsilon';
 
 /** Options of {@link Flash} (`behaviors.flash`). */
 export interface FlashOptions {
@@ -49,10 +50,13 @@ export class Flash extends Behavior<FlashOptions> {
 
   override update(object: GameObject, dt: number): void {
     if (this.remaining <= 0) return;
+    // The epsilon absorbs float drift, so a 500 ms flash lasts exactly 30 steps at 60 Hz.
     this.remaining -= dt * 1000;
+    if (this.remaining <= TIME_EPSILON_MS) this.remaining = 0;
     this.clock += dt * 1000;
     const interval = this.options.interval ?? 80;
-    object.visible = this.remaining <= 0 || Math.floor(this.clock / interval) % 2 === 1;
+    object.visible =
+      this.remaining <= 0 || Math.floor((this.clock + TIME_EPSILON_MS) / interval) % 2 === 1;
   }
 }
 
@@ -120,8 +124,10 @@ export class Fade extends Behavior<FadeOptions> {
   override update(object: GameObject, dt: number): void {
     this.time += dt * 1000;
     const { fadeIn = 0, fadeOut = 0 } = this.options;
-    if (this.outAt !== undefined && this.time >= this.outAt) {
-      const t = fadeOut > 0 ? (this.time - this.outAt) / fadeOut : 1;
+    // The epsilon absorbs float drift: 18 steps of 1000 / 60 ms may make 299.999… ms.
+    if (this.outAt !== undefined && this.time >= this.outAt - TIME_EPSILON_MS) {
+      const out = Math.max(0, this.time - this.outAt);
+      const t = out >= fadeOut - TIME_EPSILON_MS ? 1 : out / fadeOut;
       object.alpha = Math.max(0, 1 - t);
       if (t >= 1 && this.options.destroy !== false) object.destroy();
     } else if (fadeIn > 0 && this.time <= fadeIn) {

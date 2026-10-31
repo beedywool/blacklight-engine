@@ -3,6 +3,7 @@ import { DEG, lerp } from '../math';
 import { IMAGE_EXTENSIONS } from '../assets';
 import type { AssetKey } from '../register';
 import { GameObject } from './game-object';
+import { TIME_EPSILON_MS } from '../time-epsilon';
 
 type Range = number | [number, number];
 
@@ -178,9 +179,11 @@ export class Particles extends GameObject {
 
   protected override stepInternal(dt: number): void {
     const o = this.options;
-    if (this.emitting && (o.rate ?? 20) > 0) {
-      this.debt += (o.rate ?? 20) * dt;
-      while (this.debt >= 1) {
+    const rate = o.rate ?? 20;
+    if (this.emitting && rate > 0) {
+      this.debt += rate * dt;
+      // The epsilon (in particles) absorbs float drift: 10 per second must make one every 6 steps.
+      while (this.debt >= 1 - (rate * TIME_EPSILON_MS) / 1000) {
         this.spawnParticle();
         this.debt--;
       }
@@ -191,7 +194,8 @@ export class Particles extends GameObject {
     const survivors: Live[] = [];
     for (const p of this.live) {
       p.age += dt * 1000;
-      if (p.age >= p.life) {
+      // The epsilon absorbs float drift: a 500 ms particle lives exactly 30 steps at 60 Hz.
+      if (p.age >= p.life - TIME_EPSILON_MS) {
         this.container.removeParticle(p.particle);
         continue;
       }
