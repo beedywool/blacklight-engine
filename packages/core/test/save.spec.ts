@@ -189,7 +189,8 @@ describe('export and import (SV-05)', () => {
     await a.manager.save(1);
     await a.manager.save('quick');
     const file = await a.manager.export('correct horse');
-    expect(text(file)).not.toContain('42');
+    // A field name, not the value: two random ciphertext bytes spell '42' about once in 200 runs.
+    expect(text(file)).not.toContain('"gold"');
 
     const b = setup(true);
     await expect(b.manager.import(file, 'wrong')).rejects.toMatchObject({ code: 'password' });
