@@ -2,7 +2,13 @@ import { describe, expect, it } from 'vitest';
 import { EventBus } from '../src/events';
 import { WebPlatform } from '../src/platform';
 import type { CloudSaveProvider, SaveConfig, SavePayload } from '../src/save/index';
-import { SaveError, SaveManager, decodeSave } from '../src/save/index';
+import {
+  SaveError,
+  SaveManager,
+  decodeSave,
+  resolveSaveConfig,
+  validateSaveConfig,
+} from '../src/save/index';
 
 function setup(release: boolean, save?: SaveConfig, platform = new WebPlatform('com.test.game')) {
   const events = new EventBus<{ step: { step: number }; scene: { name: string } }>();
@@ -315,5 +321,89 @@ describe('UI save/load screens adapter', () => {
     expect(applied).toEqual([[{ gold: 1, dialogue: { line: 3 } }, '1']]);
     await slots.delete('1');
     expect(await slots.list()).toEqual([]);
+  });
+});
+
+describe('save config', () => {
+  it('accepts a complete config and an absent one', () => {
+    expect(validateSaveConfig(undefined)).toEqual([]);
+    expect(
+      validateSaveConfig({
+        slots: 3,
+        autosave: { interval: 60, onSceneChange: true },
+        encryption: true,
+        integrity: true,
+        version: 3,
+        migrations: { 2: (data: unknown) => data, 3: (data: unknown) => data },
+        location: { windows: 'Saves', mac: 'Saves', linux: 'saves' },
+      }),
+    ).toEqual([]);
+    expect(validateSaveConfig({ autosave: true, location: 'Saves' })).toEqual([]);
+  });
+
+  it('names each wrong field with the fix', () => {
+    expect(validateSaveConfig(3)).toEqual(['`save` must be an object, e.g. `save: { slots: 3 }`']);
+    expect(
+      validateSaveConfig({
+        slots: 1.5,
+        autosave: 'often',
+        encryption: 'yes',
+        integrity: 1,
+        version: 0,
+        migrations: [],
+        location: 42,
+      }),
+    ).toEqual([
+      '`save.slots` must be a positive integer, e.g. `slots: 3`',
+      '`save.autosave` must be a boolean or `{ interval?: seconds, onSceneChange?: boolean }`',
+      '`save.encryption` must be a boolean',
+      '`save.integrity` must be a boolean',
+      '`save.version` must be a positive integer, e.g. `version: 2`',
+      '`save.migrations` must map a version to a function, e.g. `{ 2: (data) => data }`',
+      '`save.location` must be a folder path or `{ windows?, mac?, linux? }`',
+    ]);
+    expect(
+      validateSaveConfig({
+        autosave: { interval: -1, onSceneChange: 'yes' },
+        version: 2,
+        migrations: { first: () => null, 1: () => null, 2: 'up', 3: () => null },
+        location: { amiga: 'Saves', linux: '' },
+      }),
+    ).toEqual([
+      '`save.autosave.interval` must be a number of seconds (0 turns it off)',
+      '`save.autosave.onSceneChange` must be a boolean',
+      '`save.migrations`: "1" must be a version number of 2 or more',
+      '`save.migrations[2]` must be a function `(data) => newData`',
+      '`save.migrations[3]` is above `save.version` (2): raise `save.version` to 3',
+      '`save.migrations`: "first" must be a version number of 2 or more',
+      '`save.location.amiga` is unknown: use windows, mac or linux',
+      '`save.location.linux` must be a folder path',
+    ]);
+  });
+
+  it('encrypts and signs release saves unless the config says otherwise', () => {
+    expect(resolveSaveConfig(undefined, true)).toMatchObject({
+      slots: 10,
+      autosave: { interval: 0, onSceneChange: false },
+      encryption: true,
+      integrity: true,
+      version: 1,
+    });
+    expect(resolveSaveConfig(undefined, false)).toMatchObject({
+      encryption: false,
+      integrity: false,
+    });
+    // Integrity follows an explicit encryption choice.
+    expect(resolveSaveConfig({ encryption: false }, true).integrity).toBe(false);
+    expect(resolveSaveConfig({ encryption: true }, false).integrity).toBe(true);
+    expect(resolveSaveConfig({ integrity: true, encryption: false }, false).integrity).toBe(true);
+    expect(resolveSaveConfig({ autosave: true }, false).autosave).toEqual({
+      interval: 0,
+      onSceneChange: true,
+    });
+    expect(resolveSaveConfig({ autosave: { interval: 30 } }, false).autosave).toEqual({
+      interval: 30,
+      onSceneChange: false,
+    });
   });
 });

@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
   behaviors,
+  Bounce,
   Fade,
   FourDirections,
   PathFollow,
@@ -12,6 +13,11 @@ import { testScene } from './helpers';
 
 class Box extends GameObject {
   static override hitbox = { type: 'box' as const, x: -8, y: -8, width: 16, height: 16 };
+}
+
+class Wall extends GameObject {
+  static override hitbox = { type: 'box' as const, width: 32, height: 32 };
+  static override collision = { solid: true };
 }
 
 describe('more behaviors', () => {
@@ -193,5 +199,160 @@ describe('more behaviors', () => {
     scene.input.pointerUp(7, 'touch', 0, { x: 150, y: 200 });
     scene.tick(2);
     expect(scene.input.held('right')).toBe(false);
+  });
+});
+
+describe('movement options', () => {
+  it('eightDirections speeds up and slows down at the given rates', () => {
+    const scene = testScene();
+    const hero = scene.spawn(
+      class extends Box {
+        static override behaviors = [
+          behaviors.eightDirections({ speed: 120, acceleration: 240, deceleration: 480 }),
+        ];
+      },
+      { x: 100, y: 100 },
+    );
+    scene.input.keyDown('ArrowLeft');
+    scene.tick(30);
+    expect(hero.velocity.x).toBeCloseTo(-120); // full speed after 0.5 s
+    scene.input.keyUp('ArrowLeft');
+    scene.tick(6);
+    expect(hero.velocity.x).toBeCloseTo(-72);
+    scene.tick(30);
+    expect(hero.velocity.x).toBe(0);
+  });
+
+  it('bullet flies along its rotation, accelerates, falls, turns with its path, and may survive walls', () => {
+    const scene = testScene();
+    class Shell extends Box {
+      static override behaviors = [
+        behaviors.bullet({
+          speed: 60,
+          acceleration: 60,
+          gravity: 120,
+          rotate: true,
+          destroyOnSolid: false,
+        }),
+      ];
+    }
+    const shell = scene.add(new Shell());
+    shell.teleport(100, 100);
+    expect(shell.velocity.x).toBeCloseTo(60); // rotation 0: to the right
+    scene.tick(60);
+    // Gravity pulls it down at 120 px/s², acceleration adds 60 px/s² along its path.
+    expect(shell.velocity.y).toBeGreaterThan(120);
+    expect(shell.velocity.length).toBeGreaterThan(160);
+    expect(shell.rotation).toBeCloseTo(Math.atan2(shell.velocity.y, shell.velocity.x));
+    scene.spawn(Wall, { x: shell.x + 10, y: shell.y - 16 });
+    scene.tick(10);
+    expect(shell.alive).toBe(true);
+  });
+
+  it('bounce reflects off scene edges unless edges is false', () => {
+    const scene = testScene();
+    class Ball extends Box {
+      static override behaviors = [behaviors.bounce({ speed: 600, angle: 0 })];
+    }
+    class Ghost extends Box {
+      static override behaviors = [behaviors.bounce({ speed: 600, angle: 90, edges: false })];
+    }
+    const ball = scene.spawn(Ball, { x: 620, y: 100 });
+    const ghost = scene.spawn(Ghost, { x: 100, y: 340 });
+    scene.tick(5);
+    expect(ball.velocity.x).toBeLessThan(0);
+    expect(ball.behavior(Bounce)).toBeDefined();
+    expect(ghost.y).toBeGreaterThan(360);
+    const up = scene.spawn(
+      class extends Box {
+        static override behaviors = [behaviors.bounce({ speed: 600, angle: -90 })];
+      },
+      { x: 300, y: 20 },
+    );
+    scene.tick(5);
+    expect(up.velocity.y).toBeGreaterThan(0);
+  });
+
+  it('followTarget follows a point function, faces it, and stops when the target is gone', () => {
+    const scene = testScene();
+    let point: { x: number; y: number } | undefined = { x: 100, y: 200 };
+    const follower = scene.spawn(
+      class extends Box {
+        static override behaviors = [
+          behaviors.followTarget({ target: () => point, speed: 600, rotate: true }),
+        ];
+      },
+      { x: 100, y: 100 },
+    );
+    scene.tick(30);
+    expect([follower.x, follower.y]).toEqual([100, 200]);
+    expect(follower.rotation).toBeCloseTo(Math.PI / 2);
+    point = undefined;
+    scene.tick();
+    expect(follower.velocity.length).toBe(0);
+    const target = scene.spawn(Box, { x: 400, y: 100 });
+    const chaser = scene.spawn(
+      class extends Box {
+        static override behaviors = [behaviors.followTarget({ target, speed: 60 })];
+      },
+      { x: 300, y: 100 },
+    );
+    target.destroy();
+    scene.tick();
+    expect(chaser.x).toBe(300);
+  });
+
+  it('pathFollow loops, ping-pongs and faces where it goes', () => {
+    const scene = testScene();
+    const points = [
+      { x: 0, y: 0 },
+      { x: 60, y: 0 },
+    ];
+    const looper = scene.spawn(
+      class extends Box {
+        static override behaviors = [
+          behaviors.pathFollow({ points, speed: 600, mode: 'loop', rotate: true }),
+        ];
+      },
+      { x: 0, y: 0 },
+    );
+    const bouncer = scene.spawn(
+      class extends Box {
+        static override behaviors = [
+          behaviors.pathFollow({ points, speed: 600, mode: 'pingpong' }),
+        ];
+      },
+      { x: 0, y: 0 },
+    );
+    scene.tick(6); // reached the second point
+    expect(looper.x).toBe(60);
+    scene.tick(3);
+    // The loop jumps back toward the first point; ping-pong walks back.
+    expect(looper.x).toBeLessThan(60);
+    expect(looper.rotation).toBeCloseTo(Math.PI);
+    expect(bouncer.x).toBe(30);
+    expect(looper.behavior(PathFollow)!.finished).toBe(false);
+    expect(bouncer.behavior(PathFollow)!.finished).toBe(false);
+  });
+
+  it('sineWave drives x, alpha, angle or scale', () => {
+    const scene = testScene();
+    const wave = (property: 'x' | 'alpha' | 'angle' | 'scale', amplitude: number) =>
+      scene.spawn(
+        class extends Box {
+          static override behaviors = [behaviors.sineWave({ property, amplitude, period: 1 })];
+        },
+        { x: 100, y: 100 },
+      );
+    const x = wave('x', 10);
+    const alpha = wave('alpha', 0.5);
+    const angle = wave('angle', 90);
+    const scale = wave('scale', 0.5);
+    alpha.alpha = 0.5;
+    scene.tick(15); // a quarter period: the peak
+    expect(x.x).toBeCloseTo(110, 0);
+    expect(alpha.alpha).toBeCloseTo(1, 1);
+    expect(angle.rotation).toBeCloseTo(Math.PI / 2, 1);
+    expect(scale.scale.x).toBeCloseTo(1.5, 1);
   });
 });

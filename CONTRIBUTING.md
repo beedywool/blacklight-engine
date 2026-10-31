@@ -45,7 +45,7 @@ pnpm vitest run --project core test/save.spec.ts       # one Node file
 pnpm test:coverage                                     # core, core-browser, net and relay with v8 coverage
 ```
 
-`pnpm test:coverage` merges the Node and Chromium runs, prints a summary, writes `coverage/index.html`, and fails when `packages/core/src` or `packages/net/src` drops below 80 % of statements, lines or functions or 75 % of branches (NF-07; CI runs it on Linux). Run it through the script: with other `--project` filters the report covers other files, and without any the include pattern matches nothing. When a change lowers coverage, add a test of the behaviour you changed, not a call that only touches lines. Only generated data is excluded (`coverage.exclude`, each entry with the reason); code that needs hardware is tested against a fake of the browser API and listed in `MANUAL_TESTS.md`.
+`pnpm test:coverage` merges the Node and Chromium runs, prints a summary, writes `coverage/index.html`, and fails when `packages/core/src` or `packages/net/src` drops below 80 % of statements, lines, functions or branches (NF-07; CI runs it on Linux). Run it through the script: with other `--project` filters the report covers other files, and without any the include pattern matches nothing. When a change lowers coverage, add a test of the behaviour you changed, not a call that only touches lines. Only generated data is excluded (`coverage.exclude`, each entry with the reason); code that needs hardware is tested against a fake of the browser API and listed in `MANUAL_TESTS.md`.
 
 ## Layout
 

@@ -29,8 +29,8 @@ export default defineConfig({
       reporter: ['text-summary', 'text', 'html', 'json-summary'],
       thresholds: {
         // Relative to the repository root.
-        'packages/core/src/**': { statements: 80, lines: 80, functions: 80, branches: 75 },
-        'packages/net/src/**': { statements: 80, lines: 80, functions: 80, branches: 75 },
+        'packages/core/src/**': { statements: 80, lines: 80, functions: 80, branches: 80 },
+        'packages/net/src/**': { statements: 80, lines: 80, functions: 80, branches: 80 },
       },
     },
   },

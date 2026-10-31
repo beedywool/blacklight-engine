@@ -272,6 +272,47 @@ describe('behaviors', () => {
     expect([piece.x, piece.y]).toEqual([80, 16]);
   });
 
+  it('grid movement follows the arrows one cell at a time and stops at solids', () => {
+    const scene = testScene();
+    class Piece extends Box {
+      static override behaviors = [behaviors.gridMovement({ cellSize: 32, speed: 10 })];
+    }
+    scene.spawn(Wall, { x: 96, y: 32 });
+    const piece = scene.spawn(Piece, { x: 48, y: 48 });
+    const grid = piece.behavior(GridMovement)!;
+    const press = (key: string, steps: number) => {
+      scene.input.keyDown(key);
+      scene.tick(steps);
+      scene.input.keyUp(key);
+      scene.tick(30);
+    };
+    press('ArrowDown', 1);
+    expect(grid.cell).toEqual({ column: 1, row: 2 });
+    press('ArrowUp', 1);
+    expect(grid.cell).toEqual({ column: 1, row: 1 });
+    press('ArrowLeft', 1);
+    expect(grid.cell).toEqual({ column: 0, row: 1 });
+    press('ArrowRight', 1);
+    expect(grid.cell).toEqual({ column: 1, row: 1 });
+    // The wall fills cell (3, 1); walking right stops in front of it.
+    press('ArrowRight', 40);
+    expect(grid.cell).toEqual({ column: 2, row: 1 });
+    expect(grid.moving).toBe(false);
+    expect([piece.x, piece.y]).toEqual([80, 48]);
+    // A path into a wall is dropped.
+    expect(grid.moveTo(3, 1)).toBe(false);
+    // Diagonal pieces cut corners only where both sides are free.
+    class Bishop extends Box {
+      static override behaviors = [
+        behaviors.gridMovement({ cellSize: 32, speed: 10, controlled: false, diagonal: true }),
+      ];
+    }
+    const bishop = scene.spawn(Bishop, { x: 16, y: 208 });
+    expect(bishop.behavior(GridMovement)!.moveTo(3, 9)).toBe(true);
+    scene.tick(120);
+    expect([bishop.x, bishop.y]).toEqual([112, 304]);
+  });
+
   it('destroyOutsideLayout and wrapAroundScreen', () => {
     const scene = testScene();
     class Gone extends Box {
@@ -285,6 +326,57 @@ describe('behaviors', () => {
     scene.tick();
     expect(gone.alive).toBe(false);
     expect(wrap.x).toBeCloseTo(4); // fully past the right edge → back in from the left
+  });
+
+  it('wraps on every edge and destroys past any edge plus the margin', () => {
+    const scene = testScene();
+    class Wrap extends Box {
+      static override behaviors = [behaviors.wrapAroundScreen({ margin: 10 })];
+    }
+    class Gone extends Box {
+      static override behaviors = [behaviors.destroyOutsideLayout()];
+    }
+    // The scene is 640×360; boxes are 16 px wide around their origin.
+    const left = scene.spawn(Wrap, { x: -19, y: 100 });
+    const down = scene.spawn(Wrap, { x: 100, y: 379 });
+    const up = scene.spawn(Wrap, { x: 100, y: -19 });
+    const near = scene.spawn(Wrap, { x: -17, y: 100 });
+    scene.tick();
+    expect(left.x).toBeCloseTo(-19 + 640 + 16 + 20);
+    expect(down.y).toBeCloseTo(379 - (360 + 16 + 20));
+    expect(up.y).toBeCloseTo(-19 + 360 + 16 + 20);
+    expect(near.x).toBe(-17); // still within the margin
+    const kept = scene.spawn(Gone, { x: -60, y: 100 });
+    const goneLeft = scene.spawn(Gone, { x: -80, y: 100 });
+    const goneUp = scene.spawn(Gone, { x: 100, y: -80 });
+    const goneDown = scene.spawn(Gone, { x: 100, y: 440 });
+    scene.tick();
+    expect([kept.alive, goneLeft.alive, goneUp.alive, goneDown.alive]).toEqual([
+      true,
+      false,
+      false,
+      false,
+    ]);
+  });
+
+  it('anchorToScreen keeps an object at a screen point while the camera moves', () => {
+    const scene = testScene();
+    class Badge extends Box {
+      static override behaviors = [
+        behaviors.anchorToScreen({ x: 1, y: 0, offset: { x: -40, y: 30 } }),
+      ];
+    }
+    class Corner extends Box {
+      static override behaviors = [behaviors.anchorToScreen({ x: 0, y: 1 })];
+    }
+    const badge = scene.spawn(Badge);
+    const corner = scene.spawn(Corner);
+    scene.tick();
+    expect([badge.x, badge.y]).toEqual([600, 30]);
+    expect([corner.x, corner.y]).toEqual([0, 360]);
+    scene.camera.x += 100;
+    scene.tick();
+    expect([badge.x, badge.y]).toEqual([700, 30]);
   });
 });
 
