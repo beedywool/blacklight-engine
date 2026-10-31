@@ -29,13 +29,19 @@ import { View3D, view3d, type View3DOptions } from './view';
 
 /** Size of the texture of a render-to-texture model, in virtual pixels. */
 export interface RenderToTextureOptions {
-  /** @defaultValue the model's bounding sphere, with a margin */
+  /** Texture width in virtual pixels. @defaultValue the model's bounding sphere, with a margin */
   width?: number;
+  /** Texture height in virtual pixels. @defaultValue the model's bounding sphere, with a margin */
   height?: number;
   /** Texture pixels per virtual pixel. @defaultValue the screen's (`game.textResolution`) */
   resolution?: number;
   /** Point of the model shown at the texture's center, in model units. @defaultValue the bounding sphere's center */
-  center?: { x: number; y: number };
+  center?: {
+    /** x in model units. */
+    x: number;
+    /** y in model units (up). */
+    y: number;
+  };
 }
 
 /** Engine state of a model kept in snapshots. */

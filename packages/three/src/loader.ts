@@ -14,6 +14,7 @@ export interface LoadedModel {
   animations: AnimationClip[];
   /** Bounds of the model at rest, in model units. */
   box: Box3;
+  /** Bounding sphere of the model at rest, in model units: fits the model whatever its turn. */
   sphere: Sphere;
   /** Triangles drawn per instance. */
   triangles: number;
@@ -94,7 +95,20 @@ function header(data: ArrayBuffer): GltfHeader {
   }
 }
 
-/** Extensions a glTF file declares, read without parsing the rest. */
+/**
+ * Extensions a glTF file declares (`KHR_draco_mesh_compression`, `KHR_texture_basisu`…), read
+ * from its header without parsing the rest: to check a file before shipping it.
+ *
+ * @param data - A `.glb` or `.gltf` file.
+ *
+ * @example
+ * ```ts
+ * import { extensionsUsed } from '@blacklight/three';
+ *
+ * const data = await (await fetch('/models/hero.glb')).arrayBuffer();
+ * extensionsUsed(data); // ['KHR_draco_mesh_compression']
+ * ```
+ */
 export function extensionsUsed(data: ArrayBuffer): string[] {
   return header(data).extensionsUsed ?? [];
 }
@@ -103,7 +117,20 @@ const INLINE = /^(data|blob|https?):/;
 
 /**
  * Parses a glTF / GLB file. Files a `.gltf` references (`.bin`, textures) are looked up in the
- * game's asset manifest, so they keep working after the build renames them.
+ * game's asset manifest, so they keep working after the build renames them. Use it for model
+ * bytes that do not come from the asset store (a download, a file picked by the player).
+ *
+ * @param data - The `.glb` or `.gltf` file.
+ * @param path - Project path of the file, for error messages and to resolve relative references.
+ * @throws Error when the file is not valid glTF.
+ *
+ * @example
+ * ```ts
+ * import { parseModel } from '@blacklight/three';
+ *
+ * const model = await parseModel(await file.arrayBuffer(), 'models/custom.glb');
+ * model.animations.map((clip) => clip.name); // ['idle', 'run']
+ * ```
  */
 export async function parseModel(
   data: ArrayBuffer,
@@ -143,7 +170,19 @@ export async function parseModel(
   };
 }
 
-/** Fetches and parses a model; the asset loader registered for `.glb` and `.gltf`. */
+/**
+ * Fetches and parses a model; the asset loader registered for `.glb` and `.gltf`. Games load
+ * models through the asset store (`static assets`, `scene.assets.load`), which calls it.
+ *
+ * @throws Error when the request fails (with its HTTP status) or the file is not valid glTF.
+ *
+ * @example
+ * ```ts
+ * import { loadModel } from '@blacklight/three';
+ *
+ * const model = await loadModel('models/hero.glb', '/assets/hero-3f2a.glb');
+ * ```
+ */
 export async function loadModel(
   path: string,
   url: string,
@@ -158,7 +197,16 @@ let registered = false;
 
 /**
  * Lets asset stores load `.glb` and `.gltf` files. Runs when the package is imported, so scenes
- * that use 3D preload their models like any other file.
+ * that use 3D preload their models like any other file; call it again only after replacing the
+ * store's loaders (tests). Later calls do nothing.
+ *
+ * @example
+ * ```ts
+ * import { registerModelLoader } from '@blacklight/three';
+ *
+ * registerModelLoader();
+ * await game.assets.load(['models/hero.glb']);
+ * ```
  */
 export function registerModelLoader(): void {
   if (registered) return;

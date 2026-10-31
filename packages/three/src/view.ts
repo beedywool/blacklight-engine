@@ -28,14 +28,29 @@ export interface View3DOptions {
   /** Vertical field of view of the perspective camera, in degrees. @defaultValue `40` */
   fov?: number;
   /** Ambient light: intensity, or color and intensity. @defaultValue `{ color: 0xffffff, intensity: 0.9 }` */
-  ambient?: number | { color?: ColorRepresentation; intensity?: number };
+  ambient?:
+    | number
+    | {
+        /** Light color. @defaultValue `0xffffff` */
+        color?: ColorRepresentation;
+        /** Light strength. @defaultValue `0.9` */
+        intensity?: number;
+      };
   /**
    * Directional light. `from` is the direction it comes from in screen space (x right, y up, z
    * towards the viewer); `false` turns it off.
    * @defaultValue `{ from: [-0.6, 1, 0.8], color: 0xffffff, intensity: 2.4 }`
    */
   sun?:
-    false | { from?: [number, number, number]; color?: ColorRepresentation; intensity?: number };
+    | false
+    | {
+        /** Direction the light comes from: `[x, y, z]` in screen space. */
+        from?: [number, number, number];
+        /** Light color. @defaultValue `0xffffff` */
+        color?: ColorRepresentation;
+        /** Light strength. @defaultValue `2.4` */
+        intensity?: number;
+      };
 }
 
 /**
@@ -54,13 +69,26 @@ export type Layers3D = Record<string, View3DOptions>;
 
 /**
  * Camera settings and lights shared by the models of one 3D layer. Add your own Three.js lights to
- * `scene`; they light every model of the layer.
+ * `scene`; they light every model of the layer. Get the view of a layer with {@link view3d}.
+ *
+ * @example
+ * ```ts
+ * import { PointLight } from 'three';
+ * import { view3d } from '@blacklight/three';
+ *
+ * const view = view3d(this, 'actors');
+ * view.sun.intensity = 1.2;
+ * view.scene.add(new PointLight(0xffaa55, 40));
+ * ```
  */
 export class View3D {
   /** Holds the lights; models are added to it only while they draw. */
   readonly scene = new ThreeScene();
+  /** The ambient light; change its color and intensity at any time. */
   readonly ambient = new AmbientLight(0xffffff, 0.9);
+  /** The directional light (hidden when the options say `sun: false`). */
   readonly sun = new DirectionalLight(0xffffff, 2.4);
+  /** Camera type and field of view of the layer. */
   readonly camera: CameraSettings = { type: 'orthographic', fov: 40 };
   /** @internal */
   readonly perspective = new PerspectiveCamera();

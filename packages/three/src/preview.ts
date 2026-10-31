@@ -12,8 +12,9 @@ import { View3D, type View3DOptions } from './view';
 export interface ModelPreviewOptions {
   /** Model file: asset key (`hero`) or project path (`@models/hero.glb`). Loaded if needed. */
   model: string;
-  /** Size of the preview in CSS (or UI virtual) pixels. */
+  /** Width of the preview in CSS (or UI virtual) pixels. */
   width: number;
+  /** Height of the preview in CSS (or UI virtual) pixels. */
   height: number;
   /** Animation to play. @defaultValue the model's first */
   animation?: string;
@@ -50,13 +51,17 @@ export interface ModelPreviewOptions {
  * ```
  */
 export class ModelPreview {
+  /** The canvas showing the model: append it to the page, style it like any element. */
   readonly canvas: HTMLCanvasElement;
   /** The model's root in model units (rotate or scale it). */
   readonly object3d = new Group();
+  /** Camera and lights of the preview. */
   readonly view: View3D;
   /** Resolves once the model is loaded and shown. */
   readonly ready: Promise<void>;
+  /** Plays the model's animations; `undefined` until {@link ready} resolves. */
   animator: ModelAnimator | undefined;
+  /** The loaded file; `undefined` until {@link ready} resolves. */
   loaded: LoadedModel | undefined;
   /** Frames copied to the canvas so far. */
   frames = 0;
@@ -73,6 +78,7 @@ export class ModelPreview {
   private destroyed = false;
 
   constructor(
+    /** The game whose renderer and asset store the preview uses. */
     readonly game: Game,
     private readonly options: ModelPreviewOptions,
   ) {
@@ -203,7 +209,7 @@ export class ModelPreview {
   }
 }
 
-/** Pixi keeps premultiplied colors; canvas image data is straight alpha. */
+/** @internal Pixi keeps premultiplied colors; canvas image data is straight alpha. */
 export function unpremultiply(source: Uint8Array, target: Uint8ClampedArray): void {
   for (let i = 0; i < source.length; i += 4) {
     const a = source[i + 3]!;

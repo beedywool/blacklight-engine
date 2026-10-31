@@ -32,7 +32,16 @@ export interface PixiTarget {
  * One Three.js renderer per Pixi renderer, drawing into Pixi's own WebGL context (3D-02): models
  * are drawn in the middle of Pixi's frame, into whatever Pixi has bound (the screen, a split-screen
  * view, a filter's texture or a render-to-texture model), and both libraries reset their cached
- * GL state around each draw.
+ * GL state around each draw. Get it with {@link sharedContext}; games use it for statistics or
+ * to draw their own Three.js content with {@link SharedContext.draw}.
+ *
+ * @example
+ * ```ts
+ * import { sharedContext } from '@blacklight/three';
+ *
+ * const context = sharedContext(this.game.app.renderer);
+ * context.renderer.info.render.calls; // Three.js draw calls of the last model
+ * ```
  */
 export class SharedContext {
   /** The Three.js renderer, sharing Pixi's canvas and WebGL context. */
@@ -48,6 +57,7 @@ export class SharedContext {
    * @param renderer - Only for tests: a renderer to use instead of creating one on Pixi's context.
    */
   constructor(
+    /** The Pixi renderer whose WebGL context is shared. */
     readonly pixi: PixiWebGLRenderer,
     renderer?: ThreeRenderer,
   ) {
@@ -168,7 +178,21 @@ const scratch: Affine = { a: 1, b: 0, c: 0, d: 1, tx: 0, ty: 0 };
 
 /**
  * Draws `holder` (a model in model units) where Pixi is drawing `display`, with the camera and
- * lights of `view`. Called from the `render` function of a Pixi `RenderContainer`.
+ * lights of `view`. Called from the `render` function of a Pixi `RenderContainer`: this is how
+ * `Model3D` and `ModelPreview` draw, and how a custom container shows a Three object.
+ *
+ * @param pixelsPerUnit - Size of one model unit in the container's local pixels.
+ * @param z - Depth offset in local pixels, towards the viewer.
+ *
+ * @example
+ * ```ts
+ * import { RenderContainer } from 'pixi.js';
+ * import { drawModel } from '@blacklight/three';
+ *
+ * const display = new RenderContainer({
+ *   render: (renderer) => drawModel(renderer, display, holder, view, 64),
+ * });
+ * ```
  */
 export function drawModel(
   renderer: Renderer,

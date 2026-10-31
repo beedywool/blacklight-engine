@@ -37,25 +37,42 @@ export interface ModelAnimationSettings {
 export interface ModelPlayOptions {
   /** Starts over even when the animation is already playing. */
   restart?: boolean;
+  /** Playback rate for this call. */
   speed?: number;
   /** Cross-fade duration in ms; `0` cuts. */
   fade?: number;
+  /** Loops this time, whatever the animation's settings say. */
   loop?: boolean;
 }
 
 /** Saved animation state (snapshots). */
 export interface ModelAnimationState {
+  /** Playing animation, `undefined` before the first `play`. */
   name: string | undefined;
+  /** Seconds into it. */
   time: number;
+  /** Playback rate. */
   speed: number;
+  /** The animation was a mirrored fallback. */
   flipX: boolean;
 }
 
 /**
  * Plays the skeletal animations of one model instance on the game's fixed step, with the same
  * vocabulary as sprites: `play`, `queue`, `onEnd`, frame events, fallback to a close name.
+ * Every `Model3D` has one (`model.animator`) once its file is loaded; most games call the
+ * object's own `play` instead.
+ *
+ * @example
+ * ```ts
+ * const animator = this.hero.animator!;
+ * animator.play('attack', { restart: true, fade: 80 });
+ * animator.queue('idle');
+ * animator.onEnd((name) => console.log(name, 'ended'));
+ * ```
  */
 export class ModelAnimator {
+  /** The Three.js mixer driving the clips, for blending beyond `play` (additive layers). */
   readonly mixer: AnimationMixer;
   /** Name of the playing (or last played) animation. */
   name: string | undefined;

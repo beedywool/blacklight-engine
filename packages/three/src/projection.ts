@@ -2,11 +2,17 @@ import type { Matrix4, Object3D, OrthographicCamera, PerspectiveCamera } from 't
 
 /** A 2D affine matrix as Pixi stores it: `x' = a·x + c·y + tx`, `y' = b·x + d·y + ty`. */
 export interface Affine {
+  /** x scale and rotation: how much x' grows with x. */
   a: number;
+  /** y' per unit of x (rotation, skew). */
   b: number;
+  /** x' per unit of y (rotation, skew). */
   c: number;
+  /** y scale and rotation: how much y' grows with y. */
   d: number;
+  /** x translation. */
   tx: number;
+  /** y translation. */
   ty: number;
 }
 
@@ -39,7 +45,18 @@ function frameOf(p: Affine): TargetFrame {
   return { cx, cy, height: 2 / Math.hypot(p.b, p.d) };
 }
 
-/** Distance of the perspective eye from the z = 0 plane, in target units. */
+/**
+ * Distance of the perspective eye from the z = 0 plane, in target units: the distance at which a
+ * camera with a vertical field of view of `fov` degrees sees exactly `height` units. `fov` is
+ * clamped to 1–170.
+ *
+ * @example
+ * ```ts
+ * import { eyeDistance } from '@blacklight/three';
+ *
+ * eyeDistance(720, 60); // ≈ 623.5: a 60° camera sees 720 units at that distance
+ * ```
+ */
 export function eyeDistance(height: number, fov: number): number {
   return height / 2 / Math.tan((Math.max(1, Math.min(170, fov)) * Math.PI) / 360);
 }
@@ -50,7 +67,22 @@ export function eyeDistance(height: number, fov: number): number {
  * center of the render target (the screen, a split-screen view, or the texture of a
  * render-to-texture model).
  *
+ * Use it with {@link SharedContext.draw} to draw your own Three.js objects among Pixi's;
+ * `Model3D` does this for you.
+ *
+ * @param camera - The Three camera to set (its projection matrix, position and orientation).
  * @param projection - Pixi's projection of the bound render target (target units → clip space).
+ * @param settings - Perspective or orthographic, and the field of view.
+ *
+ * @example
+ * ```ts
+ * import { placeCamera, sharedContext } from '@blacklight/three';
+ *
+ * sharedContext(renderer).draw((three, target) => {
+ *   placeCamera(camera, target.projection, { type: 'perspective', fov: 40 });
+ *   three.render(scene3d, camera);
+ * });
+ * ```
  */
 export function placeCamera(
   camera: PerspectiveCamera | OrthographicCamera,
@@ -95,9 +127,22 @@ export function placeCamera(
  * `pixelsPerUnit`, y up in the model is up on screen, and the 2D rotation, scale and camera of the
  * object apply. Depth scales with the 2D scale so a zoomed model keeps its proportions.
  *
+ * @param holder - The Three object to place; its matrix is set and no longer updated automatically.
  * @param projection - Pixi's projection of the bound render target.
  * @param transform - The object's transform from its local pixels to target units.
+ * @param pixelsPerUnit - Size of one model unit in the object's local pixels.
  * @param z - Depth offset in local pixels, towards the viewer.
+ *
+ * @example
+ * ```ts
+ * import { placeCamera, placeModel, sharedContext } from '@blacklight/three';
+ *
+ * sharedContext(renderer).draw((three, target) => {
+ *   placeCamera(camera, target.projection, { type: 'orthographic', fov: 40 });
+ *   placeModel(holder, target.projection, target.group, 64);
+ *   three.render(scene3d, camera);
+ * });
+ * ```
  */
 export function placeModel(
   holder: Object3D,
