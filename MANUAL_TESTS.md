@@ -102,6 +102,15 @@ The benchmark fixture `e2e/fixtures/bench` (300 animated sprites under an animat
 4. iPhone 12, Safari: open the preview URL of step 2. Expected: same thresholds; note the line.
 5. On each phone, reload three times and keep the lowest fps of the three. Expected: the cards slide in and out, the ring turns, the gauge and the counter change, and no visible stutter while the sprites cross the screen.
 
+## NF-02 cold start on Windows and macOS (real machines)
+
+CI measures the packaged app on GitHub's Windows and macOS runners, which are virtual machines without a GPU and compare only with themselves. This checks the limit on real hardware, and the case CI cannot reproduce: the first launch after a reboot, when the OS has none of the app's files in its cache. Use a Windows 10+ PC and a Mac (macOS 12+), on mains power, with your usual programs open.
+
+1. Automated measure on the machine: `pnpm install && pnpm build && pnpm exec playwright test cold-start --project=bench`. Expected: four `[bench] cold-start-…` lines (web and desktop, party-game and visual-novel) with a median under 3000 ms, and the tests pass (the first run on a machine records its results in `bench-results/` and has no baseline to compare with). Copy the four medians into docs/benchmarks.md (NF-02) with the machine, the OS version and the date.
+2. First launch after a reboot: `pnpm --dir templates/party-game exec blacklight build --target <win|mac> --dir`, then reboot, log in and wait one minute. Start `templates/party-game/release/win/win-unpacked/Party Night.exe` (macOS: `templates/party-game/release/mac/mac-arm64/Party Night.app`, or `mac/mac/` on Intel) with a stopwatch running from the double-click. Expected: the title screen is up and moves to the next screen on Enter in under 3 s. Note the time in docs/benchmarks.md as "first launch after reboot".
+3. Same as step 2 for `templates/visual-novel` (the app is `Neon Rain`). Expected: under 3 s.
+4. Delete the `release/` folders of both templates.
+
 ## Modules and platform services (phase 3e)
 
 Automated with mocks: `e2e/modules.spec.ts` (registry, `blacklight add`, sql.js, OIDC against a mock provider, offline queues) and the module unit tests. These need real accounts, devices or services.

@@ -57,7 +57,39 @@ Limits: the spec makes the pages cross-origin isolated, but the Chromium build P
 
 Requirement: cold start under 3 s on desktop; first interactive screen under 5 s on mobile.
 
-Not measured yet.
+The mobile half is not measured yet: it needs the Android emulator and is the next step of the benchmark work. This section covers the desktop half, for the two reference templates (party-game and visual-novel), as a packaged desktop app and as a web build in desktop Chromium.
+
+Cold start is the time from launching the game to the first frame of its entry scene with the game taking input: the title screen is on screen and a key does something. The engine marks that moment with the user timing mark `blacklight:interactive`, set in the first frame after `data-blacklight-state` turns `running` (the entry scene is created and input is attached), once Pixi has rendered that frame. The mark also shows in DevTools' Performance panel, so a game's own start can be read the same way.
+
+```sh
+pnpm bench                                               # NF-01 and NF-02
+pnpm exec playwright test cold-start --project=bench     # NF-02 only
+BLACKLIGHT_BENCH_LAUNCHES=15 pnpm exec playwright test cold-start --project=bench
+```
+
+`e2e/cold-start.spec.ts` measures:
+
+- **Desktop**: the packaged release app of the host OS, built with `blacklight build --target <os> --dir` (the unpacked folder an installer would install: fuses set, ASAR with its integrity check, main process as V8 bytecode), started from its executable. Every launch is a fresh process with a fresh profile: empty temporary data, config and cache folders, so no V8 code cache, no GPU shader cache and no saved settings. A release app refuses `--inspect` and `--remote-debugging-port`, so Playwright cannot attach to it; the spec starts it with Chromium's startup tracing (`--trace-startup=blink.user_timing`), reads the mark's timestamp from the trace and subtracts the moment just before `spawn`. Both come from the OS monotonic clock, which Node and Chromium share. The time is split into `navigationMs` (process start, Electron, the main process and its native modules, the window, up to the page's navigation) and `pageMs` (the page, from navigation to the mark).
+- **Web**: the release web build served on localhost by `blacklight preview`, opened at 1920×1080 in a newly launched Chromium with a fresh profile (no HTTP cache, no service worker, no code cache). The time is the mark's `startTime`, which counts from the start of the navigation. Network time is left out: it depends on the host, not the engine.
+
+The OS file cache is not under control: emptying it needs root (`drop_caches` on Linux, `purge` on macOS). One unmeasured launch per app comes first, so every measured launch reads the app's files from the cache. The first launch after a reboot reads them from the disk and is slower; it is checked by hand (`MANUAL_TESTS.md`, "NF-02 cold start on Windows and macOS").
+
+Each app is launched nine times. The test fails when the median launch takes 3 s or more, or is more than 10 % slower than the baseline of the same runner (`e2e/bench-baseline.json`, entries `cold-start-desktop-<template>` and `cold-start-web-<template>`); before failing on the baseline it launches nine more times and the median of the eighteen decides. A change under two display frames (33 ms) never counts: the mark lands on a frame, so a start time moves in steps of 16.7 ms whatever the engine does. The comparison takes the median launch, not the best one as NF-01 does, because desktop launches here come in two modes: about one in five is 20 % faster than the others, in both the process start and the page. The cause was not found (the CPU runs the performance governor without boost). The best launch then depends on whether a fast one happened, and with five launches one session had three of them; with nine the median stays in the common mode.
+
+Linux 2026-10-31, Ryzen 7 9700X, Radeon RX 6650 XT, Electron 44.9.3, Playwright's Chromium 156, normal desktop load (Firefox, Discord, GNOME; load average 1.6 to 2.9). Median of 9 launches (the stored baseline), and the range of the median over that session and three consecutive `pnpm bench` sessions after it:
+
+| Template     | Target                    | Cold start (median) | Fastest launch | Median over sessions | Split                                      |
+| ------------ | ------------------------- | ------------------- | -------------- | -------------------- | ------------------------------------------ |
+| party-game   | desktop app (Linux, x64)  | 775 ms              | 589 ms         | 719 to 775 ms        | 485 ms to navigation, 290 ms of page       |
+| visual-novel | desktop app (Linux, x64)  | 733 ms              | 592 ms         | 709 to 733 ms        | 481 ms to navigation, 262 ms of page       |
+| party-game   | web, Chromium (localhost) | 91 ms               | 83 ms          | 83 to 91 ms          | `running` at 74 ms, DOMContentLoaded 45 ms |
+| visual-novel | web, Chromium (localhost) | 93 ms               | 77 ms          | 83 to 102 ms         | `running` at 70 ms, DOMContentLoaded 44 ms |
+
+Both templates start in a quarter of the 3 s limit as desktop apps. About two thirds of a desktop start happens before the page exists. For comparison, a bare Electron 44 app that opens a window with a WebGL canvas is interactive after about 280 ms on the same machine, its page after about 47 ms. A startup trace of party-game with the `toplevel` and `v8.execute` categories shows the main process running JavaScript for 321 ms before it creates the window; about 250 ms of it is `require('@kmamal/sdl')`, whose `global_initialize` starts SDL's joystick, game controller, haptic and sensor subsystems (205 to 266 ms when timed alone under Node). It is not changed here: the page asks the `sdl` module for pads when it starts and falls back to the browser's Gamepad API when the module is missing, so starting SDL after the window needs a change to that contract (RT-12), not a one-line move. The page itself takes about 280 ms in the app against about 90 ms in Chromium; the app serves every file through the main process (`app://`), and that part was not broken down further.
+
+Proof that the check catches a slower start: the test `the regression check fails when startup takes 30 % longer` packages `e2e/fixtures/bench` twice, the second time with `VITE_BENCH_STARTUP_DELAY_MS` set to 30 % of the first build's median launch; the fixture busy-waits that long in its entry scene's `create`, before the first frame. Only the fixture reads the variable; the engine and the templates do not. Over the three sessions the delay was 217 to 219 ms and the median launch rose by 29.6 to 31.0 %, reported as a regression each time, while the clean launches compared with themselves were not. Between sessions, the median launch of the same build moved by up to 7 % (desktop) and 10 ms (web), so a slowdown of 15 % or more fails reliably on the desktop app; on the web build the two-frame floor means a slowdown has to cost more than 33 ms, about 35 % of a 90 ms start.
+
+Limits: the numbers come from one Linux machine with a hardware GPU. CI measures Windows, macOS and Linux runners (virtual machines, software rendering), each against its own baseline, which the owner stores from the first green main run (`node scripts/bench.mjs update`); until then CI records the numbers and checks only the 3 s limit. Real Windows and Mac hardware and the first launch after a reboot are in `MANUAL_TESTS.md`. The web figure excludes download time, so it says how fast the engine starts a page, not how fast a game loads over a network.
 
 ## Memory (NF-03)
 
