@@ -46,11 +46,25 @@ function copyStyles(source: Element, target: Element): void {
 
 /**
  * Serializes `element` (with computed styles inlined and images embedded) into an SVG document of
- * its layout size.
+ * its layout size. `<PixiRender>` builds its texture from it; use it for a screenshot of a DOM
+ * element (a save thumbnail of a menu).
+ *
+ * @example
+ * ```ts
+ * import { snapshotSvg } from '@blacklight/ui';
+ *
+ * const { svg, width, height } = await snapshotSvg(card);
+ * const url = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+ * ```
  */
-export async function snapshotSvg(
-  element: HTMLElement,
-): Promise<{ svg: string; width: number; height: number }> {
+export async function snapshotSvg(element: HTMLElement): Promise<{
+  /** The SVG document, with the element in a `foreignObject`. */
+  svg: string;
+  /** Layout width of the element, rounded up, in CSS pixels. */
+  width: number;
+  /** Layout height of the element, rounded up, in CSS pixels. */
+  height: number;
+}> {
   const width = Math.max(1, Math.ceil(element.offsetWidth));
   const height = Math.max(1, Math.ceil(element.offsetHeight));
   const clone = element.cloneNode(true) as HTMLElement;
@@ -79,7 +93,16 @@ export async function snapshotSvg(
 }
 
 /**
- * Draws `element` into `canvas` at `scale` device pixels per layout pixel.
+ * Draws `element` into `canvas` at `scale` device pixels per layout pixel, resizing the canvas to
+ * fit. Built on {@link snapshotSvg}.
+ *
+ * @example
+ * ```ts
+ * import { drawElement } from '@blacklight/ui';
+ *
+ * const canvas = document.createElement('canvas');
+ * await drawElement(scoreCard, canvas, devicePixelRatio);
+ * ```
  *
  * @throws Error when the browser refuses to decode the image (see the PixiRender limits).
  */

@@ -22,7 +22,9 @@ export interface FxOptions {
 
 /** An effect on the FX layer. */
 export interface FxHandle {
+  /** The Pixi filter: a built-in {@link FxFilter} or the filter passed to `add`. */
   readonly filter: FxFilter | Filter;
+  /** Canvas the effect filters. */
   readonly target: FxTarget;
   /** Current strength (0–1). Setting it applies at once. */
   strength: number;
@@ -38,6 +40,7 @@ interface Entry extends FxHandle {
 
 /** The canvas above the UI (created on first use): `<PixiRender>` sprites and overlay effects. */
 export interface FxOverlay {
+  /** Pixi application of the FX canvas. */
   readonly app: Application;
   /** Holds `<PixiRender>` sprites, in CSS pixels of the game's mount element. */
   readonly stage: Container;

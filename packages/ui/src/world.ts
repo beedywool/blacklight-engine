@@ -3,7 +3,16 @@ import type { Container } from 'pixi.js';
 import type { Game, Point, Scene } from '@blacklight/core';
 
 /** Something with a place in a scene: a game object, or a world point of a scene. */
-export type WorldTarget = Container | { scene: Scene<never>; x: number; y: number };
+export type WorldTarget =
+  | Container
+  | {
+      /** Scene whose camera sees the point. */
+      scene: Scene<never>;
+      /** World x of the point. */
+      x: number;
+      /** World y of the point. */
+      y: number;
+    };
 
 /** Where a world target is on the UI, in virtual pixels of the design area. */
 export interface UiPosition extends Point {
@@ -54,11 +63,26 @@ export function worldToUi(
   return { x, y, onScreen };
 }
 
-/** The part of the design coordinate space the player sees (more than the design area in `extend`). */
+/**
+ * The part of the design coordinate space the player sees (more than the design area in `extend`),
+ * in virtual pixels: where to clamp a HUD element or an off-screen indicator.
+ *
+ * @example
+ * ```ts
+ * import { visibleArea } from '@blacklight/ui';
+ *
+ * const area = visibleArea(game);
+ * const arrowX = Math.min(Math.max(position.x, area.x + 24), area.x + area.width - 24);
+ * ```
+ */
 export function visibleArea(game: Pick<Game, 'viewport' | 'config'>): {
+  /** Left edge (negative when the screen is wider than the design area). */
   x: number;
+  /** Top edge. */
   y: number;
+  /** Visible width. */
   width: number;
+  /** Visible height. */
   height: number;
 } {
   const v = game.viewport;
@@ -79,17 +103,25 @@ export function visibleArea(game: Pick<Game, 'viewport' | 'config'>): {
 
 /** A floating text on screen (damage numbers, "+1", "MISS"). */
 export interface FloatingText {
+  /** Unique number, used as the Vue key. */
   id: number;
+  /** Text shown. */
   text: string;
+  /** World point under the target when the text was spawned; it rises from there. */
   target: WorldTarget;
-  /** Where it was spawned, in world → UI coordinates; it rises from there. */
+  /** Horizontal offset from the target, virtual pixels. */
   x: number;
+  /** Vertical offset from the target, virtual pixels. */
   y: number;
+  /** CSS color. */
   color: string;
+  /** Font size, virtual pixels. */
   size: number;
-  /** ms */
+  /** Lifetime in ms. */
   duration: number;
+  /** Distance risen over the lifetime, virtual pixels. */
   rise: number;
+  /** Extra CSS class. */
   className?: string;
 }
 

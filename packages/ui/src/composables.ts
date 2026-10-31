@@ -16,14 +16,39 @@ import { padFamily, type PadFamily } from './prompts';
 import type { ScreenEntry, UiRuntime, UiStack } from './runtime';
 import { Timeline } from './timeline';
 
-/** The running game. */
+/**
+ * The running game, for components that read game state (settings, input, save slots).
+ *
+ * @throws Outside a component rendered by the UI layer.
+ *
+ * @example
+ * ```ts
+ * import { useGame } from '@blacklight/ui';
+ *
+ * const game = useGame();
+ * const volume = game.settings.get<number>('audio.music') ?? 1;
+ * ```
+ */
 export function useGame(): Game {
   const game = inject<Game>('blacklight:game');
   if (!game) throw new Error('useGame() works inside @blacklight/ui screens only.');
   return game;
 }
 
-/** The UI runtime (theme, scale, focus, global screens). */
+/**
+ * The UI runtime (theme, scale, focus, global screens) from inside a component; game code uses
+ * `uiOf(game)`.
+ *
+ * @throws Outside a component rendered by the UI layer.
+ *
+ * @example
+ * ```ts
+ * import { useUiRuntime } from '@blacklight/ui';
+ *
+ * const runtime = useUiRuntime();
+ * runtime.global.push('Settings');
+ * ```
+ */
 export function useUiRuntime(): UiRuntime {
   const runtime = inject<UiRuntime>('blacklight:ui');
   if (!runtime) throw new Error('This composable works inside @blacklight/ui screens only.');
@@ -33,6 +58,16 @@ export function useUiRuntime(): UiRuntime {
 /**
  * Screens of the current screen's scene (or global screens for global ones): open, push, pop,
  * modal, confirm.
+ *
+ * @example
+ * ```ts
+ * import { useUi } from '@blacklight/ui';
+ *
+ * const ui = useUi();
+ * const quit = async () => {
+ *   if (await ui.confirm({ message: 'Quit to title?' })) ui.closeAll();
+ * };
+ * ```
  */
 export function useUi(): UiStack {
   const runtime = useUiRuntime();
@@ -40,6 +75,7 @@ export function useUi(): UiStack {
   return entry?.owner ? runtime.forScene(entry.owner) : runtime.global;
 }
 
+/** Options of {@link useScreen}. */
 export interface UseScreenOptions {
   /** Enter transition (overrides the caller's). */
   enter?: string;
@@ -71,6 +107,7 @@ export function useScreen(options: UseScreenOptions = {}) {
     onBeforeUnmount(() => entry.backHandlers.delete(handler));
   }
   return {
+    /** The screen's entry in the runtime: `id`, `mode`, `props`, `enter`, `leave`, `closing`. */
     entry,
     /** Closes the screen, resolving its result. */
     close: (result?: unknown) => runtime.close(entry, result),
@@ -83,9 +120,26 @@ export function useScreen(options: UseScreenOptions = {}) {
 
 /**
  * Runs `callback` every time the UI reads input: every game step, and every frame while the game
- * is paused. With `onlyOnTop`, it runs only while this component's screen is not covered.
+ * is paused. With `onlyOnTop`, it runs only while this component's screen is not covered. The
+ * listener is removed when the component unmounts.
+ *
+ * @example
+ * ```ts
+ * import { onUiStep, useGame } from '@blacklight/ui';
+ *
+ * const game = useGame();
+ * onUiStep(() => {
+ *   if (game.input.pressed('menu')) openInventory();
+ * }, { onlyOnTop: true });
+ * ```
  */
-export function onUiStep(callback: () => void, options: { onlyOnTop?: boolean } = {}): void {
+export function onUiStep(
+  callback: () => void,
+  options: {
+    /** Skip the calls while a `push` or `modal` covers this component's screen. */
+    onlyOnTop?: boolean;
+  } = {},
+): void {
   const runtime = useUiRuntime();
   const entry = inject<ScreenEntry | null>('blacklight:screen', null);
   const off = runtime.ticks.on('step', () => {
@@ -95,9 +149,28 @@ export function onUiStep(callback: () => void, options: { onlyOnTop?: boolean } 
   onBeforeUnmount(off);
 }
 
-/** Last device used by a player (for prompts and layout tweaks), and its gamepad family. */
+/**
+ * Last device used by a player (for prompts and layout tweaks), and its gamepad family. Both update
+ * when the player switches between keyboard, pointer, touch and gamepad.
+ *
+ * @param player - Player number, from 1.
+ *
+ * @example
+ * ```vue
+ * <script setup lang="ts">
+ * import { useInputDevice } from '@blacklight/ui';
+ *
+ * const { device, family } = useInputDevice();
+ * </script>
+ * <template>
+ *   <p v-if="device === 'gamepad'">Press {{ family === 'playstation' ? '✕' : 'A' }}</p>
+ * </template>
+ * ```
+ */
 export function useInputDevice(player = 1): {
+  /** Last device the player used. */
   device: Ref<Device>;
+  /** Family of the player's gamepad (button labels and glyphs). */
   family: ComputedRef<PadFamily>;
 } {
   const game = useGame();
@@ -145,14 +218,23 @@ let groups = 0;
  */
 export function useFocus(
   items: readonly unknown[] | Ref<readonly unknown[]>,
-  options: { wrap?: boolean; axis?: 'x' | 'y'; trap?: boolean } = {},
+  options: {
+    /** Moving past the last item goes back to the first, and the reverse. */
+    wrap?: boolean;
+    /** Only this axis moves inside the group; the other leaves it. */
+    axis?: 'x' | 'y';
+    /** Focus cannot leave the group with directions. */
+    trap?: boolean;
+  } = {},
 ) {
   const runtime = useUiRuntime();
   const id = `g${++groups}`;
   const group = {
+    /** Marks the group element, with its options (`wrap`, `trap`, axis). */
     [GROUP_ATTR]: [options.wrap ? 'wrap' : '', options.trap ? 'trap' : '', options.axis ?? '']
       .join(' ')
       .trim(),
+    /** Identifies the group, so `focused` and `focus()` find its items. */
     'data-bl-group-id': id,
   };
   const focused = computed(() => {
@@ -168,7 +250,12 @@ export function useFocus(
     /** Attributes for the group element. */
     group,
     /** Attributes for item `index`. */
-    item: (index: number) => ({ [FOCUS_ATTR]: '', 'data-bl-index': index }),
+    item: (index: number) => ({
+      /** Makes the element focusable. */
+      [FOCUS_ATTR]: '',
+      /** Position of the item, read back by `focused`. */
+      'data-bl-index': index,
+    }),
     /** Focuses item `index`. */
     focus: (index: number) => {
       const element = runtime.element.querySelector<HTMLElement>(
@@ -183,6 +270,18 @@ export function useFocus(
  * A timeline for this component, stopped when it unmounts.
  *
  * @param clock - `'ui'` (real time, runs while the game is paused) or `'game'` (pauses and slows with the game).
+ *
+ * @example
+ * ```ts
+ * import { onMounted, useTemplateRef } from 'vue';
+ * import { useTimeline } from '@blacklight/ui';
+ *
+ * const banner = useTemplateRef<HTMLElement>('banner');
+ * const timeline = useTimeline();
+ * onMounted(() => {
+ *   void timeline.to(banner, { x: ['-100%', '0%'] }, { duration: 0.3 }).play();
+ * });
+ * ```
  */
 export function useTimeline(clock: 'ui' | 'game' = 'ui'): Timeline {
   const game = inject<Game | undefined>('blacklight:game', undefined);
@@ -203,7 +302,10 @@ export function useTimeline(clock: 'ui' | 'game' = 'ui'): Timeline {
 export function useFx(
   effect: FxName | Filter,
   options: FxOptions = {},
-): { handle: FxHandle | undefined } {
+): {
+  /** The effect once the component is mounted, `undefined` before. */
+  handle: FxHandle | undefined;
+} {
   const runtime = useUiRuntime();
   const state: { handle: FxHandle | undefined } = { handle: undefined };
   onMounted(() => {

@@ -40,6 +40,7 @@ export interface SaveSlots {
   save(id: string, meta: SaveSlotMeta): Promise<void>;
   /** Restores slot `id` (usually by going to a scene with its data). */
   load(id: string): Promise<void>;
+  /** Empties slot `id`. */
   delete(id: string): Promise<void>;
 }
 

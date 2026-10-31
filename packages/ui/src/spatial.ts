@@ -2,10 +2,15 @@
 export type Direction =
   'up' | 'down' | 'left' | 'right' | 'upleft' | 'upright' | 'downleft' | 'downright';
 
+/** A rectangle in any one coordinate space (the focus manager uses client pixels). */
 export interface Box {
+  /** Left edge. */
   x: number;
+  /** Top edge. */
   y: number;
+  /** Width. */
   width: number;
+  /** Height. */
   height: number;
 }
 
@@ -24,7 +29,18 @@ export function directionVector(direction: Direction): [number, number] {
   return VECTORS[direction];
 }
 
-/** Direction from horizontal and vertical input (−1, 0, 1), or `undefined` when centered. */
+/**
+ * Direction from horizontal and vertical input (−1, 0, 1), or `undefined` when centered. Turns
+ * stick or d-pad axes into the direction spatial navigation uses.
+ *
+ * @example
+ * ```ts
+ * import { directionOf } from '@blacklight/ui';
+ *
+ * directionOf(1, -1); // 'upright'
+ * directionOf(0, 0); // undefined
+ * ```
+ */
 export function directionOf(x: number, y: number): Direction | undefined {
   const h = x < 0 ? 'left' : x > 0 ? 'right' : '';
   const v = y < 0 ? 'up' : y > 0 ? 'down' : '';
@@ -46,7 +62,18 @@ function perpendicularGap(a: Box, b: Box, horizontal: boolean): number {
 /**
  * The best candidate in a direction: in front of `from`, closest along the direction, with a
  * penalty for drifting sideways. Boxes aligned with `from` (overlapping on the cross axis) win
- * over closer but offset ones, which is what a gamepad user expects in a grid or a list.
+ * over closer but offset ones, which is what a gamepad user expects in a grid or a list. The focus
+ * manager uses it; call it for navigation over things that are not DOM elements (a world map).
+ *
+ * @returns The chosen item, `undefined` when nothing lies in that direction.
+ *
+ * @example
+ * ```ts
+ * import { pickNext } from '@blacklight/ui';
+ *
+ * const nodes = towns.map((town) => ({ item: town, box: { x: town.x, y: town.y, width: 32, height: 32 } }));
+ * const next = pickNext(current.box, nodes, 'right');
+ * ```
  */
 export function pickNext<T>(
   from: Box,
@@ -92,7 +119,17 @@ export function pickNext<T>(
   return best;
 }
 
-/** Target when wrapping around: the farthest candidate the other way, best aligned with `from`. */
+/**
+ * Target when wrapping around: the farthest candidate the other way, best aligned with `from`.
+ * Use it when {@link pickNext} finds nothing and the list wraps.
+ *
+ * @example
+ * ```ts
+ * import { pickNext, wrapTarget } from '@blacklight/ui';
+ *
+ * const next = pickNext(from, items, 'down') ?? wrapTarget(from, items, 'down');
+ * ```
+ */
 export function wrapTarget<T>(
   from: Box,
   candidates: { item: T; box: Box }[],

@@ -5,6 +5,7 @@ import { prefersReducedMotion } from './a11y';
 type Target = Element | Element[] | string | { value: Element | null | undefined };
 type Keyframes = Record<string, unknown>;
 
+/** When and how a {@link Timeline} step plays. */
 export interface StepOptions {
   /**
    * When the step starts, in seconds: a number (absolute), `'+0.1'` / `'-0.1'` (after / before the

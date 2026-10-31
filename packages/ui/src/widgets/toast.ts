@@ -1,8 +1,12 @@
 import { shallowReactive } from 'vue';
 
+/** A message shown by {@link toast}, drawn by `<ToastHost>`. */
 export interface Toast {
+  /** Unique number, used as the Vue key. */
   id: number;
+  /** Text shown. */
   message: string;
+  /** Look of the toast: neutral, success or error colors. */
   kind: 'info' | 'success' | 'error';
 }
 
@@ -20,7 +24,12 @@ let next = 1;
  */
 export function toast(
   message: string,
-  options: { duration?: number; kind?: Toast['kind'] } = {},
+  options: {
+    /** Time on screen in ms. @defaultValue `2600` */
+    duration?: number;
+    /** Look of the toast. @defaultValue `'info'` */
+    kind?: Toast['kind'];
+  } = {},
 ): void {
   const item: Toast = { id: next++, message, kind: options.kind ?? 'info' };
   toasts.push(item);
@@ -30,7 +39,17 @@ export function toast(
   }, options.duration ?? 2600);
 }
 
-/** Composable form of {@link toast}. */
+/**
+ * Composable form of {@link toast}, for components that prefer injection-style APIs.
+ *
+ * @example
+ * ```ts
+ * import { useToast } from '@blacklight/ui';
+ *
+ * const toast = useToast();
+ * toast('Settings saved', { kind: 'success', duration: 1500 });
+ * ```
+ */
 export function useToast(): typeof toast {
   return toast;
 }

@@ -20,7 +20,11 @@ function componentOf(element: Element | null): ComponentLike | undefined {
   return undefined;
 }
 
-/** Display name of a component: its `name`, its file name, or `Anonymous`. */
+/**
+ * Display name of a component: its `name`, its file name, or `Anonymous`.
+ *
+ * @internal Reads Vue's private instance fields; used by {@link inspectElement} and the panel.
+ */
 export function componentName(instance: ComponentLike): string {
   const type = instance.type;
   return (
@@ -67,12 +71,30 @@ const ENGINE_COMPONENTS = new Set([
 export interface InspectedComponent {
   /** Component chain from the screen down to the hovered component. */
   path: string[];
+  /** Name of the component under the element (its `name`, file name or `Anonymous`). */
   name: string;
+  /** Its props, each value shortened to a one-line preview (`"Start"`, `{ id: 1, … }`). */
   props: Record<string, string>;
+  /** Its `<script setup>` state (refs unwrapped, functions left out), as one-line previews. */
   state: Record<string, string>;
 }
 
-/** Reads the component under `element` (dev builds only). */
+/**
+ * Reads the Vue component that renders `element`: its chain from the screen down, props and state
+ * as short previews. Vue exposes the instance on elements in development builds only, so release
+ * builds always get `undefined`. The F9 panel of {@link installInspector} is built on it; tests can
+ * call it to check what a screen rendered.
+ *
+ * @returns `undefined` when no component renders the element (or in a release build).
+ *
+ * @example
+ * ```ts
+ * import { inspectElement } from '@blacklight/ui/inspector';
+ *
+ * const info = inspectElement(document.querySelector('.bl-button'));
+ * console.log(info?.path.join(' › '), info?.props);
+ * ```
+ */
 export function inspectElement(element: Element | null): InspectedComponent | undefined {
   const instance = componentOf(element);
   if (!instance) return undefined;
@@ -106,11 +128,21 @@ const escape = (text: string) =>
  * ```ts
  * if (import.meta.env.DEV) (await import('@blacklight/ui/inspector')).installInspector(game);
  * ```
+ *
+ * @throws When the game has no UI layer (`ui()` not installed).
  */
 export function installInspector(
   game: Game,
-  options: { key?: string } = {},
-): { toggle(): void; destroy(): void } {
+  options: {
+    /** Key that toggles the panel, as a `KeyboardEvent.code` or `key` (default `F9`). */
+    key?: string;
+  } = {},
+): {
+  /** Shows or hides the panel, like pressing the key. */
+  toggle(): void;
+  /** Removes the panel and its listeners. */
+  destroy(): void;
+} {
   if (!(game.ui instanceof UiRuntime)) {
     throw new Error('installInspector() needs the UI layer: install @blacklight/ui first.');
   }

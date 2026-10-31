@@ -49,28 +49,42 @@ export interface ScreenOptions {
   closeOnBack?: boolean;
 }
 
-/** An open screen. */
+/**
+ * An open screen, as the runtime keeps it. Read it through `useScreen().entry` or
+ * `runtime.entries`; open and close screens through a {@link UiStack} instead of changing it.
+ */
 export interface ScreenEntry {
+  /** Unique number, in opening order. */
   readonly id: number;
+  /** The Vue component shown. */
   readonly component: Component;
+  /** Props passed to the component; reactive, changes re-render the screen. */
   props: Record<string, unknown>;
   /** Scene the screen belongs to, `null` for global screens. */
   readonly owner: Scene<never> | null;
+  /** How it was opened: `open` (over the others), `push` (hides those below) or `modal`. */
   readonly mode: 'open' | 'push' | 'modal';
+  /** Enter transition name. */
   enter: string;
+  /** Leave transition name, read when the screen closes. */
   leave: string;
+  /** Game code reads input as idle while the screen is open. */
   blockInput: boolean;
+  /** The `back` action closes the screen. */
   closeOnBack: boolean;
   /** `true` while the leave transition plays. */
   closing: boolean;
   /** Handlers for the `back` action; returning `true` consumes it. */
   readonly backHandlers: Set<() => boolean | void>;
+  /** Root element of the screen once mounted, `null` before. */
   element: HTMLElement | null;
+  /** @internal Settles the opener's promise; close screens with {@link ScreenHandle.close}. */
   resolve(result: unknown): void;
 }
 
 /** Returned by `open`, `push`, `replace` and `modal`. */
 export interface ScreenHandle<R = unknown> {
+  /** Id of the screen's {@link ScreenEntry}. */
   readonly id: number;
   /** Closes the screen; `result` resolves `result`. */
   close(result?: R): void;
@@ -78,6 +92,10 @@ export interface ScreenHandle<R = unknown> {
   readonly result: Promise<R | undefined>;
 }
 
+/**
+ * A screen to show: a Vue component, or the name of a screen file found by the CLI (`'Pause'` for
+ * `ui/Pause.vue`, `'battle:Hud'` for the scene-local `scenes/battle/ui/Hud.vue`).
+ */
 export type ScreenRef = Component | string;
 
 const UI_SCALE_SETTING = 'ui.scale';
@@ -86,7 +104,22 @@ const UI_THEME_SETTING = 'ui.theme';
 
 /**
  * The screens of one owner (a scene, or the game for global screens). Scenes reach theirs as
- * `this.ui`; Vue components through `useUi()`.
+ * `this.ui`; Vue components through `useUi()`. A scene's screens are removed when the scene stops;
+ * global ones (`uiOf(game).global`) survive scene changes.
+ *
+ * @example
+ * ```ts
+ * import { Scene } from '@blacklight/core';
+ *
+ * export class Battle extends Scene {
+ *   create() {
+ *     this.ui.open('Hud');
+ *   }
+ *   async quit() {
+ *     if (await this.ui.confirm({ message: 'Leave the battle?', danger: true })) this.goto('title');
+ *   }
+ * }
+ * ```
  */
 export class UiStack implements SceneUi {
   constructor(
@@ -170,17 +203,55 @@ export interface UiOptions {
   locale?: string;
 }
 
-/** The UI layer of a game: a Vue app over the canvas, the screen stack, focus and input. */
+/**
+ * The UI layer of a game: a Vue app over the canvas, the screen stacks, focus, input, themes,
+ * translations and screen effects. The {@link ui} plugin creates one per game; reach it with
+ * `uiOf(game)` in game code and `useUiRuntime()` in components.
+ *
+ * @example
+ * ```ts
+ * import { uiOf } from '@blacklight/ui';
+ *
+ * const runtime = uiOf(this.game);
+ * runtime.theme = 'persona';
+ * runtime.setScale(1.25);
+ * runtime.global.open('Notifications');
+ * ```
+ */
 export class UiRuntime implements UiHost {
+  /** Open screens of every owner, in opening order. */
   readonly entries: ScreenEntry[] = shallowReactive([]);
+  /** Root element of the layer, placed over the canvas in the game's mount. */
   readonly element: HTMLElement;
+  /** Focus and spatial navigation of the screens (`current`, `focus`, `move`, `confirm`). */
   readonly focus: FocusManager;
   /** Player-adjustable UI scale (0.75–1.5), saved in settings. */
   readonly scale = shallowRef(1);
   /** Root transform: design area in CSS pixels of the mount. */
-  readonly frame = reactive({ x: 0, y: 0, scale: 1, width: 0, height: 0 });
+  readonly frame: {
+    /** Left edge of the design area in CSS pixels of the mount. */
+    x: number;
+    /** Top edge of the design area in CSS pixels of the mount. */
+    y: number;
+    /** CSS pixels per virtual pixel. */
+    scale: number;
+    /** Design width in virtual pixels. */
+    width: number;
+    /** Design height in virtual pixels. */
+    height: number;
+  } = reactive({ x: 0, y: 0, scale: 1, width: 0, height: 0 });
   /** Safe area in virtual pixels (moves with notches and system bars). */
-  readonly safeArea = reactive({ x: 0, y: 0, width: 0, height: 0 });
+  readonly safeArea: {
+    /** Left edge in virtual pixels (negative when it extends past the design area). */
+    x: number;
+    /** Top edge in virtual pixels. */
+    y: number;
+    /** Width in virtual pixels. */
+    width: number;
+    /** Height in virtual pixels. */
+    height: number;
+  } = reactive({ x: 0, y: 0, width: 0, height: 0 });
+  /** The global screen stack: screens that survive scene changes. */
   readonly global: UiStack;
   private readonly app: App;
   private readonly stacks = new WeakMap<object, UiStack>();
@@ -189,7 +260,10 @@ export class UiRuntime implements UiHost {
     { path: string; component: Component; load: () => Promise<unknown>; loaded: boolean }
   >();
   /** Fires after the UI handled input, every step (and every frame while the game is paused). */
-  readonly ticks = new EventBus<{ step: void }>();
+  readonly ticks = new EventBus<{
+    /** The UI has read input for this step. */
+    step: void;
+  }>();
   /** Translations (`locales/<lang>.json`), current language and text direction. */
   readonly i18n: I18n;
   /** WebGL effects synchronized with the screens (UI-11). */
@@ -204,6 +278,7 @@ export class UiRuntime implements UiHost {
   private lastPoll = 0;
 
   constructor(
+    /** The game the layer belongs to. */
     readonly game: Game,
     options: UiOptions = {},
   ) {
@@ -365,6 +440,7 @@ export class UiRuntime implements UiHost {
     this.game.settings.set(UI_THEME_SETTING, name);
   }
 
+  /** Sets the player's UI scale, clamped to 0.75–1.5, and saves it in settings (`ui.scale`). */
   setScale(value: number): void {
     this.scale.value = clampScale(value);
     this.game.settings.set(UI_SCALE_SETTING, this.scale.value);
@@ -596,6 +672,16 @@ export class UiRuntime implements UiHost {
 /**
  * Game plugin that installs the UI layer. The CLI adds it when the game depends on
  * `@blacklight/ui`; call it yourself with `createGame(config, { plugins: [ui()] })` otherwise.
+ *
+ * @example
+ * ```ts
+ * import { createGame } from '@blacklight/core';
+ * import { ui } from '@blacklight/ui';
+ *
+ * const game = await createGame(config, {
+ *   plugins: [ui({ screens: import.meta.glob('./ui/*.vue'), theme: 'persona' })],
+ * });
+ * ```
  */
 export function ui(options: UiOptions = {}): (game: Game) => Promise<void> {
   return async (game) => {
@@ -605,7 +691,19 @@ export function ui(options: UiOptions = {}): (game: Game) => Promise<void> {
   };
 }
 
-/** The UI runtime of a game. */
+/**
+ * The UI runtime of a game, for game code outside Vue components (components use
+ * `useUiRuntime()`).
+ *
+ * @throws When `@blacklight/ui` is not installed on the game.
+ *
+ * @example
+ * ```ts
+ * import { uiOf } from '@blacklight/ui';
+ *
+ * await uiOf(this.game).cover('ink', () => this.showBackground('night'));
+ * ```
+ */
 export function uiOf(game: Game): UiRuntime {
   if (!(game.ui instanceof UiRuntime))
     throw new Error('@blacklight/ui is not installed on this game.');

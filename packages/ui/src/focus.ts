@@ -10,10 +10,12 @@ export const GROUP_ATTR = 'data-bl-focus-group';
 /** Attribute of the element focused first in a screen. */
 export const AUTOFOCUS_ATTR = 'data-bl-autofocus';
 
+/** Theme UI sounds played by focus and navigation: see `Theme.sounds`. */
 export type FocusSound = 'move' | 'confirm' | 'back' | 'error';
 
 /** Navigation event dispatched on the focused element before focus moves; cancel it to keep focus (sliders, selects). */
 export interface NavigateDetail {
+  /** Direction pressed. */
   direction: Direction;
 }
 
@@ -29,7 +31,18 @@ function options(group: Element | null): Set<string> {
 /**
  * Spatial focus for gamepads and keyboards over DOM screens: directional moves pick the nearest
  * element on screen, groups can wrap or trap focus, and the last focus is remembered per group and
- * per screen. Mouse and touch move the same focus.
+ * per screen. Mouse and touch move the same focus. The UI layer creates one (`runtime.focus`);
+ * mark elements focusable with `v-focus` or {@link FOCUS_ATTR}.
+ *
+ * @example
+ * ```ts
+ * import { useUiRuntime } from '@blacklight/ui';
+ *
+ * const { focus } = useUiRuntime();
+ * focus.focus(document.querySelector<HTMLElement>('#continue'));
+ * focus.move('down');
+ * watch(focus.current, (element) => console.log('focused', element?.textContent));
+ * ```
  */
 export class FocusManager {
   /** The focused element, reactive for components. */

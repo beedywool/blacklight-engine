@@ -6,7 +6,9 @@ export type PadFamily = 'xbox' | 'playstation' | 'switch';
 
 /** What to draw for one binding: an image, or text when no art exists. */
 export interface Glyph {
+  /** Image URL, `undefined` when the pack has no art for the binding. */
   src?: string;
+  /** Text label (`Space`, `A`), shown without art and used as the image's alt text. */
   text: string;
 }
 
@@ -15,6 +17,7 @@ export interface Glyph {
  * register its own and select it with `setPromptPack`.
  */
 export interface PromptPack {
+  /** Name of the pack, for debugging. */
   name: string;
   /** Glyph for a binding on a device family, or `undefined` to fall back to the default pack. */
   glyph(binding: Binding, family: PadFamily | 'keyboard' | 'mouse' | 'touch'): Glyph | undefined;
@@ -174,7 +177,6 @@ function label(binding: Binding): string {
   return name ?? binding;
 }
 
-/** The default pack: Kenney Input Prompts 1.5 (CC0), shipped with `@blacklight/ui`. */
 /** Kenney file (`xbox/xbox_button_a`) for a binding, `undefined` when the pack has none. */
 export function kenneyFile(
   binding: Binding,
@@ -199,6 +201,10 @@ export function kenneyFile(
   return file;
 }
 
+/**
+ * The default pack: Kenney Input Prompts 1.5 (CC0), shipped with `@blacklight/ui`. A custom pack
+ * can delegate to it for the bindings it does not draw.
+ */
 export const kenneyPack: PromptPack = {
   name: 'kenney',
   glyph(binding, family) {
@@ -209,11 +215,37 @@ export const kenneyPack: PromptPack = {
 
 let pack: PromptPack = kenneyPack;
 
-/** Replaces the button art (missing glyphs fall back to the Kenney pack). */
+/**
+ * Replaces the button art (missing glyphs fall back to the Kenney pack). Call it before the first
+ * prompt is drawn, at startup.
+ *
+ * @example
+ * ```ts
+ * import { setPromptPack } from '@blacklight/ui';
+ *
+ * setPromptPack({
+ *   name: 'pixel',
+ *   glyph: (binding, family) =>
+ *     family === 'xbox' && binding === 'Pad:A' ? { src: '/prompts/a.png', text: 'A' } : undefined,
+ * });
+ * ```
+ */
 export function setPromptPack(next: PromptPack): void {
   pack = next;
 }
 
+/**
+ * What to draw for a binding on a device family: the active pack's glyph, else Kenney's, else the
+ * binding's text. `<InputPrompt>` draws with it.
+ *
+ * @example
+ * ```ts
+ * import { glyphFor } from '@blacklight/ui';
+ *
+ * glyphFor('Pad:A', 'playstation'); // { src: '…/playstation_button_cross…', text: 'A' }
+ * glyphFor('Space', 'keyboard').text; // 'Space'
+ * ```
+ */
 export function glyphFor(
   binding: Binding,
   family: PadFamily | 'keyboard' | 'mouse' | 'touch',
@@ -223,7 +255,16 @@ export function glyphFor(
   );
 }
 
-/** Family of a gamepad from its id (vendor 054c: Sony, 057e: Nintendo), Xbox art otherwise. */
+/**
+ * Family of a gamepad from its id (vendor 054c: Sony, 057e: Nintendo), Xbox art otherwise.
+ *
+ * @example
+ * ```ts
+ * import { padFamily } from '@blacklight/ui';
+ *
+ * padFamily(game.input.gamepads[0]); // 'playstation' for a DualSense
+ * ```
+ */
 export function padFamily(pad: Pick<PadState, 'id'> | undefined): PadFamily {
   const id = pad?.id.toLowerCase() ?? '';
   // Xbox first: "Xbox Wireless Controller" would otherwise match Sony's "Wireless Controller".
@@ -233,7 +274,17 @@ export function padFamily(pad: Pick<PadState, 'id'> | undefined): PadFamily {
   return 'xbox';
 }
 
-/** Binding to show for an action on a device: the first binding of that device. */
+/**
+ * Binding to show for an action on a device: the first binding of that device, `undefined` when
+ * the action has none there.
+ *
+ * @example
+ * ```ts
+ * import { bindingForDevice } from '@blacklight/ui';
+ *
+ * bindingForDevice(['Enter', 'Pad:A'], 'gamepad'); // 'Pad:A'
+ * ```
+ */
 export function bindingForDevice(
   bindings: readonly Binding[],
   device: Device,

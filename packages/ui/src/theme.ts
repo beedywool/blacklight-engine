@@ -5,13 +5,17 @@ import { shallowReactive, shallowRef } from 'vue';
  * (`colors.primary` → `--bl-color-primary`), so components and game styles read them.
  */
 export interface Theme {
+  /** Name used by `ui({ theme })`, `runtime.theme` and the settings screen. */
   name: string;
+  /** Color tokens (`--bl-color-<kebab-name>`). */
   colors: {
     /** Full-screen backgrounds of menus. */
     background: string;
     /** Panels, cards, list rows. */
     surface: string;
+    /** Body text. */
     text: string;
+    /** Secondary text: hints, disabled rows, captions. */
     muted: string;
     /** Main brand color: selected rows, highlights. */
     primary: string;
@@ -21,15 +25,34 @@ export interface Theme {
     accent: string;
     /** Focus ring / focused row. */
     focus: string;
+    /** Destructive actions and errors (delete a save, quit without saving). */
     danger: string;
     /** Dim layer behind modal screens. */
     scrim: string;
   };
-  fonts: { body: string; display: string; mono?: string };
+  /** CSS font-family values (`--bl-font-body`, `--bl-font-display`, `--bl-font-mono`). */
+  fonts: {
+    /** Running text, lists, buttons. */
+    body: string;
+    /** Titles and big numbers. */
+    display: string;
+    /** Numbers that must not shift (timers, stats); defaults to the browser's monospace. */
+    mono?: string;
+  };
   /** UI sounds by asset key, played on the `ui` bus. */
-  sounds?: { move?: string; confirm?: string; back?: string; error?: string };
+  sounds?: {
+    /** Focus moves to another element. */
+    move?: string;
+    /** An element is activated (`confirm`). */
+    confirm?: string;
+    /** The `back` action closes a screen. */
+    back?: string;
+    /** A direction finds nothing to move to. */
+    error?: string;
+  };
   /** Skew of Persona-style shapes, in degrees. */
   skew?: number;
+  /** Corner radius of panels and buttons, as CSS (`--bl-radius`). */
   radius?: string;
   /** Extra tokens: `{ 'shadow-offset': '8px' }` → `--bl-shadow-offset`. */
   tokens?: Record<string, string>;
@@ -40,12 +63,38 @@ const themes = shallowReactive(new Map<string, Theme>());
 /** Name of the active theme. */
 export const activeTheme = shallowRef('blacklight');
 
-/** Registers a theme (replacing one of the same name). */
+/**
+ * Registers a theme (replacing one of the same name) and returns it. Register themes before the UI
+ * layer starts (or pass them to `ui({ themes })`) so a saved choice finds them.
+ *
+ * @example
+ * ```ts
+ * import { blacklightTheme, defineTheme } from '@blacklight/ui';
+ *
+ * defineTheme({
+ *   ...blacklightTheme,
+ *   name: 'forest',
+ *   colors: { ...blacklightTheme.colors, primary: '#2e7d32', focus: '#a5d6a7' },
+ * });
+ * ```
+ */
 export function defineTheme(theme: Theme): Theme {
   themes.set(theme.name, theme);
   return theme;
 }
 
+/**
+ * A registered theme by name (the active one by default).
+ *
+ * @throws When no theme has that name.
+ *
+ * @example
+ * ```ts
+ * import { getTheme } from '@blacklight/ui';
+ *
+ * const accent = getTheme().colors.accent;
+ * ```
+ */
 export function getTheme(name = activeTheme.value): Theme {
   const theme = themes.get(name);
   if (!theme)
@@ -53,7 +102,18 @@ export function getTheme(name = activeTheme.value): Theme {
   return theme;
 }
 
-/** Names of the registered themes. */
+/**
+ * Names of the registered themes, for a theme picker.
+ *
+ * @example
+ * ```ts
+ * import { themeNames, useUiRuntime } from '@blacklight/ui';
+ *
+ * const runtime = useUiRuntime();
+ * const options = themeNames().map((name) => ({ label: name, value: name }));
+ * // <Select :options v-model="runtime.theme" />
+ * ```
+ */
 export function themeNames(): string[] {
   return [...themes.keys()];
 }
@@ -76,7 +136,19 @@ export function resolveTheme(name = activeTheme.value): Theme {
   return themes.get('blacklight')!;
 }
 
-/** CSS custom properties of a theme. */
+/**
+ * CSS custom properties of a theme, as the UI root sets them. Apply them to an element outside the
+ * UI layer (a loading screen, a docs page) to style it like the game.
+ *
+ * @example
+ * ```ts
+ * import { personaTheme, themeVariables } from '@blacklight/ui';
+ *
+ * for (const [name, value] of Object.entries(themeVariables(personaTheme))) {
+ *   splash.style.setProperty(name, value);
+ * }
+ * ```
+ */
 export function themeVariables(theme: Theme): Record<string, string> {
   const vars: Record<string, string> = {};
   for (const [key, value] of Object.entries(theme.colors)) vars[`--bl-color-${kebab(key)}`] = value;

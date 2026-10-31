@@ -11,11 +11,17 @@ export interface Messages {
  * exact count first.
  */
 export interface PluralForms {
+  /** Count 0, in languages with a zero category (Arabic, Latvian). Use `=0` for "no items" in any language. */
   zero?: string;
+  /** Singular (1 in English, also 21, 31… in Russian). */
   one?: string;
+  /** Dual, in languages that have it (Arabic, Welsh). */
   two?: string;
+  /** Paucal forms (2–4 in Polish and Czech). */
   few?: string;
+  /** Large counts in languages that separate them (Polish, Russian, Arabic). */
   many?: string;
+  /** Every other count; required, and the fallback when the language's form is missing. */
   other: string;
   [exact: `=${number}`]: string;
 }
@@ -45,7 +51,18 @@ const ZWSP = '\u200b';
 /** Base language of a tag: `pt-BR` → `pt`. */
 const base = (lang: string) => lang.toLowerCase().split(/[-_]/)[0]!;
 
-/** `rtl` for Arabic, Hebrew, Persian, Urdu…; `ltr` otherwise. */
+/**
+ * `rtl` for Arabic, Hebrew, Persian, Urdu…; `ltr` otherwise. The UI layer sets `dir` on its root
+ * with it when the language changes.
+ *
+ * @example
+ * ```ts
+ * import { textDirection } from '@blacklight/ui';
+ *
+ * textDirection('ar-EG'); // 'rtl'
+ * textDirection('fr'); // 'ltr'
+ * ```
+ */
 export function textDirection(lang: string): 'ltr' | 'rtl' {
   try {
     const info = (
@@ -58,7 +75,18 @@ export function textDirection(lang: string): 'ltr' | 'rtl' {
   return RTL.has(base(lang)) ? 'rtl' : 'ltr';
 }
 
-/** `true` for languages written without spaces between words (Japanese, Chinese). */
+/**
+ * `true` for languages written without spaces between words (Japanese, Chinese), whose line breaks
+ * need {@link lineBreaks}.
+ *
+ * @example
+ * ```ts
+ * import { isCjk } from '@blacklight/ui';
+ *
+ * isCjk('ja'); // true
+ * isCjk('ko'); // false (Korean uses spaces)
+ * ```
+ */
 export function isCjk(lang: string): boolean {
   return NO_SPACES.has(base(lang));
 }
@@ -313,7 +341,18 @@ export function setCurrentI18n(i18n: I18n): void {
   current = i18n;
 }
 
-/** The game's translations (`uiOf(game).i18n` of the running game). */
+/**
+ * The game's translations (`uiOf(game).i18n` of the running game), usable in components and in
+ * plain modules.
+ *
+ * @example
+ * ```ts
+ * import { useI18n } from '@blacklight/ui';
+ *
+ * const i18n = useI18n();
+ * await i18n.setLocale('ja');
+ * ```
+ */
 export function useI18n(): I18n {
   return current;
 }

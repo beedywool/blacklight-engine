@@ -72,7 +72,15 @@ export function bindAccessibility(settings: Settings): void {
 
 /**
  * `true` when animations should be skipped: the player's option, else the system setting.
- * Transitions, timelines, typewriters and rich-text effects check it.
+ * Transitions, timelines, typewriters and rich-text effects check it; check it in your own
+ * animations too.
+ *
+ * @example
+ * ```ts
+ * import { prefersReducedMotion } from '@blacklight/ui';
+ *
+ * if (!prefersReducedMotion()) this.camera.shake(8, 300);
+ * ```
  */
 export function prefersReducedMotion(): boolean {
   if (accessibility.reducedMotion !== 'system') return accessibility.reducedMotion === 'on';

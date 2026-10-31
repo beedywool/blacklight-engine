@@ -8,13 +8,17 @@ export type InkStory = object | string;
 
 /** One parsed Ink tag: `# portrait: mira happy` → `{ name: 'portrait', value: 'mira happy' }`. */
 export interface DialogueTag {
+  /** Tag name, lower case (`portrait`). */
   name: string;
+  /** Rest of the tag after the name, trimmed (`mira happy`); empty for a bare tag. */
   value: string;
 }
 
 /** A character on stage. */
 export interface Portrait {
+  /** Character id, as written in the `portrait` tag. */
   character: string;
+  /** Expression name (`happy`), which picks the portrait image. */
   expression: string;
   /** `left`, `center` or `right`. */
   position: 'left' | 'center' | 'right';
@@ -26,6 +30,7 @@ export interface DialogueLine {
   text: string;
   /** Speaker id (`Mira: Hello` or `# speaker: mira`), `undefined` for narration. */
   speaker?: string;
+  /** Tags of the line, built-in ones included. */
   tags: DialogueTag[];
   /** Voice asset played with the line (`# voice: mira_01`). */
   voice?: string;
@@ -35,15 +40,21 @@ export interface DialogueLine {
 
 /** A choice offered to the player. */
 export interface DialogueChoice {
+  /** Ink's index of the choice: pass it to {@link Dialogue.choose}. */
   index: number;
+  /** Text of the choice, with rich-text tags. */
   text: string;
+  /** Tags written on the choice. */
   tags: DialogueTag[];
 }
 
 /** An entry of the backlog (history). */
 export interface BacklogEntry {
+  /** Speaker id, `undefined` for narration and choices. */
   speaker?: string;
+  /** Text of the line or choice, with rich-text tags. */
   text: string;
+  /** Voice asset of the line, for replaying it from the backlog. */
   voice?: string;
   /** `true` for a choice the player picked. */
   choice?: boolean;
@@ -51,24 +62,43 @@ export interface BacklogEntry {
 
 /** JSON state of a dialogue: put it in your save and pass it back to {@link Dialogue.restore}. */
 export interface DialogueState {
+  /** Format version of this state. */
   version: 1;
   /** Ink's own state (`story.state.toJson()`): variables, visit counts, position. */
   ink: string;
+  /** Line shown when the state was saved. */
   line: DialogueLine | null;
+  /** Choices offered when the state was saved. */
   choices: DialogueChoice[];
+  /** Backlog entries. */
   backlog: BacklogEntry[];
+  /** Characters on stage. */
   portraits: Portrait[];
+  /** The story had reached its end. */
   ended: boolean;
+  /** Language of the story, when the dialogue has several. */
   locale?: string;
 }
 
+/** Events of {@link Dialogue.events}. */
 export interface DialogueEvents {
   /** A new line is shown. */
-  line: { line: DialogueLine };
+  line: {
+    /** The line. */
+    line: DialogueLine;
+  };
   /** Choices are offered. */
-  choices: { choices: DialogueChoice[] };
+  choices: {
+    /** The choices, in story order. */
+    choices: DialogueChoice[];
+  };
   /** A tag was read. Built-in tags are handled before this fires. */
-  tag: { tag: DialogueTag; line: DialogueLine | null };
+  tag: {
+    /** The tag. */
+    tag: DialogueTag;
+    /** Line the tag belongs to, `null` for a tag on its own. */
+    line: DialogueLine | null;
+  };
   /** The story reached its end. */
   end: void;
 }
@@ -90,7 +120,18 @@ export interface DialogueOptions {
 
 const SPEAKER = /^\s*([^:<>\n#{}]{1,40}?):\s+([\s\S]*)$/;
 
-/** Parses `name: value`, `name value` or `name` (Ink tags are free text). */
+/**
+ * Parses `name: value`, `name value` or `name` (Ink tags are free text). The name is lower-cased.
+ * {@link Dialogue} parses its tags with it; use it for tags read from Ink yourself.
+ *
+ * @example
+ * ```ts
+ * import { parseTag } from '@blacklight/ui';
+ *
+ * parseTag('portrait: mira happy'); // { name: 'portrait', value: 'mira happy' }
+ * parseTag('CLEAR'); // { name: 'clear', value: '' }
+ * ```
+ */
 export function parseTag(raw: string): DialogueTag {
   const text = raw.trim();
   const colon = text.indexOf(':');
@@ -130,13 +171,19 @@ function hash(text: string): string {
 export class Dialogue {
   /** The inkjs story (variables, external functions, flows). */
   story: Story;
+  /** `line`, `choices`, `tag` and `end` events. */
   readonly events = new EventBus<DialogueEvents>();
   /** Reactive view of the dialogue for components. */
   readonly view: {
+    /** Line shown, `null` between lines and while choices are offered. */
     line: DialogueLine | null;
+    /** Choices offered, empty otherwise. */
     choices: DialogueChoice[];
+    /** History of lines and picked choices, oldest first. */
     backlog: BacklogEntry[];
+    /** Characters on stage. */
     portraits: Portrait[];
+    /** The story reached its end. */
     ended: boolean;
   };
   private readonly stories: Record<string, InkStory>;
@@ -554,7 +601,16 @@ async function playSound(
   }
 }
 
-/** Length of a line without tags, for auto-mode timing. */
+/**
+ * Length of a line without rich-text tags, for auto-mode timing.
+ *
+ * @example
+ * ```ts
+ * import { lineLength } from '@blacklight/ui';
+ *
+ * const wait = 1500 + lineLength(line) * 40; // ms before auto mode advances
+ * ```
+ */
 export function lineLength(line: DialogueLine): number {
   return plainText(line.text).length;
 }

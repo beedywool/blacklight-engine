@@ -7,11 +7,15 @@
 
 /** Style of a run of text. */
 export interface RunStyle {
+  /** CSS color (from `<color=…>`, see {@link colorValue}). */
   color?: string;
   /** CSS font-size value (`1.5em`, `48px`). */
   size?: string;
+  /** Inside `<b>`. */
   bold?: boolean;
+  /** Inside `<i>`. */
   italic?: boolean;
+  /** Inside `<u>`. */
   underline?: boolean;
   /** Per-character animation. */
   effect?: 'shake' | 'wave';
@@ -23,10 +27,36 @@ export interface RunStyle {
 
 /** A piece of parsed rich text. */
 export type RichNode =
-  | { kind: 'text'; text: string; style: RunStyle }
-  | { kind: 'icon'; name: string; style: RunStyle }
-  | { kind: 'input'; action: string; style: RunStyle }
-  | { kind: 'pause'; ms: number };
+  | {
+      /** A run of text in one style. */
+      kind: 'text';
+      /** The text, tags removed. */
+      text: string;
+      /** Style of the run. */
+      style: RunStyle;
+    }
+  | {
+      /** An `<icon=…>`. */
+      kind: 'icon';
+      /** Icon name (see {@link defineIcon}). */
+      name: string;
+      /** Style around the icon. */
+      style: RunStyle;
+    }
+  | {
+      /** An `<input=…>` prompt glyph. */
+      kind: 'input';
+      /** Action whose binding is shown for the player's device. */
+      action: string;
+      /** Style around the glyph. */
+      style: RunStyle;
+    }
+  | {
+      /** A `<pause=…>` in the typewriter. */
+      kind: 'pause';
+      /** Pause length in ms. */
+      ms: number;
+    };
 
 const THEME_COLORS = new Set([
   'background',
@@ -40,7 +70,17 @@ const THEME_COLORS = new Set([
   'danger',
 ]);
 
-/** CSS color of a `<color=…>` value: theme token, `#hex`, bare hex, or a CSS color name. */
+/**
+ * CSS color of a `<color=…>` value: theme token, `#hex`, bare hex, or a CSS color name.
+ *
+ * @example
+ * ```ts
+ * import { colorValue } from '@blacklight/ui';
+ *
+ * colorValue('primary'); // 'var(--bl-color-primary)'
+ * colorValue('ff0044'); // '#ff0044'
+ * ```
+ */
 export function colorValue(value: string): string {
   const v = value.trim();
   if (THEME_COLORS.has(v)) return `var(--bl-color-${v})`;
@@ -48,7 +88,17 @@ export function colorValue(value: string): string {
   return v;
 }
 
-/** CSS size of a `<size=…>` value: `1.5` → `1.5em`, `48px`, `150%`. */
+/**
+ * CSS size of a `<size=…>` value: `1.5` → `1.5em`, `48px`, `150%`.
+ *
+ * @example
+ * ```ts
+ * import { sizeValue } from '@blacklight/ui';
+ *
+ * sizeValue('1.5'); // '1.5em'
+ * sizeValue('48px'); // '48px'
+ * ```
+ */
 export function sizeValue(value: string): string {
   const v = value.trim();
   return /^\d*\.?\d+$/.test(v) ? `${v}em` : v;
@@ -158,7 +208,16 @@ export function parseRichText(source: string): RichNode[] {
   return nodes;
 }
 
-/** The text of rich text without tags (backlog search, accessibility labels, voice timing). */
+/**
+ * The text of rich text without tags (backlog search, accessibility labels, voice timing).
+ *
+ * @example
+ * ```ts
+ * import { plainText } from '@blacklight/ui';
+ *
+ * plainText('<b>Mira</b> waves <icon=heart>'); // 'Mira waves '
+ * ```
+ */
 export function plainText(source: string): string {
   return parseRichText(source)
     .map((node) => (node.kind === 'text' ? node.text : ''))
@@ -170,7 +229,17 @@ const graphemeSegmenter =
     ? undefined
     : new Intl.Segmenter(undefined, { granularity: 'grapheme' });
 
-/** User-perceived characters (emoji, combining marks and CJK stay whole). */
+/**
+ * User-perceived characters (emoji, combining marks and CJK stay whole), for typewriters and
+ * character counts that must not split a family emoji or an accented letter.
+ *
+ * @example
+ * ```ts
+ * import { graphemes } from '@blacklight/ui';
+ *
+ * graphemes('e\u0301👨‍👩‍👧'); // ['é', '👨‍👩‍👧']
+ * ```
+ */
 export function graphemes(text: string): string[] {
   if (!graphemeSegmenter) return [...text];
   return [...graphemeSegmenter.segment(text)].map((s) => s.segment);
@@ -182,8 +251,17 @@ const INVISIBLE = /^[\u200b-\u200d\u2060\ufeff]$/;
 /**
  * Reveal schedule of a typewriter: for each visible unit (a character, an icon or a glyph), the
  * time in ms at which it appears. `<speed>` scales the time per character, `<pause>` waits.
+ * `<RichText>` uses it; call it for a typewriter of your own.
  *
  * @param charsPerSecond - `0` (or `Infinity`) shows everything at once.
+ *
+ * @example
+ * ```ts
+ * import { parseRichText, revealSchedule, visibleCount } from '@blacklight/ui';
+ *
+ * const times = revealSchedule(parseRichText('Hello<pause=300> there'), 40);
+ * const shown = visibleCount(times, elapsedMs); // units to show now
+ * ```
  */
 export function revealSchedule(nodes: RichNode[], charsPerSecond: number): number[] {
   const times: number[] = [];
@@ -203,7 +281,16 @@ export function revealSchedule(nodes: RichNode[], charsPerSecond: number): numbe
   return times;
 }
 
-/** Units of `times` visible at `elapsed` ms. */
+/**
+ * Units of `times` (from {@link revealSchedule}) visible at `elapsed` ms.
+ *
+ * @example
+ * ```ts
+ * import { visibleCount } from '@blacklight/ui';
+ *
+ * visibleCount([0, 25, 50, 75], 60); // 3
+ * ```
+ */
 export function visibleCount(times: number[], elapsed: number): number {
   let lo = 0;
   let hi = times.length;

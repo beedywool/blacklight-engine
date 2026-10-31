@@ -4,8 +4,11 @@ import type { UiStack } from './runtime';
 
 /** One subtitle cue. Times in seconds. */
 export interface SubtitleCue {
+  /** Time the cue appears. */
   start: number;
+  /** Time the cue disappears. */
   end: number;
+  /** Text of the cue; `Speaker: ` prefixed for WebVTT voice spans. */
   text: string;
 }
 
@@ -44,7 +47,18 @@ export function parseVtt(source: string): SubtitleCue[] {
   return cues;
 }
 
-/** Text of the cues active at `time` seconds. */
+/**
+ * Text of the cues active at `time` seconds, joined by line breaks; empty between cues. Use it to
+ * draw subtitles of your own video element.
+ *
+ * @example
+ * ```ts
+ * import { cueAt, loadSubtitles } from '@blacklight/ui';
+ *
+ * const cues = await loadSubtitles(game, 'intro');
+ * video.addEventListener('timeupdate', () => (caption.textContent = cueAt(cues, video.currentTime)));
+ * ```
+ */
 export function cueAt(cues: SubtitleCue[], time: number): string {
   return cues
     .filter((cue) => time >= cue.start && time < cue.end)
@@ -80,7 +94,12 @@ function prefersMp4(): boolean {
 export function videoSources(
   game: Pick<Game, 'assets'> | undefined,
   source: string | string[],
-): { src: string; type?: string }[] {
+): {
+  /** URL of the file. */
+  src: string;
+  /** MIME type (`video/webm`, `video/mp4`), when known from the extension. */
+  type?: string;
+}[] {
   const list = Array.isArray(source) ? source : [source];
   const out: { src: string; type?: string }[] = [];
   for (const item of list) {
@@ -100,7 +119,19 @@ export function videoSources(
   return out.sort((a, b) => rank(a.type) - rank(b.type));
 }
 
-/** Loads subtitles: cues as given, a `.vtt` / `.srt` asset name or path, or a URL. */
+/**
+ * Loads subtitles: cues as given, a `.vtt` / `.srt` asset name or path, or a URL.
+ *
+ * @returns The cues; an empty list when `subtitles` is empty.
+ * @throws When the file cannot be fetched (HTTP error or network failure).
+ *
+ * @example
+ * ```ts
+ * import { loadSubtitles } from '@blacklight/ui';
+ *
+ * const cues = await loadSubtitles(game, 'intro'); // assets/…/intro.vtt
+ * ```
+ */
 export async function loadSubtitles(
   game: Pick<Game, 'assets'> | undefined,
   subtitles: string | SubtitleCue[] | undefined,
@@ -153,8 +184,11 @@ export async function playCutscene(
 
 /** A subtitle line shown without a video (voice barks, radio chatter). */
 export interface SubtitleLine {
+  /** Unique number, used as the Vue key. */
   id: number;
+  /** Text shown. */
   text: string;
+  /** Speaker name shown before the text. */
   speaker?: string;
 }
 

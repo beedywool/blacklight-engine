@@ -18,7 +18,17 @@ export function defineIcon(name: string, url: string): void {
 
 const warned = new Set<string>();
 
-/** URL of an icon: registered, else the image asset of that name, else an empty image. */
+/**
+ * URL of an icon: registered, else the image asset of that name, else an empty image (with a
+ * warning once per name). Rich text resolves `<icon=…>` with it.
+ *
+ * @example
+ * ```ts
+ * import { iconUrl } from '@blacklight/ui';
+ *
+ * coinImage.src = iconUrl('coin', game);
+ * ```
+ */
 export function iconUrl(name: string, game?: Pick<Game, 'assets'>): string {
   const registered = icons.get(name);
   if (registered) return registered;

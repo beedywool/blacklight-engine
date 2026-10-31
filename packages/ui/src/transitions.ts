@@ -4,14 +4,17 @@ import { prefersReducedMotion } from './a11y';
 
 /** How a screen enters or leaves. Both functions resolve when the animation is over. */
 export interface ScreenTransition {
+  /** Animates `element` (the screen's root) in; called once it is mounted. */
   enter(element: HTMLElement): Promise<void>;
+  /** Animates `element` out; the screen is removed when the promise resolves. */
   leave(element: HTMLElement): Promise<void>;
 }
 
 /** What a {@link TransitionEffect} frame knows about the element it draws. */
 export interface EffectFrame {
-  /** Layout size of the element in its own (virtual) pixels. */
+  /** Layout width of the element in its own (virtual) pixels. */
   width: number;
+  /** Layout height of the element in its own (virtual) pixels. */
   height: number;
   /** `in`: appearing (screen enter, scene cover closing); `out`: disappearing. */
   direction: 'in' | 'out';
@@ -86,7 +89,17 @@ export function onTransitionDefined(listener: (name: string) => void): () => voi
   return () => listeners.delete(listener);
 }
 
-/** A screen transition by name; warns and returns `undefined` when it does not exist. */
+/**
+ * A screen transition by name; warns and returns `undefined` when it does not exist. `'none'` and
+ * `undefined` give `undefined` without a warning.
+ *
+ * @example
+ * ```ts
+ * import { getTransition } from '@blacklight/ui';
+ *
+ * await getTransition('slash')?.enter(panel);
+ * ```
+ */
 export function getTransition(name: string | undefined): ScreenTransition | undefined {
   if (!name || name === 'none') return undefined;
   const transition = screenTransitions.get(name);
@@ -98,17 +111,49 @@ export function getTransition(name: string | undefined): ScreenTransition | unde
   return transition;
 }
 
-/** The effect behind a transition name, `undefined` for promise-only transitions. */
+/**
+ * The effect behind a transition name, `undefined` for promise-only transitions and unknown names.
+ * Pass it to {@link playEffect} to run an effect on any element.
+ *
+ * @example
+ * ```ts
+ * import { getEffect, playEffect } from '@blacklight/ui';
+ *
+ * const iris = getEffect('iris');
+ * if (iris) await playEffect(iris, portrait, 0, 1, 'in', false);
+ * ```
+ */
 export function getEffect(name: string): TransitionEffect | undefined {
   return effects.get(name);
 }
 
-/** Names of every registered transition. */
+/**
+ * Names of every registered transition (built-in and {@link defineTransition}), for a settings
+ * list or a debug menu.
+ *
+ * @example
+ * ```ts
+ * import { transitionNames } from '@blacklight/ui';
+ *
+ * transitionNames().includes('slash'); // true
+ * ```
+ */
 export function transitionNames(): string[] {
   return [...screenTransitions.keys()];
 }
 
-/** Names of the transitions usable between scenes and as covers. */
+/**
+ * Names of the transitions usable between scenes and as covers: those defined as effects (with a
+ * `frame` function).
+ *
+ * @example
+ * ```ts
+ * import { effectNames } from '@blacklight/ui';
+ *
+ * const name = effectNames().includes('ink') ? 'ink' : 'fade';
+ * this.goto('map', { transition: name });
+ * ```
+ */
 export function effectNames(): string[] {
   return [...effects.keys()];
 }
@@ -144,7 +189,19 @@ function info(element: HTMLElement, direction: 'in' | 'out', cover: boolean): Ef
 
 /**
  * Plays an effect on an element from `from` to `to` (0 hidden, 1 shown), in real time. A newer
- * run on the same element stops the older one.
+ * run on the same element stops the older one. With reduced motion (or a zero duration) it jumps
+ * to the end at once. Playing to 0 hides the element (`visibility: hidden`) at the end.
+ *
+ * @param direction - `in` eases like an entrance, `out` like an exit (75 % of the duration).
+ * @param cover - Passed to the effect as {@link EffectFrame.cover}.
+ * @param duration - Seconds; defaults to the effect's duration.
+ *
+ * @example
+ * ```ts
+ * import { getEffect, playEffect } from '@blacklight/ui';
+ *
+ * await playEffect(getEffect('wipe')!, banner, 0, 1, 'in', false, 0.5);
+ * ```
  */
 export function playEffect(
   effect: TransitionEffect,

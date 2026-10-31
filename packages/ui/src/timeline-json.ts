@@ -4,24 +4,33 @@ import type { StepOptions, Timeline } from './timeline';
 export interface TimelineToStep {
   /** CSS selector of the animated elements (inside `root` when given). */
   to: string;
+  /** Motion keyframes per property (`{ "opacity": [0, 1] }`). */
   keyframes: Record<string, unknown>;
+  /** When the step starts: seconds, `'+0.1'`, `'<'`, a label or `'label+0.2'` (see `StepOptions.at`). */
   at?: number | string;
+  /** Seconds. @defaultValue `0.3` */
   duration?: number;
+  /** Motion easing: name or cubic bezier. */
   ease?: StepOptions['ease'];
 }
 
 /** A label: `{ "label": "items" }`. */
 export interface TimelineLabelStep {
+  /** Label name, usable in later `at` values. */
   label: string;
+  /** When the step starts: seconds, `'+0.1'`, `'<'`, a label or `'label+0.2'` (see `StepOptions.at`). */
   at?: number | string;
 }
 
 /** A UI sound: `{ "sound": "ui-slash", "at": "<" }`. */
 export interface TimelineSoundStep {
+  /** Sound asset key, played on the `ui` bus. */
   sound: string;
+  /** When the step starts: seconds, `'+0.1'`, `'<'`, a label or `'label+0.2'` (see `StepOptions.at`). */
   at?: number | string;
 }
 
+/** One step of a {@link TimelineJson}: an animation, a label or a sound. */
 export type TimelineStep = TimelineToStep | TimelineLabelStep | TimelineSoundStep;
 
 /**
@@ -29,7 +38,9 @@ export type TimelineStep = TimelineToStep | TimelineLabelStep | TimelineSoundSte
  * `@blacklight/core/schema/timeline.schema.json`), written by the VS Code timeline editor.
  */
 export interface TimelineJson {
+  /** Schema reference written by the editor; ignored at run time. */
   $schema?: string;
+  /** Steps, added in order. */
   steps: TimelineStep[];
 }
 
