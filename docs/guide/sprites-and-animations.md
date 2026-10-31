@@ -113,17 +113,17 @@ What the engine reads:
 
 ## Playing animations
 
-| Member                           | Meaning                                                                                                                                                                   |
-| -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `play(name, { restart, speed })` | Plays an animation. Calling it every step with the same name keeps it running; `restart: true` starts it over. `speed` multiplies the frame rate and stays until changed. |
-| `queue(name)`                    | Plays `name` when the current animation ends (or finishes its current loop). `play` clears the queue.                                                                     |
-| `onFrame(event, (frame) => …)`   | Listens to `events` from the `.anim.json`. Returns a function that removes the listener.                                                                                  |
-| `onEnd((name) => …)`             | Called when a non-looping animation ends.                                                                                                                                 |
-| `flipX`, `flipY`                 | Mirror the image. Hitboxes from the `.anim.json` and the Aseprite `hitbox` slice mirror with it.                                                                          |
-| `animation`, `frame`             | Name of the playing animation and frame index within it.                                                                                                                  |
-| `animationNames`                 | Every animation the sprite has.                                                                                                                                           |
-| `anchor`                         | Anchor of the image (0 to 1), `0.5` by default; a pivot overrides it.                                                                                                     |
-| `setTexture(key)`                | Shows a loaded image and stops the animation.                                                                                                                             |
+| Member                           | Meaning                                                                                                                                                                                                                                                          |
+| -------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `play(name, { restart, speed })` | Plays an animation. Calling it every step with the same name keeps it running; `restart: true` starts it over. `speed` multiplies the frame rate and stays until changed.                                                                                        |
+| `queue(name)`                    | Plays `name` after the current animation and anything already queued: when a non-looping animation ends (after `onEnd`, instead of its `next`) or a looping one completes its loop. `play` clears the queue.                                                     |
+| `onFrame(event, (frame) => …)`   | Listens to `events` from the `.anim.json`. Returns a function that removes the listener.                                                                                                                                                                         |
+| `onEnd((name) => …)`             | Called once when a non-looping animation shows its last frame for its full duration, before a queued or `next` animation starts. An animation that `play` replaces before its end does not fire it, like `animationcancel` in CSS; looping animations never end. |
+| `flipX`, `flipY`                 | Mirror the image. Hitboxes from the `.anim.json` and the Aseprite `hitbox` slice mirror with it.                                                                                                                                                                 |
+| `animation`, `frame`             | Name of the playing animation and frame index within it.                                                                                                                                                                                                         |
+| `animationNames`                 | Every animation the sprite has.                                                                                                                                                                                                                                  |
+| `anchor`                         | Anchor of the image (0 to 1), `0.5` by default; a pivot overrides it.                                                                                                                                                                                            |
+| `setTexture(key)`                | Shows a loaded image and stops the animation.                                                                                                                                                                                                                    |
 
 ```ts
 override create() {

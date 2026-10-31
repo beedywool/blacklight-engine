@@ -287,17 +287,54 @@ export function findFallback(
   return fallback !== undefined && has(fallback) ? { name: fallback, flipX: false } : undefined;
 }
 
+/**
+ * What an {@link Animator} calls while it plays: the code that shows frames and hears ends.
+ *
+ * @example
+ * ```ts
+ * const callbacks: AnimatorCallbacks = {
+ *   frame: (frame) => (pixiSprite.texture = textures[frame]!),
+ *   end: (name) => console.log(name, 'ended'),
+ * };
+ * ```
+ */
 export interface AnimatorCallbacks {
   /** A frame started: sheet frame index and the events attached to it. */
   frame(sheetFrame: number, events: readonly string[]): void;
-  /** A non-looping animation reached its last frame and finished. */
+  /**
+   * A non-looping animation showed its last frame for its full duration. Called once per play,
+   * before a queued or `next` animation starts; not called when `play()` interrupts it.
+   */
   end(name: string): void;
+}
+
+/** Saved state of an {@link Animator} (snapshots and rollback). */
+export interface AnimatorState {
+  /** Playing animation. */
+  name: string | undefined;
+  /** Current frame of the animation. */
+  index: number;
+  /** Milliseconds spent on the current frame. */
+  elapsed: number;
+  /** Whether a non-looping animation reached its end. */
+  finished: boolean;
+  /** Whether the frames are mirrored horizontally. */
+  flipX: boolean;
+  /** Playback speed multiplier. */
+  speed: number;
+  /** Animations waiting in `queue()`, in order. */
+  queued?: string[];
 }
 
 /**
  * Plays resolved animations on the fixed step. Pure logic, no rendering: the sprite reads
  * `sheetFrame` and `flipX` after each step. Every {@link Sprite} with a sheet has one as
  * `sprite.animator`; games mostly use it for `speed` and `paused`.
+ *
+ * Ends follow the DOM's `animationend`: a non-looping animation reports its end once, when its
+ * last frame has shown for its full duration, whether something is queued after it or not. An
+ * animation that `play()` replaces before that does not end (like a cancelled CSS animation), and
+ * a looping one never ends.
  *
  * @example
  * ```ts
@@ -351,19 +388,124 @@ export class Animator {
   }
 
   /**
-   * Plays `name`. Playing the animation already running does nothing unless `restart` is set.
-   * A missing name plays the closest one (see {@link findFallback}) and warns once.
+   * Plays `name` and forgets what `queue()` had planned. Playing the animation already running
+   * does nothing unless `restart` is set. A missing name plays the closest one (see
+   * {@link findFallback}) and warns once. The animation it replaces does not fire its end.
+   *
+   * @throws Error when neither `name` nor a fallback exists.
    */
   play(name: string, restart = false): void {
+    this.queued = [];
+    this.start(name, restart);
+  }
+
+  /**
+   * Plays `name` after the current animation and what is already queued: a non-looping animation
+   * when it ends (after its end event, instead of its `next`), a looping one when it completes
+   * its loop. Plays it now when nothing plays or the current animation has ended.
+   *
+   * @throws Error when neither `name` nor a fallback exists.
+   */
+  queue(name: string): void {
+    this.resolve(name);
+    this.queued.push(name);
+    if (!this.current || this.finished) this.start(this.queued.shift()!, true);
+  }
+
+  /** Advances by `ms` of game time. */
+  step(ms: number): void {
+    let animation = this.current;
+    if (!animation || this.paused || this.finished) return;
+    this.elapsed += ms * this.speed;
+    for (;;) {
+      const duration = animation.durations[this.index] ?? 100;
+      if (this.elapsed < duration) return;
+      this.elapsed -= duration;
+      if (this.index < animation.frames.length - 1) {
+        this.index++;
+        this.emitFrame();
+        continue;
+      }
+      // Time past the end carries over to what plays next, as it does across a loop.
+      const leftover = this.elapsed;
+      let next: string | undefined;
+      if (animation.loop) {
+        next = this.queued.shift();
+        if (next === undefined) {
+          this.index = 0;
+          this.emitFrame();
+          continue;
+        }
+      } else {
+        this.finished = true;
+        this.elapsed = 0;
+        this.callbacks.end(animation.name);
+        // An end listener that called play() or queue() has already chosen what plays next.
+        if (this.current !== animation || !this.finished) return;
+        next = this.queued.shift() ?? animation.next;
+        if (next === undefined) return;
+      }
+      this.start(next, true);
+      animation = this.current!;
+      this.elapsed = leftover;
+      if (this.paused) return;
+    }
+  }
+
+  /** Frame override (hitbox, pivot) of the current frame, merged over the animation's. */
+  get frameOverride(): FrameOverride {
+    const animation = this.current;
+    const override = animation?.overrides.get(this.index);
+    return {
+      hitbox: override?.hitbox ?? animation?.hitbox,
+      pivot: override?.pivot ?? animation?.pivot,
+    };
+  }
+
+  /** @internal State for snapshots. */
+  capture(): AnimatorState {
+    return {
+      name: this.name,
+      index: this.index,
+      elapsed: this.elapsed,
+      finished: this.finished,
+      flipX: this.flipX,
+      speed: this.speed,
+      queued: [...this.queued],
+    };
+  }
+
+  /**
+   * @internal Returns to a captured state without firing frame or end events: the game already
+   * heard them when it reached that state.
+   */
+  restore(state: AnimatorState): void {
+    if (state.name) this.current = this.animations.get(state.name) ?? this.current;
+    this.index = state.index;
+    this.elapsed = state.elapsed;
+    this.finished = state.finished;
+    this.flipX = state.flipX;
+    this.speed = state.speed;
+    this.queued = [...(state.queued ?? [])];
+  }
+
+  private resolve(name: string): { name: string; flipX: boolean } {
     const found = findFallback(name, (n) => this.animations.has(n), this.defaultName);
-    if (!found) throw new Error(`No animation "${name}" and no default animation to fall back to.`);
+    if (!found)
+      throw new Error(
+        `No animation "${name}" and no default animation to fall back to. Animations: ${[...this.animations.keys()].join(', ') || 'none'}.`,
+      );
     if (found.name !== name && !this.warned.has(name)) {
       this.warned.add(name);
       console.warn(
         `[blacklight] Animation "${name}" does not exist; playing "${found.name}"${found.flipX ? ' mirrored' : ''}.`,
       );
     }
-    this.queued = [];
+    return found;
+  }
+
+  private start(name: string, restart: boolean): void {
+    const found = this.resolve(name);
     if (
       !restart &&
       this.current?.name === found.name &&
@@ -377,55 +519,6 @@ export class Animator {
     this.elapsed = 0;
     this.finished = false;
     this.emitFrame();
-  }
-
-  /** Plays `name` when the current animation ends (or completes its loop). */
-  queue(name: string): void {
-    if (!this.current || this.finished) this.play(name);
-    else this.queued.push(name);
-  }
-
-  /** Advances by `ms` of game time. */
-  step(ms: number): void {
-    const animation = this.current;
-    if (!animation || this.paused || this.finished) return;
-    this.elapsed += ms * this.speed;
-    for (;;) {
-      const duration = animation.durations[this.index] ?? 100;
-      if (this.elapsed < duration) return;
-      this.elapsed -= duration;
-      const last = this.index === animation.frames.length - 1;
-      if (!last) {
-        this.index++;
-        this.emitFrame();
-        continue;
-      }
-      const queued = this.queued.shift();
-      if (queued) {
-        this.play(queued, true);
-        return;
-      }
-      if (animation.loop) {
-        this.index = 0;
-        this.emitFrame();
-        continue;
-      }
-      this.finished = true;
-      this.elapsed = 0;
-      this.callbacks.end(animation.name);
-      if (animation.next && this.current === animation) this.play(animation.next, true);
-      return;
-    }
-  }
-
-  /** Frame override (hitbox, pivot) of the current frame, merged over the animation's. */
-  get frameOverride(): FrameOverride {
-    const animation = this.current;
-    const override = animation?.overrides.get(this.index);
-    return {
-      hitbox: override?.hitbox ?? animation?.hitbox,
-      pivot: override?.pivot ?? animation?.pivot,
-    };
   }
 
   private emitFrame(): void {

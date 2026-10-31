@@ -4,6 +4,7 @@ import {
   RenderTexture,
   Sprite as PixiSprite,
 } from 'pixi.js';
+import type { AnimatorState } from './anim/animator';
 import { resolveProjectPath } from './assets';
 import type { PlayOptions, SoundHandle } from './audio';
 import type { Behavior } from './behaviors/behavior';
@@ -91,20 +92,7 @@ export interface ObjectSnapshot {
     data: Record<string, Encoded>;
   }[];
   /** Animation state of sprites with an animation sheet. */
-  animation?: {
-    /** Playing animation. */
-    name: string | undefined;
-    /** Current frame of the animation. */
-    index: number;
-    /** Milliseconds spent on the current frame. */
-    elapsed: number;
-    /** Whether a non-looping animation reached its end. */
-    finished: boolean;
-    /** Whether the frames are mirrored horizontally. */
-    flipX: boolean;
-    /** Playback speed multiplier. */
-    speed: number;
-  };
+  animation?: AnimatorState;
 }
 
 /**
@@ -595,17 +583,7 @@ export abstract class Scene<P = void> {
               ),
             ),
           })),
-          animation:
-            o instanceof Sprite && o.animator
-              ? {
-                  name: o.animator.name,
-                  index: o.animator.index,
-                  elapsed: o.animator.elapsed,
-                  finished: o.animator.finished,
-                  flipX: o.animator.flipX,
-                  speed: o.animator.speed,
-                }
-              : undefined,
+          animation: o instanceof Sprite && o.animator ? o.animator.capture() : undefined,
         };
       });
     return {
@@ -693,15 +671,7 @@ export abstract class Scene<P = void> {
         applyFields(behavior, b.data, lookup);
       });
       if (saved.animation && o instanceof Sprite && o.animator) {
-        const a = saved.animation;
-        if (a.name) o.animator.play(a.name, true);
-        Object.assign(o.animator, {
-          index: a.index,
-          elapsed: a.elapsed,
-          finished: a.finished,
-          flipX: a.flipX,
-          speed: a.speed,
-        });
+        o.animator.restore(saved.animation);
         o.syncFrame();
       }
       const timers = snapshot.memory?.objectTimers.get(saved.id);

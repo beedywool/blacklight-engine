@@ -89,7 +89,8 @@ export class Sprite extends GameObject {
   /**
    * Plays an animation. Calling it every step with the same name keeps it running; `restart`
    * starts it over. A missing name falls back to the closest one (`walk-left` → `walk-right`
-   * mirrored, `walk`, then the default animation) with a warning.
+   * mirrored, `walk`, then the default animation) with a warning. Clears the `queue()`; the
+   * animation it replaces does not fire `onEnd`.
    */
   play(name: AnimationName, options: { restart?: boolean; speed?: number } = {}): this {
     if (!this.animator)
@@ -102,7 +103,16 @@ export class Sprite extends GameObject {
     return this;
   }
 
-  /** Plays `name` after the current animation ends. */
+  /**
+   * Plays `name` after the current animation and anything queued before it: when a non-looping
+   * animation ends (after `onEnd`, instead of its `next`) or a looping one completes its loop.
+   * Plays it now when the current animation has already ended.
+   *
+   * @example
+   * ```ts
+   * this.play('attack', { restart: true }).queue('recover').queue('idle');
+   * ```
+   */
   queue(name: AnimationName): this {
     this.animator?.queue(name);
     return this;
@@ -117,7 +127,18 @@ export class Sprite extends GameObject {
     return () => this.frameListeners.delete(wrapped);
   }
 
-  /** Called when a non-looping animation ends. */
+  /**
+   * Called when a non-looping animation ends: once per play, when its last frame has shown for its
+   * full duration, before a queued or `next` animation starts. Not called for an animation that
+   * `play()` replaces before its end (like `animationcancel` in CSS) or for looping animations.
+   *
+   * @example
+   * ```ts
+   * this.onEnd((animation) => {
+   *   if (animation === 'die') this.destroy();
+   * });
+   * ```
+   */
   onEnd(listener: (animation: string) => void): Unsubscribe {
     this.endListeners.add(listener);
     return () => this.endListeners.delete(listener);

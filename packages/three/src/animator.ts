@@ -55,13 +55,16 @@ export interface ModelAnimationState {
   speed: number;
   /** The animation was a mirrored fallback. */
   flipX: boolean;
+  /** Animations waiting in `queue()`, in order. */
+  queued?: string[];
 }
 
 /**
  * Plays the skeletal animations of one model instance on the game's fixed step, with the same
- * vocabulary as sprites: `play`, `queue`, `onEnd`, frame events, fallback to a close name.
- * Every `Model3D` has one (`model.animator`) once its file is loaded; most games call the
- * object's own `play` instead.
+ * vocabulary and rules as sprites: `play`, `queue`, `onEnd`, frame events, fallback to a close
+ * name. A non-looping clip ends once, after the events of its last step and before a queued or
+ * `next` clip starts; `play()` replaces a clip without ending it. Every `Model3D` has one
+ * (`model.animator`) once its file is loaded; most games call the object's own `play` instead.
  *
  * @example
  * ```ts
@@ -82,7 +85,10 @@ export class ModelAnimator {
   finished = false;
   private action: AnimationAction | undefined;
   private readonly clips = new Map<string, AnimationClip>();
-  private readonly queued: string[] = [];
+  private queued: string[] = [];
+  /** Action that finished or looped during the current `mixer.update`, handled after it. */
+  private ended: AnimationAction | undefined;
+  private looped: AnimationAction | undefined;
   private readonly endListeners = new Set<(name: string) => void>();
   private readonly eventListeners = new Set<(event: string, name: string) => void>();
   private readonly warned = new Set<string>();
@@ -95,13 +101,13 @@ export class ModelAnimator {
   ) {
     this.mixer = new AnimationMixer(root);
     for (const clip of clips) this.clips.set(clip.name, clip);
+    // The mixer reports ends and loops in the middle of its update; they are handled after the
+    // step's events, so a clip's last events come before its end and the next clip.
     this.mixer.addEventListener('finished', (event) => {
-      if (event.action !== this.action) return;
-      this.finished = true;
-      const ended = this.name!;
-      for (const listener of this.endListeners) listener(ended);
-      const next = this.queued.shift() ?? this.settings[ended]?.next;
-      if (next) this.play(next, { restart: true });
+      if (event.action === this.action) this.ended = event.action;
+    });
+    this.mixer.addEventListener('loop', (event) => {
+      if (event.action === this.action) this.looped = event.action;
     });
   }
 
@@ -126,11 +132,16 @@ export class ModelAnimator {
   /**
    * Plays a clip. Calling it every step with the same name keeps it running. A missing name falls
    * back to a close one (`walk-left` → `walk-right` mirrored, `walk`, then the first clip) with a
-   * warning.
+   * warning. Clears the `queue()`; the clip it replaces does not fire `onEnd`.
    *
    * @throws Error when the model has no animation at all.
    */
   play(name: string, options: ModelPlayOptions = {}): void {
+    this.queued = [];
+    this.start(name, options);
+  }
+
+  private start(name: string, options: ModelPlayOptions): void {
     const found = findFallback(name, (n) => this.clips.has(n), this.names[0]);
     if (!found) {
       throw new Error(
@@ -167,10 +178,14 @@ export class ModelAnimator {
     this.finished = false;
   }
 
-  /** Plays `name` once the current animation ends (non-looping animations only). */
+  /**
+   * Plays `name` after the current animation and anything queued before it: when a non-looping
+   * clip ends (after `onEnd`, instead of its `next`) or a looping one completes its loop. Plays it
+   * now when nothing plays or the current clip has ended.
+   */
   queue(name: string): void {
-    if (!this.action || this.finished) this.play(name);
-    else this.queued.push(name);
+    this.queued.push(name);
+    if (!this.action || this.finished) this.start(this.queued.shift()!, {});
   }
 
   /** Stops every animation; the model keeps its current pose. */
@@ -178,10 +193,13 @@ export class ModelAnimator {
     this.mixer.stopAllAction();
     this.action = undefined;
     this.name = undefined;
-    this.queued.length = 0;
+    this.queued = [];
   }
 
-  /** Calls `listener` when a non-looping animation ends. */
+  /**
+   * Calls `listener` when a non-looping animation ends: once per play, before a queued or `next`
+   * clip starts. Not called for a clip that `play()` replaces or for looping clips.
+   */
   onEnd(listener: (name: string) => void): Unsubscribe {
     this.endListeners.add(listener);
     return () => this.endListeners.delete(listener);
@@ -197,15 +215,38 @@ export class ModelAnimator {
   step(seconds: number): void {
     const action = this.action;
     const before = action?.time ?? 0;
+    this.ended = this.looped = undefined;
     this.mixer.update(seconds);
-    if (!action || action !== this.action || this.eventListeners.size === 0) return;
-    const events = this.settings[this.name!]?.events;
-    if (!events) return;
-    const after = action.time;
+    if (!action || action !== this.action) return;
+    const name = this.name!;
+    // A clip that loops into a queued one stops at its end: later events belong to its next loop.
+    const leaving = this.looped === action && this.queued.length > 0;
+    this.fireEvents(action, name, before, leaving);
+    if (this.ended === action) {
+      this.finished = true;
+      for (const listener of this.endListeners) listener(name);
+      // An end listener that called play() or queue() has already chosen what plays next.
+      if (this.action !== action || !this.finished) return;
+      const next = this.queued.shift() ?? this.settings[name]?.next;
+      if (next) this.start(next, { restart: true });
+    } else if (leaving) {
+      this.start(this.queued.shift()!, { restart: true });
+    }
+  }
+
+  private fireEvents(
+    action: AnimationAction,
+    name: string,
+    before: number,
+    leaving: boolean,
+  ): void {
+    const events = this.settings[name]?.events;
+    if (!events || this.eventListeners.size === 0) return;
     const duration = action.getClip().duration;
     const forward = action.timeScale >= 0;
+    const after = leaving ? (forward ? duration : 0) : action.time;
     // A looping clip may wrap around between two steps.
-    const wrapped = forward ? after < before : after > before;
+    const wrapped = !leaving && (forward ? after < before : after > before);
     for (const [at, names] of Object.entries(events)) {
       const t = Number(at);
       const passed = forward
@@ -217,13 +258,19 @@ export class ModelAnimator {
           : t < before && t >= after;
       if (!passed || t > duration) continue;
       for (const event of Array.isArray(names) ? names : [names])
-        for (const listener of this.eventListeners) listener(event, this.name!);
+        for (const listener of this.eventListeners) listener(event, name);
     }
   }
 
   /** @internal */
   capture(): ModelAnimationState {
-    return { name: this.name, time: this.time, speed: this.speed, flipX: this.flipX };
+    return {
+      name: this.name,
+      time: this.time,
+      speed: this.speed,
+      flipX: this.flipX,
+      queued: [...this.queued],
+    };
   }
 
   /** @internal */
@@ -235,6 +282,7 @@ export class ModelAnimator {
     this.play(state.name, { restart: true, fade: 0, speed: state.speed });
     this.action!.time = state.time;
     this.flipX = state.flipX;
+    this.queued = [...(state.queued ?? [])];
     this.mixer.update(0);
   }
 }

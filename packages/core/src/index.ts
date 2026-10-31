@@ -59,6 +59,8 @@ export {
   type AnimationDef,
   type AnimationFile,
   type AnimationFileInput,
+  type AnimatorCallbacks,
+  type AnimatorState,
   type FrameOverride,
   type ResolvedAnimation,
 } from './anim/animator';

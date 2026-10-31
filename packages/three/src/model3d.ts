@@ -367,7 +367,13 @@ export class Model3D extends GameObject {
     this.z = s.z ?? 0;
     const animator = this.ensureModel();
     if (animator && s.time !== undefined) {
-      animator.restore({ name: s.name, time: s.time, speed: s.speed ?? 1, flipX: !!s.flipX });
+      animator.restore({
+        name: s.name,
+        time: s.time,
+        speed: s.speed ?? 1,
+        flipX: !!s.flipX,
+        queued: s.queued,
+      });
       this.applyFlip();
     }
   }

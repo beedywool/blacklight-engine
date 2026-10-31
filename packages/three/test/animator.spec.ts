@@ -65,6 +65,65 @@ describe('ModelAnimator', () => {
     expect(animator.name).toBe('walk-right');
   });
 
+  it('ends each clip of a queue once, after its last events and before the next clip', () => {
+    const { root, clips } = rig();
+    const animator = new ModelAnimator(root, clips, {
+      wave: { loop: false, events: { 0.5: 'last' } },
+      'walk-right': { loop: false },
+    });
+    const log: string[] = [];
+    animator.onEnd((name) => log.push(`end ${name}`));
+    animator.onEvent((event, name) => log.push(`${event} ${name}`));
+    animator.play('wave', { fade: 0 });
+    animator.queue('walk-right');
+    animator.queue('wave');
+    animator.queue('idle');
+    for (let i = 0; i < 120; i++) animator.step(1 / 60);
+    expect(log).toEqual(['last wave', 'end wave', 'end walk-right', 'last wave', 'end wave']);
+    expect(animator.name).toBe('idle');
+  });
+
+  it('does not end a clip that play() replaces, and play() clears the queue', () => {
+    const { root, clips } = rig();
+    const animator = new ModelAnimator(root, clips, { wave: { loop: false } });
+    const ended = vi.fn();
+    animator.onEnd(ended);
+    animator.play('wave', { fade: 0 });
+    animator.queue('walk-right');
+    animator.step(0.2);
+    animator.play('idle', { fade: 0 });
+    for (let i = 0; i < 60; i++) animator.step(1 / 60);
+    expect(ended).not.toHaveBeenCalled();
+    expect(animator.name).toBe('idle');
+  });
+
+  it('starts a queued clip when a looping clip completes its loop', () => {
+    const { root, clips } = rig();
+    const animator = new ModelAnimator(root, clips, { idle: { events: { 0.9: 'late' } } });
+    const events: string[] = [];
+    animator.onEvent((event) => events.push(event));
+    animator.play('idle', { fade: 0 });
+    animator.queue('wave');
+    animator.step(0.5);
+    expect(animator.name).toBe('idle');
+    animator.step(0.6);
+    expect(animator.name).toBe('wave');
+    // The events up to the end of the loop fire, none from a loop that does not happen.
+    expect(events).toEqual(['late']);
+  });
+
+  it('lets an end listener choose what plays next', () => {
+    const { root, clips } = rig();
+    const animator = new ModelAnimator(root, clips, { wave: { loop: false, next: 'idle' } });
+    animator.onEnd((name) => {
+      if (name === 'wave') animator.play('walk-right', { fade: 0 });
+    });
+    animator.play('wave', { fade: 0 });
+    animator.queue('idle');
+    for (let i = 0; i < 40; i++) animator.step(1 / 60);
+    expect(animator.name).toBe('walk-right');
+  });
+
   it('fires events when playback passes their time, also across the loop', () => {
     const { root, clips } = rig();
     const animator = new ModelAnimator(root, clips, {
@@ -85,15 +144,18 @@ describe('ModelAnimator', () => {
     const { root, arm, clips } = rig();
     const animator = new ModelAnimator(root, clips);
     animator.play('walk-left', { speed: 2 });
+    animator.queue('wave');
     animator.step(0.1);
     const saved = animator.capture();
-    expect(saved).toMatchObject({ name: 'walk-right', speed: 2, flipX: true });
+    expect(saved).toMatchObject({ name: 'walk-right', speed: 2, flipX: true, queued: ['wave'] });
     animator.play('idle', { fade: 0 });
     animator.step(0.3);
     animator.restore(saved);
     expect(animator.name).toBe('walk-right');
     expect(animator.time).toBeCloseTo(0.2);
     expect(arm.position.x).toBeCloseTo(0.8);
+    animator.step(0.2);
+    expect(animator.name).toBe('wave');
     animator.restore({ name: undefined, time: 0, speed: 1, flipX: false });
     expect(animator.name).toBeUndefined();
   });

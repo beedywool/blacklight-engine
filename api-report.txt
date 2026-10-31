@@ -658,6 +658,17 @@ interface AnimationFile
   hitbox?: HitboxSpec
   pivot?: Point
   source?: string
+interface AnimatorCallbacks
+  end(name: string): void
+  frame(sheetFrame: number, events: readonly string[]): void
+interface AnimatorState
+  elapsed: number
+  finished: boolean
+  flipX: boolean
+  index: number
+  name: string | undefined
+  queued?: string[]
+  speed: number
 interface AnyBehavior
   enabled: boolean
   readonly name: string
@@ -915,7 +926,7 @@ interface ObjectRegistry
   global: Record<string, { load: ObjectLoader; path: string }>
   scenes: Record<string, Record<string, { load: ObjectLoader; path: string }>>
 interface ObjectSnapshot
-  animation?: { elapsed: number; finished: boolean; flipX: boolean; index: number; name: string | undefined; speed: number }
+  animation?: AnimatorState
   behaviors: ({ data: Record<string, Encoded>; enabled: boolean })[]
   core: { alpha: number; collision: unknown; hitbox: unknown; player: number; rotation: number; scaleX: number; scaleY: number; tags: string[]; visible: boolean; vx: number; vy: number; x: number; y: number; zIndex: number }
   data: Record<string, Encoded>
@@ -2067,6 +2078,7 @@ interface ModelAnimationSettings
 interface ModelAnimationState
   flipX: boolean
   name: string | undefined
+  queued?: string[]
   speed: number
   time: number
 interface ModelPlayOptions

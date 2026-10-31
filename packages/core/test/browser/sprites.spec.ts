@@ -100,9 +100,18 @@ describe('Sprite', () => {
     game.step(3);
     expect(ends).toHaveBeenCalledWith('attack');
     expect(bat.animation).toBe('idle');
+    ends.mockClear();
     bat.play('attack' as never).queue('fly-right' as never);
     game.step(3);
     expect(bat.animation).toBe('fly-right');
+    // The queued animation starts after the end of the one before it, not instead of it.
+    expect(ends.mock.calls).toEqual([['attack']]);
+    // play() interrupts without an end.
+    bat.play('attack' as never, { restart: true });
+    game.step(1);
+    bat.play('idle' as never);
+    game.step(3);
+    expect(ends.mock.calls).toEqual([['attack']]);
 
     expect(bat.snapshotState()).toEqual({ flipX: true, flipY: true });
     bat.restoreState({ flipX: false, flipY: false });

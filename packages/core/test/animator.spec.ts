@@ -156,6 +156,162 @@ describe('Animator', () => {
     expect(animator.name).toBe('idle');
   });
 
+  describe('ends and queue', () => {
+    // 100 ms frames: `once` and `twice` are non-looping, `idle` loops, `attack` chains to idle.
+    const set = resolveAnimations(
+      {
+        fps: 10,
+        animations: {
+          idle: {},
+          once: { frames: [2, 3], loop: false, events: { '1': 'hit' } },
+          twice: { frames: [4, 5], loop: false },
+          attack: { frames: [6, 7], next: 'idle' },
+        },
+      },
+      sheet,
+    );
+    function record() {
+      const log: string[] = [];
+      const animator = new Animator(set, {
+        frame: (frame, events) => log.push(`frame ${frame}${events.map((e) => ` ${e}`).join('')}`),
+        end: (name) => log.push(`end ${name}`),
+      });
+      return { animator, log };
+    }
+
+    it('ends a non-looping animation before the queued one starts', () => {
+      const { animator, log } = record();
+      animator.play('once');
+      animator.queue('twice');
+      log.length = 0;
+      animator.step(100);
+      expect(log).toEqual(['frame 3 hit']);
+      animator.step(100);
+      expect(log).toEqual(['frame 3 hit', 'end once', 'frame 4']);
+      expect(animator.name).toBe('twice');
+      expect(animator.finished).toBe(false);
+    });
+
+    it('plays a chain of queued animations, each ending once', () => {
+      const { animator, log } = record();
+      animator.play('once');
+      animator.queue('twice');
+      animator.queue('once');
+      animator.queue('attack');
+      for (let i = 0; i < 12; i++) animator.step(100);
+      expect(log.filter((l) => l.startsWith('end'))).toEqual([
+        'end once',
+        'end twice',
+        'end once',
+        'end attack',
+      ]);
+      // The queue is empty after attack, so its `next` plays.
+      expect(animator.name).toBe('idle');
+      expect(animator.finished).toBe(false);
+    });
+
+    it('carries the time past the end into the queued animation', () => {
+      const { animator, log } = record();
+      animator.play('once');
+      animator.queue('twice');
+      animator.step(350);
+      expect(log).toEqual(['frame 2', 'frame 3 hit', 'end once', 'frame 4', 'frame 5']);
+      expect(animator.elapsed).toBeCloseTo(50);
+      animator.step(1000);
+      expect(log.at(-1)).toBe('end twice');
+      expect(animator.finished).toBe(true);
+    });
+
+    it('lets a queued animation replace next, after the end', () => {
+      const { animator, log } = record();
+      animator.play('attack');
+      animator.queue('twice');
+      animator.step(200);
+      expect(log.slice(-2)).toEqual(['end attack', 'frame 4']);
+      expect(animator.name).toBe('twice');
+    });
+
+    it('starts a looping animation queued after a loop completes, without an end', () => {
+      const { animator, log } = record();
+      animator.play('idle');
+      animator.queue('once');
+      animator.step(150);
+      expect(animator.name).toBe('idle');
+      animator.step(50);
+      expect(animator.name).toBe('once');
+      expect(log).toEqual(['frame 0', 'frame 1', 'frame 2']);
+    });
+
+    it('does not end an animation that play() interrupts, and clears the queue', () => {
+      const { animator, log } = record();
+      animator.play('once');
+      animator.queue('twice');
+      animator.step(150);
+      animator.play('attack');
+      animator.step(200);
+      expect(log.filter((l) => l.startsWith('end'))).toEqual(['end attack']);
+      expect(animator.name).toBe('idle');
+    });
+
+    it('fires the end once when the animation stays finished', () => {
+      const { animator, log } = record();
+      animator.play('twice');
+      for (let i = 0; i < 10; i++) animator.step(100);
+      expect(log.filter((l) => l === 'end twice')).toHaveLength(1);
+      // Queuing after the end plays it at once.
+      animator.queue('once');
+      expect(animator.name).toBe('once');
+    });
+
+    it('lets an end listener choose what plays next', () => {
+      const animator: Animator = new Animator(set, {
+        frame: () => {},
+        end: (name) => {
+          if (name === 'once') animator.play('idle');
+        },
+      });
+      animator.play('once');
+      animator.queue('twice');
+      animator.step(200);
+      expect(animator.name).toBe('idle');
+
+      const queued: Animator = new Animator(set, {
+        frame: () => {},
+        end: (name) => {
+          if (name === 'once') queued.queue('attack');
+        },
+      });
+      queued.play('once');
+      queued.queue('twice');
+      queued.step(200);
+      // Queued from the listener: after what was already waiting.
+      expect(queued.name).toBe('twice');
+      queued.step(200);
+      expect(queued.name).toBe('attack');
+    });
+
+    it('rejects an animation it cannot play when it is queued', () => {
+      const empty = new Animator(new Map(), { frame: () => {}, end: () => {} });
+      expect(() => empty.queue('jump')).toThrow(/No animation "jump"/);
+    });
+
+    it('captures and restores its queue without firing events', () => {
+      const { animator, log } = record();
+      animator.play('once');
+      animator.queue('twice');
+      animator.step(150);
+      const saved = animator.capture();
+      expect(saved).toMatchObject({ name: 'once', index: 1, queued: ['twice'] });
+      animator.play('idle');
+      log.length = 0;
+      animator.restore(saved);
+      expect(log).toEqual([]);
+      expect(animator.sheetFrame).toBe(3);
+      animator.step(50);
+      expect(log).toEqual(['end once', 'frame 4']);
+    });
+  });
+
   it('falls back with a warning', () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
     const animator = new Animator(animations, { frame: () => {}, end: () => {} });
