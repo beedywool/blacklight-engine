@@ -35,7 +35,7 @@ Everything documented on `Game`, `Scene` and `GameObject` is reachable from ther
 
 ## Deterministic tests with Playwright
 
-The game's container (`#game`) carries `data-blacklight-state` (`loading`, then `running`) and `data-blacklight-scene` (the current scene's name), so a test can wait for the game without sleeping. This is the pattern of the engine's own end-to-end test:
+The game's container (`#game`) carries `data-blacklight-state` (`loading`, then `running`) and `data-blacklight-scene` (the current scene's name), so a test can wait for the game without sleeping. Once the entry scene's first frame is rendered, the engine also sets the user timing mark `blacklight:interactive` (`performance.getEntriesByName('blacklight:interactive')`, or the Timings track of DevTools' Performance panel): its time is the page's start time, from navigation to a game that takes input. This is the pattern of the engine's own end-to-end test:
 
 ```ts
 import { expect, test } from '@playwright/test';

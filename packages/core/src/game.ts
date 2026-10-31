@@ -3,6 +3,7 @@ import {
   Container as PixiContainer,
   Graphics as PixiGraphics,
   TextureStyle,
+  UPDATE_PRIORITY,
 } from 'pixi.js';
 import { SheetCache } from './anim/sheet-cache';
 import { AssetStore, FONT_EXTENSIONS, extension, type AssetManifest } from './assets';
@@ -347,6 +348,14 @@ export class Game {
     this.mount.dataset.blacklightState = 'loading';
     await this.goto(this.config.entry as SceneName);
     this.mount.dataset.blacklightState = 'running';
+    // NF-02: a user timing mark once the entry scene's first frame is rendered (after Pixi's
+    // render, which runs at LOW priority). Cold-start measurements read it from a trace, since a
+    // packaged release app accepts no debugger; it also shows in DevTools' Performance panel.
+    this.app.ticker.addOnce(
+      () => performance.mark('blacklight:interactive'),
+      undefined,
+      UPDATE_PRIORITY.UTILITY,
+    );
   }
 
   /** Scenes that receive steps: the current scene unless an overlay pauses it, and the overlays. */
