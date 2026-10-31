@@ -20,11 +20,17 @@ import { blacklightTooling } from './tooling';
 
 /** Import aliases available in every game (SPEC §6.1). */
 export const PROJECT_ALIASES = {
+  /** Game object classes: `import { Player } from '@objects/player'`. */
   '@objects': 'objects',
+  /** Vue screens and components of the UI layer. */
   '@ui': 'ui',
+  /** The game's own modules (`defineModule`). */
   '@modules': 'modules',
+  /** Images, sounds, fonts and data files. */
   '@assets': 'assets',
+  /** 3D models (glTF) for `@blacklight/three`. */
   '@models': 'models',
+  /** Ink stories (`.ink`) for dialogue. */
   '@stories': 'stories',
 } as const;
 
@@ -117,10 +123,19 @@ function writeIfChanged(file: string, content: string): void {
 }
 
 /**
- * Checks that `root` is a game and writes the generated entry files.
+ * Checks that `root` is a game and writes the generated entry files (`index.html`, `main.ts`) into
+ * its `.blacklight/` folder. {@link createViteConfig} calls it; call it yourself only when you
+ * build a Vite configuration by hand.
  *
  * @returns The generated folder, used as Vite's root.
  * @throws Error when `root` has no `game.config.ts`.
+ *
+ * @example
+ * ```ts
+ * import { prepareProject } from '@blacklight/cli/vite';
+ *
+ * const viteRoot = prepareProject(process.cwd()); // <game>/.blacklight
+ * ```
  */
 export function prepareProject(root: string): string {
   if (!CONFIG_FILES.some((file) => existsSync(join(root, file)))) {
@@ -136,7 +151,17 @@ export function prepareProject(root: string): string {
   return dir;
 }
 
-/** `true` when the game depends on `@blacklight/ui` (Vue screens). */
+/**
+ * `true` when the game's `package.json` depends on `@blacklight/ui` (Vue screens); the generated
+ * entry then installs the UI layer. A missing or unreadable `package.json` gives `false`.
+ *
+ * @example
+ * ```ts
+ * import { usesUi } from '@blacklight/cli/vite';
+ *
+ * if (usesUi('.')) console.log('this game has Vue screens');
+ * ```
+ */
 export function usesUi(root: string): boolean {
   try {
     const manifest = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8')) as {
@@ -151,9 +176,17 @@ export function usesUi(root: string): boolean {
 
 /**
  * Validates `game.config.ts` and writes `.blacklight/types.d.ts` with the game's scene, object,
- * action, animation and asset names.
+ * action, animation and asset names, plus the types of its modules. `blacklight types` and the dev
+ * server run it; the file is rewritten only when its content changes.
  *
  * @throws Error listing every invalid configuration field.
+ *
+ * @example
+ * ```ts
+ * import { generateTypes } from '@blacklight/cli/vite';
+ *
+ * await generateTypes(process.cwd()); // before running tsc in CI
+ * ```
  */
 export async function generateTypes(root: string): Promise<void> {
   const config = await loadGameConfig(root);
@@ -179,7 +212,20 @@ function allowedFolders(root: string): string[] {
   return [...folders];
 }
 
-/** Manifest module: every asset by project path, and atlases in release builds. */
+/**
+ * Source of the `virtual:blacklight/assets` module: every asset of the game by project path, as a
+ * Vite `?url` import. With `emit` (release builds), small PNGs are packed into atlases, each page
+ * emitted through `emit`, and the manifest maps those images to their atlas frame.
+ *
+ * @param emit - Emits a generated file and returns its Rollup reference id (`this.emitFile`).
+ *
+ * @example
+ * ```ts
+ * import { manifestModule } from '@blacklight/cli/vite';
+ *
+ * const source = manifestModule('/path/to/game'); // export default { files: { 'assets/hero.png': … } }
+ * ```
+ */
 export function manifestModule(
   root: string,
   emit?: (name: string, source: Buffer) => string,
@@ -225,7 +271,19 @@ ${atlasEntries.join('\n')}
 `;
 }
 
-/** Vite plugin with the game conventions: aliases, asset manifest, atlases, generated types. */
+/**
+ * Vite plugin with the game conventions: the project aliases ({@link PROJECT_ALIASES}), the asset
+ * manifest, atlases in release builds, and generated types refreshed while the dev server runs.
+ * {@link createViteConfig} includes it with the other engine plugins.
+ *
+ * @example
+ * ```ts
+ * import { defineConfig } from 'vite';
+ * import { blacklight } from '@blacklight/cli/vite';
+ *
+ * export default defineConfig({ plugins: [blacklight({ root: process.cwd() })] });
+ * ```
+ */
 export function blacklight(options: { root: string }): Plugin {
   const root = resolve(options.root);
   let build = false;
@@ -287,10 +345,21 @@ export function blacklight(options: { root: string }): Plugin {
   };
 }
 
+/**
+ * Options of {@link createViteConfig}: the server flags of `blacklight dev` and `blacklight preview`,
+ * and the PWA switch.
+ */
 export interface ViteConfigOptions {
+  /** Port of the dev server and of `blacklight preview`. @defaultValue `5173` (Vite's default) */
   port?: number;
+  /**
+   * Address of the dev and preview servers; `true` listens on every interface (to test on a phone
+   * on the same network).
+   */
   host?: string | boolean;
+  /** Opens the game in the browser when the dev server starts. */
   open?: boolean;
+  /** Fails instead of trying the next port when `port` is taken. */
   strictPort?: boolean;
   /**
    * Make the build a Progressive Web App (manifest, icons, offline service worker). Only the web
@@ -299,7 +368,22 @@ export interface ViteConfigOptions {
   pwa?: boolean;
 }
 
-/** Full Vite configuration for a game; the CLI passes it to Vite's `createServer` / `build`. */
+/**
+ * Full Vite configuration for a game: generated entry, engine plugins (conventions, modules,
+ * tooling, Vue, Ink, font subsetting, security hardening, optional PWA) and relative URLs, so the
+ * same build runs on the web, in Electron and in a WebView. The CLI passes it to Vite's
+ * `createServer` and `build`; use it to drive Vite from your own script.
+ *
+ * @throws Error when `gameRoot` has no `game.config.ts`.
+ *
+ * @example
+ * ```ts
+ * import { build } from 'vite';
+ * import { createViteConfig } from '@blacklight/cli/vite';
+ *
+ * await build(createViteConfig('.', { pwa: true }));
+ * ```
+ */
 export function createViteConfig(gameRoot: string, options: ViteConfigOptions = {}): InlineConfig {
   const root = resolve(gameRoot);
   const generated = prepareProject(root);
