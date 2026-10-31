@@ -1,4 +1,4 @@
-// Benchmark results (e2e/bench.spec.ts): the best and the median of several runs, comparison with
+// Benchmark results (e2e/bench.spec.ts, e2e/cold-start.spec.ts): the best and the median of several runs, comparison with
 // the committed baseline (e2e/bench-baseline.json), and the command that copies results into it.
 //
 //   node scripts/bench.mjs update bench-results/*.json
@@ -24,6 +24,8 @@ export const GATED = {
   low1Fps: 'higher',
   stepRelative: 'lower',
   heapMb: 'lower',
+  // NF-02 (e2e/cold-start.spec.ts): process launch or page navigation to the entry scene's first frame.
+  coldStartMs: 'lower',
 };
 
 /**
@@ -33,6 +35,36 @@ export const GATED = {
  */
 export const DISPLAY_BOUND_FPS = 55;
 const FRAME_RATES = new Set(['fps', 'low1Fps']);
+
+/**
+ * Gated metrics judged on the median run instead of the best one. Cold starts on a desktop come in
+ * two modes (about 20 % of launches are 20 % faster, the CPU's state at that moment), so the best
+ * of five depends on whether a fast launch happened; the median stays within a few percent.
+ */
+export const MEDIAN_GATED = new Set(['coldStartMs']);
+
+/**
+ * Smallest change that can count as a regression, per metric. The cold-start mark lands on a
+ * display frame, so a start time moves in steps of 16.7 ms whatever the engine does: below two
+ * frames, 10 % of a web start of about 90 ms is under the measure's resolution.
+ * @type {Record<string, number>}
+ */
+export const MIN_CHANGE = { coldStartMs: 2 * (1000 / 60) };
+
+/**
+ * The values the check compares, from a result file or a baseline entry: the best run for most
+ * gated metrics, the median for {@link MEDIAN_GATED}.
+ * @param {{ best: Record<string, number>, median: Record<string, number> }} entry
+ * @returns {Record<string, number>}
+ */
+export function gatedValues(entry) {
+  const values = { ...entry.best };
+  for (const metric of MEDIAN_GATED) {
+    if (typeof entry.median?.[metric] === 'number') values[metric] = entry.median[metric];
+    else delete values[metric];
+  }
+  return values;
+}
 
 /** @param {number[]} values */
 export function median(values) {
@@ -74,8 +106,9 @@ export function best(runs) {
 }
 
 /**
- * Compares the best values of a run set with the baseline's. A metric regresses when it is worse than the baseline by more
- * than `tolerance` (a share of the baseline value).
+ * Compares the gated values of a run set with the baseline's ({@link gatedValues}). A metric
+ * regresses when it is worse than the baseline by more than `tolerance` (a share of the baseline
+ * value) and by more than its {@link MIN_CHANGE}.
  * @param {Record<string, number>} baseline
  * @param {Record<string, number>} current
  * @param {number} [tolerance]
@@ -90,7 +123,11 @@ export function compare(baseline, current, tolerance = TOLERANCE) {
       const before = baseline[metric];
       const after = current[metric];
       const change = before === 0 ? 0 : (after - before) / before;
-      const regressed = better === 'lower' ? change > tolerance : change < -tolerance;
+      const worseBy = better === 'lower' ? after - before : before - after;
+      const regressed =
+        before !== 0 &&
+        worseBy > Math.abs(before) * tolerance &&
+        worseBy > (MIN_CHANGE[metric] ?? 0);
       return { metric, baseline: before, current: after, change, regressed };
     });
 }

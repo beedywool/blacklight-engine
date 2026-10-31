@@ -29,9 +29,7 @@
 //   test records the results and passes. `BLACKLIGHT_BENCH_UPDATE=1 pnpm bench` stores the
 //   results as the baseline; `node scripts/bench.mjs update <files>` does the same with result
 //   files downloaded from CI.
-import { mkdirSync, writeFileSync } from 'node:fs';
-import { cpus } from 'node:os';
-import { join, resolve } from 'node:path';
+import { resolve } from 'node:path';
 import {
   chromium,
   expect,
@@ -40,20 +38,12 @@ import {
   type BrowserContextOptions,
   type TestInfo,
 } from '@playwright/test';
-import {
-  best,
-  compare,
-  formatComparison,
-  readBaseline,
-  summarize,
-  updateBaseline,
-} from '../scripts/bench.mjs';
+import { best, compare, formatComparison, summarize } from '../scripts/bench.mjs';
+import { CHROMIUM_ARGS, RUNS, recordRuns, rendererScript } from './bench-shared';
 import { run, serve } from './server';
 
 const fixture = resolve(import.meta.dirname, 'fixtures/bench');
-const resultsDir = resolve(import.meta.dirname, '../bench-results');
 const port = 5440;
-const RUNS = Number(process.env.BLACKLIGHT_BENCH_RUNS ?? 5);
 
 const PROFILES: Record<string, BrowserContextOptions> = {
   desktop: { viewport: { width: 1920, height: 1080 }, deviceScaleFactor: 1 },
@@ -78,20 +68,7 @@ test.beforeAll(async () => {
   test.setTimeout(300_000);
   run('pnpm', ['build'], fixture);
   stop = await serve(fixture, 'preview', port);
-  browser = await chromium.launch({
-    args: [
-      // A hardware GPU when there is one (SwiftShader otherwise, as on CI runners).
-      '--enable-gpu',
-      '--ignore-gpu-blocklist',
-      ...(process.platform === 'linux' ? ['--use-angle=vulkan'] : []),
-      '--enable-precise-memory-info',
-      '--js-flags=--expose-gc',
-      '--enable-blink-features=ForceEagerMeasureMemory',
-      '--disable-background-timer-throttling',
-      '--disable-renderer-backgrounding',
-      '--disable-backgrounding-occluded-windows',
-    ],
-  });
+  browser = await chromium.launch({ args: CHROMIUM_ARGS });
 });
 
 test.afterAll(async () => {
@@ -135,12 +112,7 @@ async function measure(profile: BrowserContextOptions, query = ''): Promise<Run>
       timeout: 60_000,
     });
     const result = (await page.evaluate(() => window.blacklightBench)) as unknown as Run;
-    if (gpu === 'unknown')
-      gpu = await page.evaluate(() => {
-        const gl = document.querySelector('#game canvas')!.getContext('webgl2');
-        const info = gl?.getExtension('WEBGL_debug_renderer_info');
-        return info ? String(gl!.getParameter(info.UNMASKED_RENDERER_WEBGL)) : 'unknown';
-      });
+    if (gpu === 'unknown') gpu = await page.locator('#game canvas').evaluate(rendererScript);
     expect(errors).toEqual([]);
     return { ...result, mainThreadMs: Math.round(((busy * 1000) / result.frames) * 100) / 100 };
   } finally {
@@ -154,54 +126,19 @@ async function measureRuns(profile: BrowserContextOptions, runs: number, query =
   return results;
 }
 
-function runnerName(): string {
-  if (process.env.BLACKLIGHT_BENCH_RUNNER) return process.env.BLACKLIGHT_BENCH_RUNNER;
-  return `${process.platform}-${process.arch} · ${cpus()[0]?.model.trim() ?? 'cpu'} · ${gpu}`;
-}
-
 for (const [name, profile] of Object.entries(PROFILES)) {
   test(`${name}: 300 animated sprites and an animated UI screen stay within 10 % of the baseline`, async (// eslint-disable-next-line no-empty-pattern
   {}, testInfo: TestInfo) => {
     test.setTimeout(60_000 + 2 * RUNS * 30_000);
     const runs = await measureRuns(profile, RUNS);
     // After the first run: the default runner name includes the GPU the page reported.
-    const runner = runnerName();
-    const baseline = readBaseline()[runner]?.[name];
-    let rows = baseline ? compare(baseline.best, best(runs)) : [];
-    if (rows.some((row) => row.regressed) && process.env.BLACKLIGHT_BENCH_UPDATE !== '1') {
-      // A second set before failing: the machine may have been busy during the whole first set.
-      console.log(`[bench] ${name}: regression in the first ${RUNS} runs, measuring ${RUNS} more`);
-      runs.push(...(await measureRuns(profile, RUNS)));
-      rows = compare(baseline!.best, best(runs));
-    }
-    const file = {
-      runner,
+    const { rows } = await recordRuns({
       profile: name,
       gpu,
-      date: new Date().toISOString(),
-      best: best(runs),
-      median: summarize(runs),
       runs,
-    };
-    mkdirSync(resultsDir, { recursive: true });
-    const path = join(resultsDir, `${name}.json`);
-    writeFileSync(path, `${JSON.stringify(file, null, 2)}\n`);
-    await testInfo.attach(`bench-${name}`, { path, contentType: 'application/json' });
-
-    if (process.env.BLACKLIGHT_BENCH_UPDATE === '1') {
-      updateBaseline([file]);
-      testInfo.annotations.push({ type: 'baseline', description: `updated for ${file.runner}` });
-      return;
-    }
-    if (!baseline) {
-      testInfo.annotations.push({
-        type: 'baseline',
-        description: `no baseline for "${file.runner}" / ${name}: results in ${path}; store them with BLACKLIGHT_BENCH_UPDATE=1 or node scripts/bench.mjs update`,
-      });
-      console.log(`[bench] no baseline for "${file.runner}" / ${name}`);
-      return;
-    }
-    console.log(`[bench] ${name} on "${runner}" (${runs.length} runs)\n${formatComparison(rows)}`);
+      more: () => measureRuns(profile, RUNS),
+      testInfo,
+    });
     expect(
       rows.filter((row) => row.regressed).map((row) => row.metric),
       formatComparison(rows),

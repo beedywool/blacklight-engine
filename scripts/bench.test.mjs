@@ -1,9 +1,9 @@
-// The comparison behind the NF-01 regression check (e2e/bench.spec.ts).
+// The comparison behind the NF-01 and NF-02 regression checks (e2e/bench.spec.ts, e2e/cold-start.spec.ts).
 import { mkdtempSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { best, compare, median, summarize, updateBaseline } from './bench.mjs';
+import { best, compare, gatedValues, median, summarize, updateBaseline } from './bench.mjs';
 
 const baseline = { fps: 60, low1Fps: 58, stepRelative: 0.2, heapMb: 10 };
 const regressed = (current) =>
@@ -38,6 +38,34 @@ describe('benchmark regression check', () => {
     const rows = compare(software, { fps: 20, low1Fps: 15, stepRelative: 0.3, heapMb: 10 });
     expect(rows.map((row) => row.metric)).toEqual(['stepRelative', 'heapMb']);
     expect(rows.some((row) => row.regressed)).toBe(false);
+  });
+
+  it('gates cold start on the median launch, lower is better', () => {
+    const launches = [
+      { coldStartMs: 812, navigationMs: 510 },
+      { coldStartMs: 600, navigationMs: 400 },
+      { coldStartMs: 779, navigationMs: 530 },
+    ];
+    const entry = { best: best(launches), median: summarize(launches) };
+    expect(entry.best).toEqual({ coldStartMs: 600 });
+    expect(gatedValues(entry)).toEqual({ coldStartMs: 779 });
+    expect(gatedValues({ best: { fps: 60, coldStartMs: 1 }, median: { fps: 59 } })).toEqual({
+      fps: 60,
+    });
+    const rows = (current) => compare({ coldStartMs: 780 }, { coldStartMs: current });
+    expect(rows(857).map((row) => row.regressed)).toEqual([false]);
+    expect(rows(859).map((row) => row.regressed)).toEqual([true]);
+    expect(rows(600).map((row) => row.regressed)).toEqual([false]);
+  });
+
+  it('never counts a start time change under two display frames as a regression', () => {
+    const regressedAt = (before, after) =>
+      compare({ coldStartMs: before }, { coldStartMs: after })[0].regressed;
+    // 90 ms web start: +30 % is less than two frames (33.3 ms), +40 % is more.
+    expect(regressedAt(90, 117)).toBe(false);
+    expect(regressedAt(90, 126)).toBe(true);
+    // Other metrics have no floor.
+    expect(compare({ heapMb: 1 }, { heapMb: 1.2 })[0].regressed).toBe(true);
   });
 
   it('ignores metrics the baseline does not have', () => {
