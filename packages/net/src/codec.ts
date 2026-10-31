@@ -10,9 +10,13 @@ export interface InputLayout {
 
 /** State of one action, as `PlayerInput` stores it. */
 export interface ActionState {
+  /** Analog value 0–1 (buttons: 0 or 1). */
   value: number;
+  /** Down this step (value ≥ 0.5). */
   held: boolean;
+  /** Went down this step. */
   pressed: boolean;
+  /** Went up this step. */
   released: boolean;
 }
 
@@ -29,7 +33,9 @@ export interface ActionState {
  * ```
  */
 export class InputCodec {
+  /** Digital actions, one bit each, in layout order. */
   readonly buttons: readonly ActionName[];
+  /** Analog actions, one byte each (0–255 for 0–1), in layout order. */
   readonly analog: readonly ActionName[];
   /** Bytes per player per step. */
   readonly size: number;

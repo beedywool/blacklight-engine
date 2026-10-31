@@ -26,6 +26,18 @@ export interface NetworkConditions {
   seed?: string | number;
 }
 
+/** Message counters of a {@link SimulatedNetwork}, since it was created. */
+export interface NetworkStats {
+  /** Messages handed to the network (one per target). */
+  sent: number;
+  /** Messages that reached their target (duplicates included). */
+  delivered: number;
+  /** Messages dropped by the `loss` probability. */
+  lost: number;
+  /** Messages sent twice by the `duplicate` probability. */
+  duplicated: number;
+}
+
 interface InFlight {
   at: number;
   order: number;
@@ -48,7 +60,8 @@ interface InFlight {
 export class SimulatedNetwork {
   /** Virtual time in ms. */
   now = 0;
-  readonly stats = { sent: 0, delivered: 0, lost: 0, duplicated: 0 };
+  /** Message counters, to check what the conditions did. */
+  readonly stats: NetworkStats = { sent: 0, delivered: 0, lost: 0, duplicated: 0 };
   private readonly random: Random;
   private readonly conditions: Required<Omit<NetworkConditions, 'seed'>>;
   private readonly members = new Map<
@@ -162,7 +175,10 @@ export class SimulatedNetwork {
  *
  * @example
  * ```ts
- * const scene = await headlessScene(PushPushOnline, 'push-push-online', { match });
+ * import { headlessGame, headlessScene } from '@blacklight/net/testing';
+ *
+ * const game = headlessGame({ tickRate: 30 });
+ * const scene = await headlessScene(PushPushOnline, 'push-push-online', { match }, game);
  * ```
  */
 export function headlessGame(
@@ -218,7 +234,22 @@ export function headlessGame(
   return game as unknown as Game;
 }
 
-/** Creates a scene on a {@link headlessGame} and runs its `create(params)`. */
+/**
+ * Creates a scene on a {@link headlessGame} (a new one unless `game` is given) and runs its
+ * `create(params)`, so a test can step the simulation with `scene.step(dt)` without a browser.
+ *
+ * @param SceneClass - The scene to run, usually the online variant of a mini-game.
+ * @param name - Scene name, as registered in the game.
+ * @param params - Passed to the scene's `create`.
+ *
+ * @example
+ * ```ts
+ * import { headlessScene } from '@blacklight/net/testing';
+ *
+ * const scene = await headlessScene(PushPushOnline, 'push-push-online', { match, bot: true });
+ * for (let i = 0; i < 60; i++) scene.step(1 / 60);
+ * ```
+ */
 export async function headlessScene<S extends Scene<never>>(
   SceneClass: new () => S,
   name: string,
@@ -233,9 +264,13 @@ export async function headlessScene<S extends Scene<never>>(
 
 /** What the harness reads from a session (any `RollbackSession`). */
 export interface SessionView {
+  /** Session events; the harness listens to `desync`. */
   readonly events: EventBus<RollbackEvents>;
+  /** Confirmed checksums by frame. */
   readonly checksums: ReadonlyMap<number, number>;
+  /** Current simulation step. */
   readonly frame: number;
+  /** Rollback and message counters. */
   readonly stats: RollbackStats;
 }
 
@@ -243,16 +278,21 @@ export interface SessionView {
 export interface MatchInstance {
   /** Advances one fixed step of the game loop. */
   tick(): void;
+  /** The instance's rollback session, read for checksums, desyncs and stats. */
   readonly session: SessionView;
 }
 
 /** Options of {@link simulateMatch}. */
 export interface SimulateMatchOptions {
+  /** Players in the match, one per instance. */
   players: number;
+  /** Extra instances that watch. @defaultValue `0` */
   spectators?: number;
   /** Fixed steps to run. */
   frames: number;
+  /** Latency, jitter, loss and duplication of the simulated network. */
   network?: NetworkConditions;
+  /** Seed of the match and of the network. @defaultValue `'match'` */
   seed?: string;
   /** Builds one instance from its match (a headless scene with `rollback`, usually). */
   create(match: OnlineMatch): MatchInstance | Promise<MatchInstance>;
@@ -265,15 +305,20 @@ export interface SimulateMatchOptions {
 /** What {@link simulateMatch} measured. */
 export interface MatchResult {
   /** Desyncs reported by any instance. */
-  desyncs: (DesyncEvent & { reporter: number })[];
+  desyncs: (DesyncEvent & {
+    /** Member that reported it. */
+    reporter: number;
+  })[];
   /** Confirmed checksums of each instance (by member order), `[frame, hash]`. */
   checksums: [number, number][][];
   /** Checksum frames every instance computed with the same hash. */
   agreedFrames: number;
   /** Step reached by each instance. */
   frames: number[];
+  /** Rollback and message counters of each instance. */
   stats: RollbackStats[];
-  network: SimulatedNetwork['stats'];
+  /** Message counters of the simulated network. */
+  network: NetworkStats;
 }
 
 /**

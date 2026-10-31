@@ -2,6 +2,7 @@ import type { Game } from '@blacklight/core';
 
 /** A relay running inside the desktop app, from {@link hostLan}. */
 export interface LanRelay {
+  /** Port the relay listens on. */
   port: number;
   /** Addresses other players on the network type in (`ws://192.168.1.20:5360`), LAN first. */
   urls: string[];
@@ -35,7 +36,16 @@ export async function hostLan(game: Game, options: { port?: number } = {}): Prom
   }
 }
 
-/** Stops the LAN relay started by {@link hostLan}; members in its rooms are disconnected. */
+/**
+ * Stops the LAN relay started by {@link hostLan}; members in its rooms are disconnected. Call it
+ * when the host leaves the online menu.
+ *
+ * @example
+ * ```ts
+ * relay.close();
+ * await stopLan(this.game);
+ * ```
+ */
 export async function stopLan(game: Game): Promise<void> {
   await game.platform.invoke('relay', 'stop');
 }

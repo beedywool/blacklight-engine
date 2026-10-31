@@ -25,17 +25,36 @@ export interface LockstepOptions {
 
 /** A completed turn: one move per player (`null` when the player did not play this turn). */
 export interface Turn<M extends Move = Move> {
+  /** Turn number, from 0. */
   turn: number;
+  /** Moves by player: index 0 is player 1. */
   moves: (M | null)[];
 }
 
+/** Events of a {@link LockstepSession} (`session.events`). */
 export interface LockstepEvents<M extends Move = Move> {
   /** Every required move of a turn arrived; apply them in player order. */
   turn: Turn<M>;
   /** The state after a turn differs from another member's. */
-  desync: { turn: number; member: number; local: number; remote: number };
+  desync: {
+    /** Turn after which the states differ. */
+    turn: number;
+    /** Member whose state differs from ours. */
+    member: number;
+    /** State hash computed here. */
+    local: number;
+    /** State hash the other member sent. */
+    remote: number;
+  };
   /** A member left; its players are skipped from `turn` on. */
-  leave: { member: number; players: number[]; turn: number };
+  leave: {
+    /** Member that left. */
+    member: number;
+    /** Its player numbers, skipped from now on. */
+    players: number[];
+    /** First turn without them. */
+    turn: number;
+  };
 }
 
 const MOVES = 10;
@@ -56,9 +75,11 @@ const MOVES = 10;
  * ```
  */
 export class LockstepSession<M extends Move = Move> {
+  /** Completed turns, desyncs and leaves. */
   readonly events = new EventBus<LockstepEvents<M>>();
   /** Turn waiting for moves (completed turns so far). */
   turn = 0;
+  /** Who plays each turn (see {@link LockstepOptions.order}). */
   readonly order: 'simultaneous' | 'alternate';
 
   private readonly moves = new Map<number, Map<number, string>>();
@@ -75,6 +96,7 @@ export class LockstepSession<M extends Move = Move> {
   private dirty = false;
 
   constructor(
+    /** The match this session plays. */
     readonly match: OnlineMatch,
     private readonly options: LockstepOptions = {},
   ) {

@@ -13,9 +13,23 @@ import {
 } from './protocol';
 import type { OnlineMatch, Transport, Unlisten } from './transport';
 
-/** A refusal or failure reported by the relay. */
+/**
+ * A refusal or failure reported by the relay, thrown by the {@link RelayClient} methods. Branch on
+ * `code` to show the player a useful message.
+ *
+ * @example
+ * ```ts
+ * try {
+ *   await relay.joinRoom(code);
+ * } catch (error) {
+ *   if (error instanceof RelayError && error.code === 'room-not-found') showError('No such room.');
+ *   else throw error;
+ * }
+ * ```
+ */
 export class RelayError extends Error {
   constructor(
+    /** What went wrong: a relay error code, `'closed'` (connection lost) or `'timeout'`. */
     readonly code: RelayErrorCode | 'closed' | 'timeout',
     message: string,
   ) {
@@ -24,6 +38,7 @@ export class RelayError extends Error {
   }
 }
 
+/** Events of a {@link RelayClient} (`relay.events`), to update a lobby screen. */
 export interface RelayEvents {
   /** The room changed: someone joined, left, got ready, or the host changed. */
   room: RoomState;
@@ -32,7 +47,12 @@ export interface RelayEvents {
   /** This machine left the room (or the room closed). */
   leftRoom: void;
   /** The connection closed. */
-  close: { code: number; reason: string };
+  close: {
+    /** WebSocket close code. */
+    code: number;
+    /** Close reason sent by the server, often empty. */
+    reason: string;
+  };
 }
 
 /** Options of {@link RelayClient.connect}. */
@@ -67,7 +87,16 @@ export interface JoinRoomOptions {
   players?: number;
 }
 
-/** Turns `host`, `host:port` or a full URL into a WebSocket URL. */
+/**
+ * Turns `host`, `host:port` or a full URL into a WebSocket URL: the default port
+ * ({@link DEFAULT_RELAY_PORT}) is added when missing, and `wss:` is used on an HTTPS page.
+ *
+ * @example
+ * ```ts
+ * relayUrl('192.168.1.20'); // 'ws://192.168.1.20:5360'
+ * relayUrl('wss://relay.example.com'); // unchanged
+ * ```
+ */
 export function relayUrl(address: string): string {
   if (/^wss?:\/\//.test(address)) return address;
   const secure = typeof location !== 'undefined' && location.protocol === 'https:';
@@ -89,6 +118,7 @@ export function relayUrl(address: string): string {
  * ```
  */
 export class RelayClient {
+  /** Room changes, match start, leaving and closing. */
   readonly events = new EventBus<RelayEvents>();
   /** Current room, `undefined` outside rooms. */
   room: RoomState | undefined;

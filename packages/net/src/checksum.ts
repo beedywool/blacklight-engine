@@ -41,7 +41,9 @@ export function stableStringify(value: unknown): string {
 export interface StateDifference {
   /** Where, e.g. `objects[id=4].core.x` or `random[2]`. */
   path: string;
+  /** The value on this machine. */
   local: unknown;
+  /** The value on the other member's machine. */
   remote: unknown;
 }
 

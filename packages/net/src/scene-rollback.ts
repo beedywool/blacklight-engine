@@ -32,10 +32,19 @@ const SILENT: SoundHandle = {
 /**
  * A rollback session running a scene: the scene's `step` goes through the session, which feeds
  * every player's network input to `input.player(n)` and restores snapshots on rollback.
- * Created by {@link rollback}.
+ * Created by {@link rollback}; keep the returned object to read `frame`, `replaying` and `events`.
+ *
+ * @example
+ * ```ts
+ * this.net = rollback(this, match, { inputs: ['left', 'right', 'action'] });
+ * if (!this.net.replaying) this.audio.play('hit');
+ * this.net.events.on('leave', ({ players }) => this.showLeft(players));
+ * ```
  */
 export class SceneRollback {
+  /** The underlying session (checksums, stats, input delay). */
   readonly session: RollbackSession<SceneSnapshot>;
+  /** Packs the scene's actions for the network. */
   readonly codec: InputCodec;
   private readonly original: (dt: number) => void;
   private dt: number;
@@ -44,7 +53,9 @@ export class SceneRollback {
   private disposed = false;
 
   constructor(
+    /** The scene played online. */
     readonly scene: Scene<never>,
+    /** The match being played. */
     readonly match: OnlineMatch,
     options: SceneRollbackOptions,
   ) {
@@ -129,6 +140,7 @@ export class SceneRollback {
     return this.session.events;
   }
 
+  /** The session's counters: rollbacks, stalls, round trips (for a debug overlay). */
   get stats() {
     return this.session.stats;
   }

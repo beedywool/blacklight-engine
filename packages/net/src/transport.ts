@@ -11,6 +11,7 @@ export type Unlisten = () => void;
 export interface Transport {
   /** Sends to one member, or to every other member when `to` is omitted. */
   send(data: Uint8Array, to?: number): void;
+  /** Calls `listener` with every message from another member and the sender's member id. */
   onMessage(listener: (data: Uint8Array, from: number) => void): Unlisten;
   /** A member left the match (closed the game, lost the connection). */
   onLeave(listener: (member: number) => void): Unlisten;
@@ -38,5 +39,6 @@ export interface OnlineMatch {
   local: number[];
   /** Joined after the start: the session fetches the state from a player first. */
   late: boolean;
+  /** Channel to the other members, used by the session. */
   transport: Transport;
 }

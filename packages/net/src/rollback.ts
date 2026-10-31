@@ -40,26 +40,48 @@ export interface DesyncEvent {
   frame: number;
   /** Member whose checksum differs from ours. */
   member: number;
+  /** Checksum computed here. */
   local: number;
+  /** Checksum the other member sent. */
   remote: number;
 }
 
 /** Details of a desync, once the other member sent its state. */
 export interface DesyncReport extends DesyncEvent {
+  /** Values that differ between the two states (at most 50), to find the non-deterministic code. */
   differences: StateDifference[];
 }
 
+/**
+ * Events of a {@link RollbackSession} (`session.events`), for a debug overlay, a "player left"
+ * banner or a desync log.
+ */
 export interface RollbackEvents {
   /** Checksums differ: the simulations are no longer the same. Emitted once per member and frame. */
   desync: DesyncEvent;
   /** What differs, after the other member answered with its state. */
   desyncReport: DesyncReport;
   /** A member left; its players get neutral input from `frame` on. */
-  leave: { member: number; players: number[]; frame: number };
+  leave: {
+    /** Member that left. */
+    member: number;
+    /** Its player numbers, now driven by neutral input. */
+    players: number[];
+    /** First step with neutral input. */
+    frame: number;
+  };
   /** The session waits for a remote player's input (more than `maxRollback` steps behind). */
-  stall: { frame: number; waitingFor: number[] };
+  stall: {
+    /** Step the session cannot simulate yet. */
+    frame: number;
+    /** Player numbers whose input is missing. */
+    waitingFor: number[];
+  };
   /** A late spectator received the state and starts simulating. */
-  synced: { frame: number };
+  synced: {
+    /** Step the spectator starts from. */
+    frame: number;
+  };
 }
 
 /** Counters for a debug overlay and tests. */
@@ -76,7 +98,9 @@ export interface RollbackStats {
   waits: number;
   /** Round trip to each member, in steps (averaged). */
   rtt: Map<number, number>;
+  /** Messages sent to other members. */
   messagesSent: number;
+  /** Messages received from other members. */
   messagesReceived: number;
 }
 
@@ -112,7 +136,9 @@ const STATES_KEPT = 6;
  * ```
  */
 export class RollbackSession<S> {
+  /** Desyncs, leaves, stalls and late-spectator sync. */
   readonly events = new EventBus<RollbackEvents>();
+  /** Counters for a debug overlay and tests. */
   readonly stats: RollbackStats = {
     rollbacks: 0,
     replayedFrames: 0,
@@ -131,7 +157,9 @@ export class RollbackSession<S> {
   readonly checksums = new Map<number, number>();
   /** Steps of input delay; can change during the match. */
   delay: number;
+  /** Most steps the session predicts ahead before it stalls for remote input. */
   readonly maxRollback: number;
+  /** Steps between two exchanged checksums. */
   readonly checksumInterval: number;
   /** `true` for spectators (no local player). */
   readonly spectator: boolean;
@@ -163,6 +191,7 @@ export class RollbackSession<S> {
   private syncTimer = 0;
 
   constructor(
+    /** The match this session plays. */
     readonly match: OnlineMatch,
     private readonly game: RollbackGame<S>,
     private readonly options: RollbackOptions,
