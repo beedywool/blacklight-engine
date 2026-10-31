@@ -9,11 +9,13 @@ Requires Node.js 24+ and [pnpm](https://pnpm.io/installation) 12+. Install the d
 ```sh
 pnpm install
 pnpm build          # every package in packages/
-pnpm test           # unit tests (Vitest)
+pnpm exec playwright install chromium   # once: the core-browser unit tests and the e2e tests need it
+pnpm test           # unit tests (Vitest), including core-browser in headless Chromium
+pnpm test:coverage  # NF-07 gate: coverage of core and net, fails below the thresholds
 pnpm lint           # ESLint + Prettier check
 pnpm typecheck
 pnpm api:check      # public API documented and typed, api-report.txt up to date (after pnpm build)
-pnpm e2e            # browser tests (Playwright; first run: pnpm exec playwright install chromium)
+pnpm e2e            # browser tests (Playwright)
 pnpm e2e --update-snapshots   # after an intended visual change, then review the new images
 pnpm bench          # NF-01 benchmark, alone on an idle machine; fails on a regression > 10 %
 BLACKLIGHT_BENCH_UPDATE=1 pnpm bench   # after an intended performance change: new baseline
@@ -31,6 +33,19 @@ cd ../my-game && pnpm install && pnpm dev
 ```
 
 `--link` writes `link:` dependencies to `packages/*`; rebuild the package you changed (`pnpm --filter @blacklight/core build`, or `dev` for watch mode) and the game picks it up.
+
+## Unit tests and coverage
+
+Unit tests are Vitest projects listed in the root `vitest.config.ts`: one per package (`test/**/*.spec.ts`), plus `core-browser`, which runs `packages/core/test/browser/*.spec.ts` in headless Chromium through Playwright (`packages/core/vitest.browser.config.ts`). Code that needs a real browser (the Pixi renderer and `createGame`, sprites and sheets, Web Audio, asset loading, IndexedDB, DOM input listeners, the debug overlay) is tested there against the real APIs; the tests build their files in the page (canvas PNGs, generated WAVs, blob URLs) and `startGame()` in `test/browser/helpers.ts` starts a real game that is destroyed after each test. Everything else stays in Node.
+
+```sh
+pnpm vitest run --project core-browser                 # browser tests only
+pnpm vitest run --project core-browser --browser.headless=false   # watch them run in a window
+pnpm vitest run --project core test/save.spec.ts       # one Node file
+pnpm test:coverage                                     # core, core-browser, net and relay with v8 coverage
+```
+
+`pnpm test:coverage` merges the Node and Chromium runs, prints a summary, writes `coverage/index.html`, and fails when `packages/core/src` or `packages/net/src` drops below 80 % of statements, lines or functions or 75 % of branches (NF-07; CI runs it on Linux). Run it through the script: with other `--project` filters the report covers other files, and without any the include pattern matches nothing. When a change lowers coverage, add a test of the behaviour you changed, not a call that only touches lines. Only generated data is excluded (`coverage.exclude`, each entry with the reason); code that needs hardware is tested against a fake of the browser API and listed in `MANUAL_TESTS.md`.
 
 ## Layout
 
