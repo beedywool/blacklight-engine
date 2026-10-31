@@ -192,6 +192,36 @@ function steamStore(context: ModuleContext<CloudSaveConfig>): Store {
   };
 }
 
+/**
+ * API of the `cloud-save` module: `game.modules['cloud-save']`. Slots sync with the cloud on their
+ * own (`autoUpload`, `syncOnStart`); these calls are for explicit control and conflicts.
+ */
+export interface CloudSave {
+  /** Backend in use. */
+  backend: 'server' | 'steam';
+  /** Uploads waiting for the network or a session. */
+  readonly pending: number;
+  /**
+   * Syncs every slot: uploads local changes, downloads remote ones, resolves slots changed on
+   * both sides with the `conflict` policy.
+   */
+  sync(): Promise<void>;
+  /** Queues an upload of a slot (done automatically after each save with `autoUpload`). */
+  upload(slot: string): Promise<void>;
+  /** Replaces the local slot with the cloud copy; `false` when the cloud has none. */
+  download(slot: string): Promise<boolean>;
+  /**
+   * Decides conflicts when `conflict` is `'ask'` (show both copies to the player). Without a
+   * handler the newest copy wins.
+   */
+  onConflict(handler: (conflict: SaveConflict) => Resolution | Promise<Resolution>): Unsubscribe;
+  /** Listens to `uploaded`, `downloaded`, `conflict` and `error`. */
+  on<E extends keyof CloudSaveEvents>(
+    event: E,
+    listener: (payload: CloudSaveEvents[E]) => void,
+  ): Unsubscribe;
+}
+
 function createCloudSave(context: ModuleContext<CloudSaveConfig>) {
   const { config, storage, log } = context;
   const events = new EventBus<CloudSaveEvents>();
@@ -310,7 +340,7 @@ function createCloudSave(context: ModuleContext<CloudSaveConfig>) {
     { retryDelay: 2000 },
   );
 
-  const api = {
+  const api: CloudSave = {
     /** Backend in use. */
     backend: config.backend,
     /** Uploads waiting for the network or a session. */
@@ -388,9 +418,6 @@ function createCloudSave(context: ModuleContext<CloudSaveConfig>) {
 function sameBytes(a: Uint8Array, b: Uint8Array): boolean {
   return a.length === b.length && a.every((value, i) => value === b[i]);
 }
-
-/** API of the `cloud-save` module: `game.modules['cloud-save']`. */
-export type CloudSave = ReturnType<typeof createCloudSave>['api'];
 
 /**
  * Cloud saves (SV-06, MOD-06): the slots of the save system are uploaded to the reference server

@@ -157,6 +157,48 @@ function toUser(claims: Claims, issuer: string): AccountUser {
   };
 }
 
+/**
+ * API of the `accounts-oidc` module: `game.modules['accounts-oidc']`. Signs the player in with an
+ * OpenID Connect provider (PKCE, no client secret) and keeps the session across restarts.
+ */
+export interface Accounts {
+  /** The signed-in player, `undefined` when signed out. */
+  readonly user: AccountUser | undefined;
+  /** `true` while a player is signed in. */
+  readonly loggedIn: boolean;
+  /** The reference server account (with `server` set), `undefined` before linking. */
+  readonly serverAccount: ServerAccount | undefined;
+  /**
+   * Signs the player in through the provider's page in the system browser. On the web the
+   * page leaves for the provider and the login finishes when the game reloads (listen to
+   * `login`); on desktop and mobile the promise resolves with the player.
+   *
+   * @throws {@link OidcError} when the provider refuses, the player cancels or nothing comes back.
+   */
+  login(): Promise<AccountUser>;
+  /** Signs out on this device (the provider session stays; see `logoutUrl`). */
+  logout(): Promise<void>;
+  /** The provider's end-session page, to sign out there too (open it with `platform.openUrl`). */
+  logoutUrl(returnTo?: string): Promise<string | undefined>;
+  /**
+   * A valid access token for the provider's APIs, refreshed when it expired. `undefined` when
+   * signed out or when the session can no longer be refreshed.
+   */
+  accessToken(): Promise<string | undefined>;
+  /**
+   * Creates a guest account on the reference server (no sign-in); a later `login()` links the
+   * provider identity to it, keeping its saves and achievements.
+   */
+  playAsGuest(): Promise<ServerAccount>;
+  /** Session token of the reference server, refreshed through the provider when it expired. */
+  serverToken(): Promise<string | undefined>;
+  /** Listens to `login`, `logout`, `expired`, `error` and `server`. */
+  on<E extends keyof AccountEvents>(
+    event: E,
+    listener: (payload: AccountEvents[E]) => void,
+  ): Unsubscribe;
+}
+
 function createAccounts(context: ModuleContext<AccountsConfig>) {
   const { platform, config, storage, log } = context;
   const web = platform.name === 'web';
@@ -380,6 +422,96 @@ function createAccounts(context: ModuleContext<AccountsConfig>) {
     }
   };
 
+  const api: Accounts = {
+    /** The signed-in player, `undefined` when signed out. */
+    get user(): AccountUser | undefined {
+      return user;
+    },
+    /** `true` while a player is signed in. */
+    get loggedIn(): boolean {
+      return user !== undefined;
+    },
+    /** The reference server account (with `server` set), `undefined` before linking. */
+    get serverAccount(): ServerAccount | undefined {
+      return server?.account;
+    },
+    /**
+     * Signs the player in through the provider's page in the system browser. On the web the
+     * page leaves for the provider and the login finishes when the game reloads (listen to
+     * `login`); on desktop and mobile the promise resolves with the player.
+     *
+     * @throws {@link OidcError} when the provider refuses, the player cancels or nothing comes back.
+     */
+    async login(): Promise<AccountUser> {
+      const pending: Pending = {
+        state: randomToken(),
+        verifier: randomToken(48),
+        nonce: randomToken(16),
+        redirectUri,
+        created: Date.now(),
+      };
+      const url = await authorizeUrl(pending);
+      if (web) {
+        sessionStorage.setItem(PENDING_KEY, JSON.stringify(pending));
+        location.assign(url);
+        // The page is leaving; the login finishes after the redirect back.
+        return new Promise<AccountUser>(() => {});
+      }
+      const answer = waitForDeepLink(pending);
+      await platform.openUrl(url);
+      return complete(await answer, pending);
+    },
+    /** Signs out on this device (the provider session stays; see `logoutUrl`). */
+    async logout(): Promise<void> {
+      await clear();
+      events.emit('logout');
+    },
+    /** The provider's end-session page, to sign out there too (open it with `platform.openUrl`). */
+    async logoutUrl(returnTo?: string): Promise<string | undefined> {
+      const document = await meta();
+      if (!document.end_session_endpoint) return undefined;
+      const query = new URLSearchParams({ client_id: config.clientId });
+      if (returnTo) query.set('post_logout_redirect_uri', returnTo);
+      return `${document.end_session_endpoint}?${query}`;
+    },
+    /**
+     * A valid access token for the provider's APIs, refreshed when it expired. `undefined` when
+     * signed out or when the session can no longer be refreshed.
+     */
+    async accessToken(): Promise<string | undefined> {
+      if (access && access.expires - 30_000 > Date.now()) return access.token;
+      refreshing ??= refresh().finally(() => (refreshing = undefined));
+      return refreshing;
+    },
+    /**
+     * Creates a guest account on the reference server (no sign-in); a later `login()` links the
+     * provider identity to it, keeping its saves and achievements.
+     */
+    async playAsGuest(): Promise<ServerAccount> {
+      if (!config.server) {
+        throw new Error(
+          'playAsGuest() needs `server` (the reference server URL) in the accounts-oidc options.',
+        );
+      }
+      await linkServer(undefined, true);
+      return server!.account;
+    },
+    /** Session token of the reference server, refreshed through the provider when it expired. */
+    async serverToken(): Promise<string | undefined> {
+      if (server && server.expiresAt - 60_000 > Date.now()) return server.token;
+      if (!(await secrets.get('refresh'))) return undefined;
+      await refresh();
+      return server && server.expiresAt > Date.now() ? server.token : undefined;
+    },
+    /** Listens to `login`, `logout`, `expired`, `error` and `server`. */
+    on<E extends keyof AccountEvents>(
+      event: E,
+      listener: (payload: AccountEvents[E]) => void,
+    ): Unsubscribe {
+      return events.on(event, listener);
+    },
+  };
+
   return {
     events,
     resumeRedirect,
@@ -400,100 +532,9 @@ function createAccounts(context: ModuleContext<AccountsConfig>) {
         );
       }
     },
-    api: {
-      /** The signed-in player, `undefined` when signed out. */
-      get user(): AccountUser | undefined {
-        return user;
-      },
-      /** `true` while a player is signed in. */
-      get loggedIn(): boolean {
-        return user !== undefined;
-      },
-      /** The reference server account (with `server` set), `undefined` before linking. */
-      get serverAccount(): ServerAccount | undefined {
-        return server?.account;
-      },
-      /**
-       * Signs the player in through the provider's page in the system browser. On the web the
-       * page leaves for the provider and the login finishes when the game reloads (listen to
-       * `login`); on desktop and mobile the promise resolves with the player.
-       *
-       * @throws {@link OidcError} when the provider refuses, the player cancels or nothing comes back.
-       */
-      async login(): Promise<AccountUser> {
-        const pending: Pending = {
-          state: randomToken(),
-          verifier: randomToken(48),
-          nonce: randomToken(16),
-          redirectUri,
-          created: Date.now(),
-        };
-        const url = await authorizeUrl(pending);
-        if (web) {
-          sessionStorage.setItem(PENDING_KEY, JSON.stringify(pending));
-          location.assign(url);
-          // The page is leaving; the login finishes after the redirect back.
-          return new Promise<AccountUser>(() => {});
-        }
-        const answer = waitForDeepLink(pending);
-        await platform.openUrl(url);
-        return complete(await answer, pending);
-      },
-      /** Signs out on this device (the provider session stays; see `logoutUrl`). */
-      async logout(): Promise<void> {
-        await clear();
-        events.emit('logout');
-      },
-      /** The provider's end-session page, to sign out there too (open it with `platform.openUrl`). */
-      async logoutUrl(returnTo?: string): Promise<string | undefined> {
-        const document = await meta();
-        if (!document.end_session_endpoint) return undefined;
-        const query = new URLSearchParams({ client_id: config.clientId });
-        if (returnTo) query.set('post_logout_redirect_uri', returnTo);
-        return `${document.end_session_endpoint}?${query}`;
-      },
-      /**
-       * A valid access token for the provider's APIs, refreshed when it expired. `undefined` when
-       * signed out or when the session can no longer be refreshed.
-       */
-      async accessToken(): Promise<string | undefined> {
-        if (access && access.expires - 30_000 > Date.now()) return access.token;
-        refreshing ??= refresh().finally(() => (refreshing = undefined));
-        return refreshing;
-      },
-      /**
-       * Creates a guest account on the reference server (no sign-in); a later `login()` links the
-       * provider identity to it, keeping its saves and achievements.
-       */
-      async playAsGuest(): Promise<ServerAccount> {
-        if (!config.server) {
-          throw new Error(
-            'playAsGuest() needs `server` (the reference server URL) in the accounts-oidc options.',
-          );
-        }
-        await linkServer(undefined, true);
-        return server!.account;
-      },
-      /** Session token of the reference server, refreshed through the provider when it expired. */
-      async serverToken(): Promise<string | undefined> {
-        if (server && server.expiresAt - 60_000 > Date.now()) return server.token;
-        if (!(await secrets.get('refresh'))) return undefined;
-        await refresh();
-        return server && server.expiresAt > Date.now() ? server.token : undefined;
-      },
-      /** Listens to `login`, `logout`, `expired`, `error` and `server`. */
-      on<E extends keyof AccountEvents>(
-        event: E,
-        listener: (payload: AccountEvents[E]) => void,
-      ): Unsubscribe {
-        return events.on(event, listener);
-      },
-    },
+    api,
   };
 }
-
-/** API of the `accounts-oidc` module: `game.modules['accounts-oidc']`. */
-export type Accounts = ReturnType<typeof createAccounts>['api'];
 
 /**
  * Player accounts over OpenID Connect (SVC-01): authorization code with PKCE in the system

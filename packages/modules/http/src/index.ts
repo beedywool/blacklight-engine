@@ -146,7 +146,52 @@ function statusRetries(status: number): boolean {
   return status === 408 || status === 425 || status === 429 || status >= 500;
 }
 
-function createHttp(context: ModuleContext<HttpConfig>) {
+/**
+ * API of the `http` module: `game.modules.http`. Direct calls (`request`, `get`, `post`…) answer
+ * now or throw; `send` queues requests that must arrive even offline.
+ */
+export interface Http {
+  /** `true` while requests are expected to reach the network. */
+  readonly online: boolean;
+  /** Requests stored by {@link Http.send} and not delivered yet. */
+  readonly pending: number;
+  /**
+   * Sends a request now and resolves with the response.
+   *
+   * @throws {@link HttpError} for an error status, {@link OfflineError} when the server cannot be reached.
+   */
+  request: <T = unknown>(path: string, options?: RequestOptions) => Promise<HttpResponse<T>>;
+  /** `GET` and returns the parsed body. */
+  get: <T = unknown>(path: string, options?: RequestOptions) => Promise<T>;
+  /** `POST` with a JSON body and returns the parsed response body. */
+  post: <T = unknown>(path: string, json?: unknown, options?: RequestOptions) => Promise<T>;
+  /** `PUT` with a JSON body. */
+  put: <T = unknown>(path: string, json?: unknown, options?: RequestOptions) => Promise<T>;
+  /** `PATCH` with a JSON body. */
+  patch: <T = unknown>(path: string, json?: unknown, options?: RequestOptions) => Promise<T>;
+  /** `DELETE` and returns the parsed body. */
+  delete: <T = unknown>(path: string, options?: RequestOptions) => Promise<T>;
+  /**
+   * Queues a request that must arrive even if the game is offline or closes: it is stored on the
+   * device, sent in order, and retried with backoff until the server accepts it. A 4xx answer
+   * (except 408, 425, 429) drops it. Resolves once stored.
+   */
+  send(path: string, options?: RequestOptions): Promise<void>;
+  /** Retries the queued requests now. */
+  flush: () => Promise<void>;
+  /** Listens to delivered (`sent`) or failed (`failed`) queued requests. */
+  on<E extends keyof QueueEvents<QueuedRequest>>(
+    event: E,
+    listener: (payload: QueueEvents<QueuedRequest>[E]) => void,
+  ): Unsubscribe;
+  /**
+   * Adds an `Authorization` header to requests whose URL starts with `prefix` (the accounts module
+   * registers its server this way). The provider runs for each request, so tokens can refresh.
+   */
+  authorize(prefix: string, provider: AuthProvider): Unsubscribe;
+}
+
+function createHttp(context: ModuleContext<HttpConfig>): Http {
   const { config, network } = context;
   const auth = new Map<string, AuthProvider>();
 
@@ -332,9 +377,6 @@ function createHttp(context: ModuleContext<HttpConfig>) {
     },
   };
 }
-
-/** API of the `http` module: `game.modules.http`. */
-export type Http = ReturnType<typeof createHttp>;
 
 /**
  * HTTP requests for games (MOD-06): JSON helpers, timeouts, authorization per server and an

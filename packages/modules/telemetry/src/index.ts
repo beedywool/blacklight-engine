@@ -99,6 +99,41 @@ const RUNTIME: Record<string, string> = {
   ios: 'webview',
 };
 
+/**
+ * API of the `telemetry` module: `game.modules.telemetry`. Nothing is recorded or sent until the
+ * player grants consent; calls before that do nothing and resolve with `undefined`.
+ */
+export interface Telemetry {
+  /** The player's answer so far. */
+  readonly consent: Consent;
+  /** Events stored on the device and not delivered yet. */
+  readonly pending: number;
+  /**
+   * Records the player's answer. Refusing also deletes the events waiting to be sent.
+   */
+  setConsent(granted: boolean): Promise<void>;
+  /**
+   * Asks the player once, then remembers the answer: with your `ask` screen, else the UI
+   * layer's confirm dialog, else a minimal built-in dialog. Resolves with `true` when granted.
+   *
+   * @throws Error when there is no way to show a question (no UI, no DOM): pass `ask`.
+   */
+  askConsent(options?: AskConsentOptions): Promise<boolean>;
+  /**
+   * Reports an error (with its scrubbed stack trace). Returns the event id, or `undefined` when
+   * nothing was sent (no consent, no DSN, sampled out).
+   */
+  captureException(error: unknown, extra?: Extra): Promise<string | undefined>;
+  /** Reports a message (`info` unless `level` says otherwise); returns the event id or `undefined`. */
+  captureMessage(message: string, level?: Level): Promise<string | undefined>;
+  /** Records a usage event (`level-complete`, `settings-opened`…) when `events` is on. */
+  track(name: string, data?: Extra): Promise<string | undefined>;
+  /** Adds a step to the trail attached to the next events (kept in memory only). */
+  breadcrumb(message: string, data?: Extra): void;
+  /** Sends the stored events now. */
+  flush(): Promise<void>;
+}
+
 function createTelemetry(context: ModuleContext<TelemetryConfig>) {
   const { config, game, platform, storage, log } = context;
   let dsn: Dsn | undefined;
@@ -164,7 +199,7 @@ function createTelemetry(context: ModuleContext<TelemetryConfig>) {
     },
   });
 
-  const api = {
+  const api: Telemetry = {
     /** The player's answer so far. */
     get consent(): Consent {
       return consent;
@@ -280,9 +315,6 @@ function createTelemetry(context: ModuleContext<TelemetryConfig>) {
     },
   };
 }
-
-/** API of the `telemetry` module: `game.modules.telemetry`. */
-export type Telemetry = ReturnType<typeof createTelemetry>['api'];
 
 /**
  * Opt-in crash reports and usage events (SVC-04), sent with the Sentry envelope protocol to

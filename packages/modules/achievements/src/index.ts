@@ -106,6 +106,58 @@ function pickBackend(context: ModuleContext<AchievementsConfig>): AchievementBac
   return serverOf(context) ? 'server' : 'local';
 }
 
+/** Options of {@link Achievements.leaderboard}. */
+export interface LeaderboardOptions {
+  /** Rows to read. @defaultValue `10` */
+  limit?: number;
+  /** Rows to skip from the top (the server backend), for paging. @defaultValue `0` */
+  offset?: number;
+}
+
+/**
+ * API of the `achievements` module: `game.modules.achievements`. Unlocks and scores are recorded
+ * on the device first and delivered to the backend when possible.
+ */
+export interface Achievements {
+  /** Backend in use after `auto` was resolved. */
+  backend: AchievementBackend;
+  /** Unlocks and scores waiting to reach the backend (offline, not signed in…). */
+  readonly pending: number;
+  /**
+   * Unlocks an achievement: recorded on the device at once, delivered to the backend now or
+   * when the network (or a session) comes back. Returns `false` when it was already unlocked.
+   */
+  unlock(id: string): Promise<boolean>;
+  /** `true` once `id` is unlocked on this device or the backend. */
+  isUnlocked(id: string): boolean;
+  /** Every unlocked achievement, oldest first. */
+  list(): Unlocked[];
+  /** Records progress (kept on the device); reaching `max` unlocks the achievement. */
+  progress(id: string, current: number, max: number): Promise<void>;
+  /** Progress recorded with {@link Achievements.progress}, `undefined` before any. */
+  progressOf(id: string): AchievementProgress | undefined;
+  /** Sends a score to a leaderboard (queued like unlocks). */
+  submitScore(board: string, score: number): Promise<void>;
+  /**
+   * Reads a leaderboard from the backend (needs the network).
+   *
+   * @throws Error on the `local` backend, which has no shared leaderboards.
+   */
+  leaderboard(board: string, options?: LeaderboardOptions): Promise<LeaderboardEntry[]>;
+  /**
+   * Merges unlocks from the backend (another device) and resends the queue. The server backend
+   * only; platform services sync themselves.
+   */
+  sync(): Promise<void>;
+  /** Clears the achievements recorded on this device (development builds only). */
+  reset(): Promise<void>;
+  /** Listens to `unlock`, `progress` and `synced`. */
+  on<E extends keyof AchievementEvents>(
+    event: E,
+    listener: (payload: AchievementEvents[E]) => void,
+  ): Unsubscribe;
+}
+
 function createAchievements(context: ModuleContext<AchievementsConfig>) {
   const { platform, storage, log } = context;
   const http = context.modules.http as Http;
@@ -170,7 +222,7 @@ function createAchievements(context: ModuleContext<AchievementsConfig>) {
     }
   };
 
-  const api = {
+  const api: Achievements = {
     /** Backend in use after `auto` was resolved. */
     backend,
     /** Unlocks and scores waiting to reach the backend (offline, not signed in…). */
@@ -228,7 +280,7 @@ function createAchievements(context: ModuleContext<AchievementsConfig>) {
      */
     async leaderboard(
       board: string,
-      options: { limit?: number; offset?: number } = {},
+      options: LeaderboardOptions = {},
     ): Promise<LeaderboardEntry[]> {
       const limit = options.limit ?? 10;
       if (backend === 'server') {
@@ -300,9 +352,6 @@ function createAchievements(context: ModuleContext<AchievementsConfig>) {
     },
   };
 }
-
-/** API of the `achievements` module: `game.modules.achievements`. */
-export type Achievements = ReturnType<typeof createAchievements>['api'];
 
 /**
  * Achievements and leaderboards behind one API (SVC-02): Steam (`platform.invoke('steam', …)`),
