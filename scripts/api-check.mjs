@@ -496,7 +496,11 @@ async function main() {
       'API check: api-report.txt does not match the public API. Run `pnpm api:check --update` and review the diff: a removed or changed line is a breaking change (CONTRIBUTING.md, "Versions and releases").',
     );
   }
-  if (failed) process.exit(1);
+  // exitCode instead of exit(): a pipe would lose the messages still buffered.
+  if (failed) {
+    process.exitCode = 1;
+    return;
+  }
   console.log(
     `API check: ${symbols} public symbols in ${Object.keys(ENTRY_POINTS).length} entry points documented and typed; api-report.txt up to date.`,
   );
