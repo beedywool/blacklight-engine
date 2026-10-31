@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "dev": "pnpm run prepare:site && vitepress dev",
-    "build": "pnpm run prepare:site && vitepress build",
+    "build": "node ../scripts/api-check.mjs && pnpm run prepare:site && vitepress build",
     "preview": "vitepress preview",
     "prepare:site": "node scripts/api.mjs && vite build -c runner/vite.config.ts",
     "typecheck": "tsc -p examples/tsconfig.json && tsc -p examples/playground/tsconfig.json && vue-tsc -p examples/getting-started/tsconfig.json"

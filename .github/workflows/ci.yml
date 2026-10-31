@@ -24,6 +24,8 @@ jobs:
       - run: pnpm lint
       - run: pnpm typecheck
       - run: pnpm test
+      # NF-06: public API documented, typed and recorded in api-report.txt.
+      - run: pnpm api:check
       # PF-09: the build workflow create-blacklight writes into every game (and this file).
       - if: runner.os == 'Linux'
         run: |
