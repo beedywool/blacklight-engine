@@ -10,7 +10,7 @@ In a terminal, in the folder that will hold the project:
 
 <<< @/guide/captures/create.txt{console}
 
-`my-game` is the folder to create; without it, the command asks. `--template <name>` starts from another template (`--help` lists them). Then install the engine packages:
+`my-game` is the folder to create; without it, the command asks. `--template <name>` starts from another template ([Start from a template](./templates) runs through all six: a platformer, a Persona-style menu, a visual novel, 2D with 3D models and a party game); `--help` lists them. Then install the engine packages:
 
 ```sh
 cd my-game
@@ -149,6 +149,6 @@ The web build uses relative URLs, so `dist/` works from any path on a web server
 
 ## Limits
 
-- The guide uses the `empty` template. `pnpm create blacklight my-game --template persona-menu` starts from a complete Persona-style menu instead; `--help` lists every template.
+- The guide uses the `empty` template. `pnpm create blacklight my-game --template persona-menu` starts from a complete Persona-style menu instead; [Start from a template](./templates) covers the other five.
 - The engine has no visual editor for game logic: objects are placed by code here. The [VS Code extension](./vscode) has a scene editor that saves placements as JSON for `scene.load`.
 - Sound is not covered here: see [Audio](./audio).

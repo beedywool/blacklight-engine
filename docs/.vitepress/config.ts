@@ -44,6 +44,7 @@ const guide: DefaultTheme.SidebarItem[] = [
       { text: 'What is Blacklight Engine?', link: '/guide/what-is-blacklight' },
       { text: 'Install the tools', link: '/guide/installation' },
       { text: 'Getting started', link: '/guide/getting-started' },
+      { text: 'Start from a template', link: '/guide/templates' },
       { text: 'Concepts', link: '/guide/concepts' },
       { text: 'Coming from another engine', link: '/guide/migration' },
       { text: 'FAQ', link: '/guide/faq' },
