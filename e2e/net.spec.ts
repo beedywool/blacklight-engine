@@ -136,6 +136,14 @@ test.describe('networking', () => {
     test.afterAll(() => relay.close());
 
     test('two browsers play Push-Push online without desync', async () => {
+      // GitHub's Windows runner draws both pages in software; the match crawls or stops answering.
+      test.skip(
+        process.platform === 'win32',
+        'Windows: two software-drawn browsers are too slow on the CI runner. The online check there ' +
+          'is servers/relay/test/party-game.spec.ts (two headless games over the real relay, pnpm ' +
+          'test); a full match between two Windows PCs is MANUAL_TESTS party game #6 (DECISIONS ' +
+          '2026-11-01).',
+      );
       // The guest runs in WebKit when it can: a live V8 against JavaScriptCore match.
       const engines: Browser[] = [await chromium.launch()];
       const webkitBrowser = await launchWebKit();
