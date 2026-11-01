@@ -37,7 +37,15 @@ import { spawnSync } from 'node:child_process';
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
-import { _android, expect, test, type AndroidDevice, type Page } from '@playwright/test';
+import {
+  _android,
+  chromium,
+  expect,
+  test,
+  type AndroidDevice,
+  type Browser,
+  type Page,
+} from '@playwright/test';
 import { findAndroidSdk, findJava } from '../packages/cli/src/targets/mobile-tools';
 import { best, compare, formatComparison, median, summarize } from '../scripts/bench.mjs';
 import { RUNS, recordRuns } from './bench-shared';
@@ -85,8 +93,15 @@ const wait = (ms: number) => new Promise((done) => setTimeout(done, ms));
 const round = (value: number) => Math.round(value * 10) / 10;
 
 test.beforeAll(async () => {
-  [device] = await _android.devices({ omitDriverInstall: true });
-  if (!device) throw new Error('No Android device: start an emulator first (adb devices).');
+  // ANDROID_SERIAL picks one of several attached devices, as it does for every adb call here.
+  const devices = await _android.devices({ omitDriverInstall: true });
+  device = process.env.ANDROID_SERIAL
+    ? devices.find((candidate) => candidate.serial() === process.env.ANDROID_SERIAL)!
+    : devices[0]!;
+  if (!device)
+    throw new Error(
+      `No Android device${process.env.ANDROID_SERIAL ? ` ${process.env.ANDROID_SERIAL}` : ''}: start an emulator first (adb devices).`,
+    );
   const prop = (name: string) => adb('shell', 'getprop', name).trim();
   const gles = /GLES: [^,]*, ([^\n]*?), OpenGL ES/.exec(adb('shell', 'dumpsys', 'SurfaceFlinger'));
   webview =
@@ -109,6 +124,7 @@ test.beforeAll(async () => {
 });
 
 test.afterAll(async () => {
+  await detach();
   for (const app of installed) spawnSync('adb', ['uninstall', APPS[app].id]);
   if (keys) rmSync(keys, { recursive: true, force: true });
   await device?.close();
@@ -153,6 +169,7 @@ function buildAndInstall(app: App, env: Record<string, string> = {}): void {
 
 /** Stops the app and waits until Playwright no longer lists its WebView. */
 async function stop(id: string, clear = false): Promise<void> {
+  await detach();
   adb('shell', 'am', 'force-stop', id);
   if (clear) adb('shell', 'pm', 'clear', id);
   await expect
@@ -191,35 +208,74 @@ async function devtoolsReport(socket: string): Promise<string> {
   }
 }
 
+/** DevTools connections of the current launch: closed before the next one (stop) and at the end. */
+const connections: { browser: Browser; port: string }[] = [];
+
+async function detach(): Promise<void> {
+  for (const { browser, port } of connections.splice(0)) {
+    await browser.close().catch(() => undefined);
+    spawnSync('adb', ['forward', '--remove', `tcp:${port}`]);
+  }
+}
+
+/** The app's WebView DevTools socket (`webview_devtools_remote_<pid>`), once the WebView opens it. */
+async function devtoolsSocket(id: string): Promise<string> {
+  const deadline = Date.now() + 60_000;
+  for (;;) {
+    const pid = spawnSync('adb', ['shell', 'pidof', id], { encoding: 'utf8' }).stdout.trim();
+    const socket = `webview_devtools_remote_${pid.split(/\s+/)[0]}`;
+    if (pid && adb('shell', 'cat', '/proc/net/unix').includes(`@${socket}`)) return socket;
+    if (Date.now() > deadline)
+      throw new Error(
+        `${id}: no DevTools connection to its WebView: no ${socket} socket within 60 s.`,
+      );
+    await wait(250);
+  }
+}
+
+/**
+ * The app's page, through the WebView's DevTools server: an adb forward to its socket and
+ * `chromium.connectOverCDP`, which needs only what every WebView's DevTools server offers
+ * (`/json/version`, the browser endpoint). Playwright's `device.webView().page()` is not used: on
+ * GitHub's emulator (API 35, WebView 124) it never returned for the NF-02 proof's launches (3 of
+ * 3, in both attempts of run 41321613582) while the DevTools server answered and listed the page;
+ * it also waits for the page's `load` event, which none of these measurements needs. Each
+ * connection is closed before the next launch (`stop`), so none accumulate over a run.
+ */
 async function attach(id: string): Promise<Page> {
-  const view = await device.webView({ pkg: id }, { timeout: 60_000 });
-  // Playwright connects to the WebView's DevTools socket with no time limit; on GitHub's emulator
-  // one connection out of many never completed and held the test until its 15-minute timeout.
-  let timer: ReturnType<typeof setTimeout> | undefined;
+  const socket = await devtoolsSocket(id);
+  const port = adb('forward', 'tcp:0', `localabstract:${socket}`).trim();
+  let browser: Browser | undefined;
   try {
-    return await Promise.race([
-      view.page(),
-      new Promise<never>((_, reject) => {
-        timer = setTimeout(
-          () =>
-            void devtoolsReport((view as unknown as { _socketName(): string })._socketName()).then(
-              (report) =>
-                reject(
-                  new Error(`${id}: no DevTools connection to its WebView within 60 s; ${report}`),
-                ),
-              (error: unknown) =>
-                reject(
-                  new Error(
-                    `${id}: no DevTools connection to its WebView within 60 s; ${String(error)}`,
-                  ),
-                ),
-            ),
-          60_000,
+    // noDefaults: a WebView has no download or browser-context management (Playwright's default
+    // download setup is refused), and the measured page keeps its own focus and media settings.
+    browser = await chromium.connectOverCDP(`http://127.0.0.1:${port}`, {
+      noDefaults: true,
+      timeout: 60_000,
+    });
+    connections.push({ browser, port });
+    const [context] = browser.contexts();
+    // Right after `am start` the page may not exist yet, or not have navigated to the app.
+    for (let tries = 0; ; tries++) {
+      const page = context!.pages().find((open) => open.url().startsWith('https://localhost/'));
+      if (page) return page;
+      if (tries === 120)
+        throw new Error(
+          `pages: ${
+            context!
+              .pages()
+              .map((open) => open.url())
+              .join(', ') || 'none'
+          }`,
         );
-      }),
-    ]);
-  } finally {
-    clearTimeout(timer);
+      await wait(250);
+    }
+  } catch (error) {
+    if (!browser) spawnSync('adb', ['forward', '--remove', `tcp:${port}`]);
+    throw new Error(
+      `${id}: no DevTools connection to its WebView within 60 s (${(error as Error).message.split('\n')[0]}); ${await devtoolsReport(socket)}`,
+      { cause: error },
+    );
   }
 }
 
