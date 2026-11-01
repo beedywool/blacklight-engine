@@ -337,6 +337,10 @@ test('PF-02: the window keeps the aspect ratio, goes fullscreen and quits', asyn
 
 test('RT-12: SDL pads reach the input system over the bridge, same API', async () => {
   const box = sandbox();
+  // SDL ignores every real controller on the machine (only the unused id 0000:0000 would pass),
+  // so the test sees the same empty list on a developer's PC with pads plugged in (or Steam's
+  // virtual ones) as on a CI runner; the pads below come over the same bridge.
+  box.env.SDL_GAMECONTROLLER_IGNORE_DEVICES_EXCEPT = '0x0000/0x0000';
   const { electron, page } = await launch(appDir, box.env);
   // The SDL module is registered: the page reads pads from SDL, not the Gamepad API.
   expect(await page.evaluate(() => window.blacklightNative!.invoke('sdl', 'pads', []))).toEqual([]);
