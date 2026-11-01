@@ -23,17 +23,16 @@ const { PNG } = require('pngjs') as {
   PNG: { sync: { read(data: Buffer): { width: number; height: number; data: Buffer } } };
 };
 
-/** Distinct colors on a 32×18 grid of the screenshot: a blank or failed canvas has one or two. */
+/**
+ * Distinct colors of a screenshot of the canvas, every pixel: a blank or failed canvas has one or
+ * two. (A coarse grid of samples could miss everything a small first screen draws, depending on
+ * where the OS's fonts put the text.)
+ */
 function colors(image: Buffer): number {
   const png = PNG.sync.read(image);
   const seen = new Set<number>();
-  for (let gy = 0; gy < 18; gy++)
-    for (let gx = 0; gx < 32; gx++) {
-      const x = Math.floor(((gx + 0.5) * png.width) / 32);
-      const y = Math.floor(((gy + 0.5) * png.height) / 18);
-      const i = (y * png.width + x) * 4;
-      seen.add((png.data[i]! << 16) | (png.data[i + 1]! << 8) | png.data[i + 2]!);
-    }
+  for (let i = 0; i < png.data.length; i += 4)
+    seen.add((png.data[i]! << 16) | (png.data[i + 1]! << 8) | png.data[i + 2]!);
   return seen.size;
 }
 
@@ -65,11 +64,13 @@ templates.forEach((template, index) => {
   test.describe(template, () => {
     const work = mkdtempSync(join(tmpdir(), `blacklight-browsers-${template}-`));
     const game = join(work, 'game');
-    const port = 5480 + index;
+    let port = 0;
     let stop: (() => void) | undefined;
 
     test.beforeAll(async () => {
       test.setTimeout(300_000);
+      // In parallel mode every worker runs this hook and starts its own server: one port each.
+      port = 5480 + index * 2 + test.info().parallelIndex;
       run(
         process.execPath,
         [
@@ -108,9 +109,10 @@ templates.forEach((template, index) => {
             timeout: 60_000,
           });
           // The game draws: WebGL works in this browser and the first screen is on it.
-          await expect(page.locator('#game canvas').first()).toBeVisible();
+          const canvas = page.locator('#game canvas').first();
+          await expect(canvas).toBeVisible();
           await expect
-            .poll(async () => colors(await page.screenshot()), { timeout: 20_000 })
+            .poll(async () => colors(await canvas.screenshot()), { timeout: 20_000 })
             .toBeGreaterThan(3);
           // Keys and the pointer reach the page without an error, and the game keeps running (Enter
           // may start another scene: the state is empty while it loads).
