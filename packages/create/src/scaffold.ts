@@ -105,7 +105,8 @@ function engineDependency(name: string, options: ScaffoldOptions): string {
       name === 'create-blacklight'
         ? 'create'
         : name.replace(/^@blacklight\/module-/, 'modules/').replace(/^@blacklight\//, '');
-    return `link:${join(resolve(options.link), 'packages', folder)}`;
+    // Forward slashes on every OS: pnpm reads them on Windows too, and package.json stays the same.
+    return `link:${join(resolve(options.link), 'packages', folder).replaceAll('\\', '/')}`;
   }
   return `^${options.engineVersion}`;
 }

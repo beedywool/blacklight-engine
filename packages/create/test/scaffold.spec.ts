@@ -1,6 +1,6 @@
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { listTemplates, packageManagerFromAgent, packageName, scaffold } from '../src/scaffold';
 
@@ -61,8 +61,10 @@ describe('scaffold', () => {
       link: '/src/engine',
     });
     const deps = manifest(dir).dependencies;
-    expect(deps['@blacklight/core']).toBe('link:/src/engine/packages/core');
-    expect(deps['@blacklight/module-http']).toBe('link:/src/engine/packages/modules/http');
+    // `/src/engine` is `D:/src/engine` on Windows.
+    const engine = resolve('/src/engine').replaceAll('\\', '/');
+    expect(deps['@blacklight/core']).toBe(`link:${engine}/packages/core`);
+    expect(deps['@blacklight/module-http']).toBe(`link:${engine}/packages/modules/http`);
   });
 
   it('refuses unknown templates and non-empty folders', () => {
