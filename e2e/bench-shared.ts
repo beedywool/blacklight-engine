@@ -19,9 +19,12 @@ export const RUNS = Number(process.env.BLACKLIGHT_BENCH_RUNS ?? 5);
 
 /** Chromium as a player's browser runs it: a hardware GPU when there is one, no background throttling. */
 export const CHROMIUM_ARGS = [
-  // A hardware GPU when there is one (SwiftShader otherwise, as on CI runners).
+  // A hardware GPU when there is one (SwiftShader otherwise, as on CI runners). Not on Windows:
+  // there the flag hands WebGL to the blocklisted Microsoft Basic Render Driver of GPU-less
+  // machines (GitHub's runners), on which pages stalled for 30 s per request; a player's Chrome
+  // keeps the blocklist too.
   '--enable-gpu',
-  '--ignore-gpu-blocklist',
+  ...(process.platform === 'win32' ? [] : ['--ignore-gpu-blocklist']),
   ...(process.platform === 'linux' ? ['--use-angle=vulkan'] : []),
   '--enable-precise-memory-info',
   '--js-flags=--expose-gc',

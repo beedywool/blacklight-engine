@@ -58,6 +58,13 @@ const PROFILES: Record<string, BrowserContextOptions> = {
 
 type Run = Record<string, unknown> & { frames: number };
 
+/**
+ * Longest a run may take, from navigation to the scene's result. About 15 s with a GPU; a
+ * software GPU at 1920×1080 (GitHub's Linux runner) draws about one frame per second, and the
+ * throughput bursts wait for 20 of them.
+ */
+const RUN_MS = 180_000;
+
 let browser: Browser;
 let stop: (() => void) | undefined;
 let gpu = 'unknown';
@@ -109,7 +116,7 @@ async function measure(profile: BrowserContextOptions, query = ''): Promise<Run>
     });
     await page.goto(`http://localhost:${port}/${query}`);
     await expect(page.locator('#game')).toHaveAttribute('data-bench', /frames/, {
-      timeout: 60_000,
+      timeout: RUN_MS,
     });
     const result = (await page.evaluate(() => window.blacklightBench)) as unknown as Run;
     if (gpu === 'unknown') gpu = await page.locator('#game canvas').evaluate(rendererScript);
@@ -129,7 +136,7 @@ async function measureRuns(profile: BrowserContextOptions, runs: number, query =
 for (const [name, profile] of Object.entries(PROFILES)) {
   test(`${name}: 300 animated sprites and an animated UI screen stay within 10 % of the baseline`, async (// eslint-disable-next-line no-empty-pattern
   {}, testInfo: TestInfo) => {
-    test.setTimeout(60_000 + 2 * RUNS * 30_000);
+    test.setTimeout(60_000 + 2 * RUNS * RUN_MS);
     const runs = await measureRuns(profile, RUNS);
     // After the first run: the default runner name includes the GPU the page reported.
     const { rows } = await recordRuns({
@@ -151,7 +158,7 @@ for (const [name, profile] of Object.entries(PROFILES)) {
 // before on the same machine, must be reported as a regression; the clean runs compared with
 // themselves must not.
 test('the regression check fails when every frame does 30 % more work', async () => {
-  test.setTimeout(60_000 + 6 * 30_000);
+  test.setTimeout(60_000 + 6 * RUN_MS);
   const profile = PROFILES.desktop!;
   const cleanRuns = await measureRuns(profile, 3);
   const clean = best(cleanRuns);

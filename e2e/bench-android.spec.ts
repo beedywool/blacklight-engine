@@ -169,7 +169,22 @@ function start(id: string): { launchedMs: number; activityMs: number } {
 
 async function attach(id: string): Promise<Page> {
   const view = await device.webView({ pkg: id }, { timeout: 60_000 });
-  return view.page();
+  // Playwright connects to the WebView's DevTools socket with no time limit; on GitHub's emulator
+  // one connection out of many never completed and held the test until its 15-minute timeout.
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      view.page(),
+      new Promise<never>((_, reject) => {
+        timer = setTimeout(
+          () => reject(new Error(`${id}: no DevTools connection to its WebView within 60 s`)),
+          60_000,
+        );
+      }),
+    ]);
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 /**
@@ -326,7 +341,16 @@ async function launch(app: App): Promise<Launch> {
 
 async function launches(app: App, count: number): Promise<Launch[]> {
   const results: Launch[] = [];
-  for (let i = 0; i < count; i++) results.push(await launch(app));
+  let lost = 0;
+  while (results.length < count) {
+    try {
+      results.push(await launch(app));
+    } catch (error) {
+      // A launch Playwright could not attach to is not a measurement: launch again, twice at most.
+      if (!/no DevTools connection/.test((error as Error).message) || ++lost > 2) throw error;
+      console.log(`[bench] ${(error as Error).message}; launching again`);
+    }
+  }
   return results;
 }
 
@@ -336,7 +360,7 @@ for (const app of ['party-game', 'visual-novel'] as const) {
     test.setTimeout(300_000 + 2 * (LAUNCHES + 1) * 30_000);
     buildAndInstall(app);
     // Unmeasured: the device's file cache then holds the APK for every measured launch.
-    await launch(app);
+    await launches(app, 1);
     const { rows, runs } = await recordRuns({
       profile: `android-cold-start-${app}`,
       gpu,
@@ -365,13 +389,13 @@ for (const app of ['party-game', 'visual-novel'] as const) {
 test('NF-02: the regression check fails when startup takes 30 % longer', async () => {
   test.setTimeout(900_000);
   buildAndInstall('bench');
-  await launch('bench');
+  await launches('bench', 1);
   const clean = {
     coldStartMs: median((await launches('bench', LAUNCHES)).map((r) => r.coldStartMs)),
   };
   const delayMs = Math.round(clean.coldStartMs * 0.3);
   buildAndInstall('bench', { VITE_BENCH_STARTUP_DELAY_MS: String(delayMs) });
-  await launch('bench');
+  await launches('bench', 1);
   const slower = {
     coldStartMs: median((await launches('bench', LAUNCHES)).map((r) => r.coldStartMs)),
   };
