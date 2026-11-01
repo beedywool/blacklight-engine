@@ -3,5 +3,8 @@
   "compilerOptions": {
     "types": ["node"]
   },
-  "include": ["src", "test", "tsup.config.ts"]
+  "include": ["src", "test", "tsup.config.ts"],
+  // Runs party-game template code, whose types need the template's generated .blacklight/types.d.ts
+  // and path aliases: the template's own typecheck covers that code and the harness it uses.
+  "exclude": ["test/party-game.spec.ts"]
 }

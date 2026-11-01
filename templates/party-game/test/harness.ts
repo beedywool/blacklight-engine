@@ -1,6 +1,8 @@
 // Runs mini-games without a browser: offline on one headless game with scripted players, online
-// as several headless instances linked by the simulated network of @blacklight/net.
+// as several headless instances linked by the simulated network of @blacklight/net (or by a real
+// relay connection, see `onlineInstance`).
 import { InputManager, type ActionName, type Game } from '@blacklight/core';
+import type { OnlineMatch, SceneRollback } from '@blacklight/net';
 import {
   headlessGame,
   headlessScene,
@@ -103,6 +105,51 @@ export async function playOffline<S extends MiniGame>(
   return { scene, steps };
 }
 
+/** One online player's machine: a headless game running the mini-game on a match. */
+export interface OnlineInstance<S extends MiniGame> {
+  scene: S;
+  /** One fixed step of this machine: its local player's scripted input, then the scene. */
+  tick(): void;
+  session: SceneRollback['session'];
+}
+
+/**
+ * Builds one machine of an online match, whatever carries the match: the simulated network of
+ * `playOnline` or a real relay connection (`RelayClient.match()`).
+ */
+export async function onlineInstance<S extends MiniGame>(
+  Scene: new () => S,
+  name: string,
+  match: OnlineMatch,
+  options: { settings: MiniGameSettings; script?: Script },
+): Promise<OnlineInstance<S>> {
+  const game = partyGame();
+  const scene = await headlessScene(
+    Scene,
+    name,
+    {
+      players: match.players.map((p) => ({ player: p.number, skin: p.number - 1, name: p.name })),
+      settings: options.settings,
+      online: match,
+      delay: 2,
+    },
+    game,
+  );
+  const script = options.script ?? bot;
+  const self = match.local[0]!;
+  let step = 0;
+  return {
+    scene,
+    tick: () => {
+      // The local device is player 1 of each machine; the session sends it as `self`.
+      hold(game, 1, script(self, step++, scene));
+      game.input.update();
+      scene.step(game.time.dt);
+    },
+    session: scene.net!.session,
+  };
+}
+
 /** Plays a mini-game online: one headless instance per player over a simulated network. */
 export async function playOnline<S extends MiniGame>(
   Scene: new () => S,
@@ -116,41 +163,15 @@ export async function playOnline<S extends MiniGame>(
   },
 ): Promise<{ result: MatchResult; scenes: S[] }> {
   const scenes: S[] = [];
-  const script = options.script ?? bot;
   const result = await simulateMatch({
     players: options.players,
     frames: options.frames,
     seed: name,
     network: options.network ?? { latency: 120, jitter: 20, loss: 0.02 },
     create: async (match) => {
-      const game = partyGame();
-      const scene = await headlessScene(
-        Scene,
-        name,
-        {
-          players: match.players.map((p) => ({
-            player: p.number,
-            skin: p.number - 1,
-            name: p.name,
-          })),
-          settings: options.settings,
-          online: match,
-          delay: 2,
-        },
-        game,
-      );
-      scenes.push(scene);
-      const self = match.local[0]!;
-      let step = 0;
-      return {
-        tick: () => {
-          // The local device is player 1 of each machine; the session sends it as `self`.
-          hold(game, 1, script(self, step++, scene));
-          game.input.update();
-          scene.step(game.time.dt);
-        },
-        session: scene.net!.session,
-      };
+      const instance = await onlineInstance(Scene, name, match, options);
+      scenes.push(instance.scene);
+      return instance;
     },
   });
   return { result, scenes };
