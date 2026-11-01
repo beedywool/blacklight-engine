@@ -167,6 +167,30 @@ function start(id: string): { launchedMs: number; activityMs: number } {
   return { launchedMs, activityMs: Number(/TotalTime: (\d+)/.exec(out)?.[1] ?? Number.NaN) };
 }
 
+/**
+ * What the WebView's DevTools server answers on its own (`/json/version`, `/json/list` through an
+ * adb forward), for the error when Playwright gets no connection: tells a server that does not
+ * answer from one that answers but whose page Playwright could not attach to.
+ */
+async function devtoolsReport(socket: string): Promise<string> {
+  const forward = adb('forward', 'tcp:0', `localabstract:${socket}`).trim();
+  const get = async (path: string) => {
+    try {
+      const response = await fetch(`http://127.0.0.1:${forward}${path}`, {
+        signal: AbortSignal.timeout(5000),
+      });
+      return (await response.text()).replace(/\s+/g, ' ').slice(0, 1500);
+    } catch (error) {
+      return `no answer (${(error as Error).message})`;
+    }
+  };
+  try {
+    return `${socket} /json/version: ${await get('/json/version')}; /json/list: ${await get('/json/list')}`;
+  } finally {
+    spawnSync('adb', ['forward', '--remove', `tcp:${forward}`]);
+  }
+}
+
 async function attach(id: string): Promise<Page> {
   const view = await device.webView({ pkg: id }, { timeout: 60_000 });
   // Playwright connects to the WebView's DevTools socket with no time limit; on GitHub's emulator
@@ -177,7 +201,19 @@ async function attach(id: string): Promise<Page> {
       view.page(),
       new Promise<never>((_, reject) => {
         timer = setTimeout(
-          () => reject(new Error(`${id}: no DevTools connection to its WebView within 60 s`)),
+          () =>
+            void devtoolsReport((view as unknown as { _socketName(): string })._socketName()).then(
+              (report) =>
+                reject(
+                  new Error(`${id}: no DevTools connection to its WebView within 60 s; ${report}`),
+                ),
+              (error: unknown) =>
+                reject(
+                  new Error(
+                    `${id}: no DevTools connection to its WebView within 60 s; ${String(error)}`,
+                  ),
+                ),
+            ),
           60_000,
         );
       }),
