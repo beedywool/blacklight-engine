@@ -125,6 +125,12 @@ function collectErrors(page: Page): string[] {
   return errors;
 }
 
+/**
+ * Opens the title screen and waits until its menu has focus. The first page a fresh dev server
+ * serves on GitHub's Windows runner keeps the renderer busy for tens of seconds after the title
+ * shows (dev-only debug tools and the first Vue screen compiling): one `evaluate` of the focus
+ * poll took 40 s there (run 41319143877), so the focus poll waits up to 60 s.
+ */
 async function open(page: Page, port = DEV_PORT): Promise<void> {
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.setViewportSize({ width: 1920, height: 1080 });
@@ -133,7 +139,7 @@ async function open(page: Page, port = DEV_PORT): Promise<void> {
     timeout: 30_000,
   });
   await expect(scene(page)).toHaveAttribute('data-blacklight-scene', 'title');
-  await expect.poll(() => focused(page)).toContain('LOCAL PARTY');
+  await expect.poll(() => focused(page), { timeout: 60_000 }).toContain('LOCAL PARTY');
 }
 
 /**
