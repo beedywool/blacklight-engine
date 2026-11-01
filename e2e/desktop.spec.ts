@@ -467,9 +467,10 @@ test('SEC-02, SEC-04: packaged app has its fuses set, runs from bytecode and ref
   }
 
   // ELECTRON_RUN_AS_NODE is ignored: the binary does not turn into Node, it starts the game (which
-  // writes the "boot" slot again) and never runs the `-e` script.
+  // writes the "boot" slot again) and never runs the `-e` script. KEYRING as in every launch: on
+  // macOS the game waits on a Keychain access CI cannot answer without it.
   rmSync(join(box.dataDir, 'saves', 'boot.sav'), { force: true });
-  const asNode = start(executable, ['-e', 'console.log("node-mode-" + 6 * 7)'], {
+  const asNode = start(executable, ['-e', 'console.log("node-mode-" + 6 * 7)', ...KEYRING], {
     ...box.env,
     ELECTRON_RUN_AS_NODE: '1',
   });
