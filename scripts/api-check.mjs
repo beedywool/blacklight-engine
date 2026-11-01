@@ -57,9 +57,12 @@ export async function loadApi({
       `API check: missing declarations (${missing.join(', ')}). Run \`pnpm build\` at the repository root first.`,
     );
   }
+  // TypeDoc reads entry points as globs, where `\` escapes: Windows paths need forward slashes or
+  // they match nothing and the check passes on an empty API.
+  const posix = (path) => path.replaceAll('\\', '/');
   const app = await Application.bootstrap({
-    entryPoints: Object.values(entries).map((entry) => base + entry),
-    tsconfig,
+    entryPoints: Object.values(entries).map((entry) => posix(base + entry)),
+    tsconfig: posix(tsconfig),
     excludePrivate: true,
     excludeInternal: true,
     excludeExternals: true,
@@ -74,6 +77,11 @@ export async function loadApi({
   if (!project) {
     throw new Error(
       `API check: TypeDoc could not read the declarations.\n${logger.messages.join('\n')}`,
+    );
+  }
+  if (!project.children?.length) {
+    throw new Error(
+      `API check: TypeDoc found no exported symbol in ${Object.values(entries).join(', ')}.\n${logger.messages.join('\n')}`,
     );
   }
   const modules = project.children?.every((child) => child.kindOf(ReflectionKind.Module))
