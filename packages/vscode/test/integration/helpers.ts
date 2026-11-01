@@ -52,22 +52,34 @@ export async function closeAll(): Promise<void> {
 
 const PORT = 5371;
 let server: ChildProcess | undefined;
+/** What the dev server printed, for the error when it never starts. */
+let serverOutput = '';
 
 /** Starts `blacklight dev` on the test workspace (once) and returns its info file. */
 export async function devServer(): Promise<{ url: string; port: number; token: string }> {
   const info = join(workspace, '.blacklight', 'dev-server.json');
   if (!server) {
+    serverOutput = '';
     server = spawn(
       'node',
       [process.env.BLACKLIGHT_CLI!, 'dev', workspace, '--port', String(PORT), '--strict-port'],
       {
         cwd: workspace,
-        stdio: 'ignore',
+        stdio: ['ignore', 'pipe', 'pipe'],
         detached: process.platform !== 'win32',
       },
     );
+    const keep = (chunk: Buffer) => (serverOutput = (serverOutput + chunk.toString()).slice(-4000));
+    server.stdout?.on('data', keep);
+    server.stderr?.on('data', keep);
+    server.on('error', (error) => (serverOutput += `\n${error.message}`));
+    server.on('exit', (code) => (serverOutput += `\n(exited with code ${code})`));
   }
-  await waitFor(() => existsSync(info), 'the dev server', 60_000);
+  try {
+    await waitFor(() => existsSync(info), 'the dev server', 60_000);
+  } catch (error) {
+    throw new Error(`${(error as Error).message}. Its output:\n${serverOutput}`, { cause: error });
+  }
   return JSON.parse(readFileSync(info, 'utf8')) as { url: string; port: number; token: string };
 }
 
