@@ -22,6 +22,7 @@ import {
   waitFor,
   workspace,
 } from './helpers';
+import { comparablePath } from './paths';
 
 const tests: [string, () => Promise<void>][] = [];
 const test = (name: string, body: () => Promise<void>) => tests.push([name, body]);
@@ -502,8 +503,8 @@ test('Debugging: launch configuration, live objects and variables, pause and ste
     name: 'Debug game',
   })) as vscode.DebugConfiguration;
   equal(
-    [resolved.type, resolved.url, resolved.webRoot],
-    ['chrome', info.url, join(workspace, '.blacklight')],
+    [resolved.type, resolved.url, comparablePath(String(resolved.webRoot))],
+    ['chrome', info.url, comparablePath(join(workspace, '.blacklight'))],
     'browser debug session at the dev server',
   );
   equal(resolved.pathMapping, { '/@fs/': '/' }, 'files outside the Vite root map to disk');

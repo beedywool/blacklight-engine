@@ -16,6 +16,7 @@ import { readConfig, setConfigValue } from '../../src/core/config';
 import { DebugClient, socketUrl, type SocketLike } from '../../src/core/debug-client';
 import { formatJson } from '../../src/core/json';
 import { resolveLaunch } from '../../src/core/launch';
+import { comparablePath } from '../integration/paths';
 import {
   applyLayoutEdit,
   configResolution,
@@ -546,5 +547,20 @@ describe('debug client', () => {
     expect(() =>
       resolveLaunch({ type: 'blacklight', request: 'launch' }, '/game', undefined),
     ).toThrow(/blacklight dev/);
+  });
+});
+
+describe('integration test paths', () => {
+  it('compares Windows drive letters without case', () => {
+    expect(comparablePath('c:\\Users\\RUNNER~1\\game\\.blacklight', 'win32')).toBe(
+      comparablePath('C:\\Users\\RUNNER~1\\game\\.blacklight', 'win32'),
+    );
+    expect(comparablePath('c:\\Users\\a', 'win32')).toBe('C:\\Users\\a');
+  });
+
+  it('keeps the rest of the path and other platforms as they are', () => {
+    expect(comparablePath('C:\\Users\\Runner\\c:', 'win32')).toBe('C:\\Users\\Runner\\c:');
+    expect(comparablePath('/tmp/c:/game', 'linux')).toBe('/tmp/c:/game');
+    expect(comparablePath('c:/game', 'darwin')).toBe('c:/game');
   });
 });
