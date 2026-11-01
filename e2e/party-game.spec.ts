@@ -435,12 +435,14 @@ test.describe('online', () => {
   test.afterAll(() => relay.close());
 
   test('two browsers play Push-Push online to the end without desync', async () => {
-    // Two browsers draw in software on one runner (SwiftShader, or WARP on Windows), and every
-    // Playwright call waits for the page's next frame, whose cost grows with its pixels: at
-    // 1920×1080 a frame took about 5 s on GitHub's Linux runner (the test used 5.3 of its 6 min)
-    // and the Windows runner ran out of time in the lobby. Both pages run at half that size (the
-    // game letterboxes its 1920×1080 design the same way); the netcode under test does not
-    // depend on the resolution.
+    // Two browsers draw in software (SwiftShader) on one 4-CPU runner, and every Playwright call
+    // waits for the page's next frame: at 1920×1080 and 60 frames a second a call took about 5 s
+    // on GitHub's Linux runner (the test used 5.3 of its 6 min), and on the Windows runner the
+    // second browser took up to a minute per step while the first one drew its lobby. One idle
+    // title screen kept 6 to 8 cores of SwiftShader busy here. Both pages run at half that size
+    // (the game letterboxes its 1920×1080 design the same way) and draw at most 15 frames a
+    // second (the game still steps 60 times a second: up to 5 steps per frame); the netcode
+    // under test depends on neither.
     test.setTimeout(360_000);
     const browsers = [await chromium.launch(), await chromium.launch()];
     const [host, guest] = await Promise.all(browsers.map((b) => b.newPage()));
@@ -448,8 +450,15 @@ test.describe('online', () => {
     for (const page of [host!, guest!]) {
       await fakeGamepads(page, 1);
       await open(page, DEV_PORT, { width: 960, height: 540 });
+      await page.evaluate(() => {
+        const game = (window as unknown as { blacklight: { app: { ticker: { maxFPS: number } } } })
+          .blacklight;
+        game.app.ticker.maxFPS = 15;
+      });
       await page.locator('.title__menu .bl-menu__item', { hasText: 'ONLINE' }).click();
-      await expect(scene(page)).toHaveAttribute('data-blacklight-scene', 'online');
+      await expect(scene(page)).toHaveAttribute('data-blacklight-scene', 'online', {
+        timeout: SWITCH,
+      });
       await page.locator('.lobby__address input').fill(`127.0.0.1:${RELAY_PORT}`);
     }
     await host!.locator('.lobby__name input').fill('HOST');
