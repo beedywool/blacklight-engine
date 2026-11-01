@@ -129,18 +129,28 @@ async function open(page: Page, port = DEV_PORT): Promise<void> {
   await expect.poll(() => focused(page)).toContain('LOCAL PARTY');
 }
 
-/** Freezes the game for a stable screenshot. */
-async function still(page: Page, name: string): Promise<void> {
+/**
+ * Freezes the game for a stable screenshot. One reference per OS: the screens are DOM text in the
+ * theme's display font (Impact on Windows and macOS, a fallback on Linux). `banner` hides the
+ * mini-game banner, whose animations follow the game's steps, for screens taken at a step the
+ * test does not choose (real-time pause, online match).
+ */
+async function still(page: Page, name: string, options: { banner?: false } = {}): Promise<void> {
   const wasPaused = await page.evaluate(() => {
     const game = (window as unknown as PartyWindow).blacklight;
     const paused = game.paused;
     game.pause();
     return paused;
   });
-  await expect(page).toHaveScreenshot(['party-game', name], {
+  const hidden =
+    options.banner === false
+      ? await page.addStyleTag({ content: '.banner { visibility: hidden }' })
+      : undefined;
+  await expect(page).toHaveScreenshot(['party-game', process.platform, name], {
     maxDiffPixelRatio: 0.03,
     animations: 'disabled',
   });
+  await hidden?.evaluate((tag) => tag.remove());
   if (!wasPaused) await page.evaluate(() => (window as unknown as PartyWindow).blacklight.resume());
 }
 
@@ -348,7 +358,7 @@ test('pause menu stops the mini-game and quits to the cards', async ({ page }) =
     true,
   );
   await expect.poll(() => focused(page)).toBe('RESUME');
-  await still(page, 'pause.png');
+  await still(page, 'pause.png', { banner: false });
   for (let i = 0; i < 3; i++) await press(page, 0, DOWN);
   await expect.poll(() => focused(page)).toBe('QUIT TO GAMES');
   await press(page, 0, A);
@@ -455,7 +465,7 @@ test.describe('online', () => {
     const buttons = [RIGHT, A, UP, DOWN, A];
     const over = async () =>
       (await Promise.all([host!, guest!].map(read))).some((r) => r.phase === 'over');
-    await still(host!, 'online-push-push.png');
+    await still(host!, 'online-push-push.png', { banner: false });
     for (let i = 0; !(await over()) && i < 600; i++) {
       if (i % 4 === 0) {
         for (const [k, page] of [host!, guest!].entries()) {
