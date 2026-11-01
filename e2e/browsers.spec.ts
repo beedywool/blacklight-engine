@@ -46,21 +46,42 @@ const BROWSERS: [string, BrowserType][] = [
   ['webkit', webkit],
 ];
 
-/** The WebGL 2 renderer string of a blank page, `undefined` when the browser offers no WebGL 2. */
-async function webgl2(browser: Browser): Promise<string | undefined> {
+/**
+ * The WebGL 2 renderer string of a blank page, or why the browser refused the context (the
+ * `webglcontextcreationerror` status message).
+ */
+async function webgl2(browser: Browser): Promise<{ renderer?: string; error?: string }> {
   const page = await browser.newPage();
   try {
     return await page.evaluate(() => {
-      const gl = document.createElement('canvas').getContext('webgl2');
-      if (!gl) return undefined;
+      const canvas = document.createElement('canvas');
+      let error = 'no webglcontextcreationerror message';
+      canvas.addEventListener('webglcontextcreationerror', (event) => {
+        error = (event as WebGLContextEvent).statusMessage || error;
+      });
+      const gl = canvas.getContext('webgl2');
+      if (!gl) return { error };
       const info = gl.getExtension('WEBGL_debug_renderer_info');
-      const name = String(gl.getParameter(info ? info.UNMASKED_RENDERER_WEBGL : gl.RENDERER));
+      const renderer = String(gl.getParameter(info ? info.UNMASKED_RENDERER_WEBGL : gl.RENDERER));
       gl.getExtension('WEBGL_lose_context')?.loseContext();
-      return name;
+      return { renderer };
     });
   } finally {
     await page.close();
   }
+}
+
+/**
+ * Firefox's driver blocklist refuses WebGL 2 on the Microsoft Basic Render Driver, the only
+ * adapter of GitHub's GPU-less Windows runner ("AllowWebgl2:false restricts context creation on
+ * this system"). `webgl.force-enabled` lifts the blocklist, and Firefox then draws through ANGLE on
+ * Direct3D 11 WARP (software). Players' machines have a real GPU: Firefox keeps its defaults on
+ * Linux and macOS, and MANUAL_TESTS.md checks Firefox on a real Windows PC.
+ */
+function launchOptions(type: BrowserType) {
+  return type.name() === 'firefox' && process.platform === 'win32'
+    ? { firefoxUserPrefs: { 'webgl.force-enabled': true } }
+    : {};
 }
 
 async function launch(type: BrowserType): Promise<Browser | string> {
@@ -69,13 +90,13 @@ async function launch(type: BrowserType): Promise<Browser | string> {
   if (type.name() === 'webkit' && process.platform === 'win32')
     return 'Playwright’s WebKit build for Windows has no Web Audio; WebKit runs on macOS and Linux';
   try {
-    // Firefox on GitHub's GPU-less Windows runner sometimes starts without WebGL 2 at all (the
-    // 3D template then rightly reports that its KTX2 textures need it). That is the machine, not
-    // the build under test: a second browser process gets another chance, and a browser that
-    // still has no WebGL 2 fails with that reason instead of the template's error.
+    // A browser without WebGL 2 is the machine, not the build under test (the 3D template then
+    // rightly reports that its KTX2 textures need it): a second browser process gets another
+    // chance, and a browser that still has no WebGL 2 fails with the browser's own reason instead
+    // of the template's error.
     for (let attempt = 1; ; attempt++) {
-      const browser = await type.launch();
-      const renderer = await webgl2(browser);
+      const browser = await type.launch(launchOptions(type));
+      const { renderer, error } = await webgl2(browser);
       if (renderer) {
         test
           .info()
@@ -85,9 +106,11 @@ async function launch(type: BrowserType): Promise<Browser | string> {
       await browser.close();
       if (attempt === 2)
         throw new Error(
-          `${type.name()} started twice without WebGL 2 on this machine (getContext('webgl2') returned null on a blank page): the browser cannot run the templates here.`,
+          `${type.name()} started twice without WebGL 2 on this machine (getContext('webgl2') returned null on a blank page: ${error}): the browser cannot run the templates here.`,
         );
-      console.log(`[browsers] ${type.name()} started without WebGL 2; launching it again`);
+      console.log(
+        `[browsers] ${type.name()} started without WebGL 2 (${error}); launching it again`,
+      );
     }
   } catch (error) {
     const message = String(error);

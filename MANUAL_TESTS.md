@@ -8,6 +8,7 @@ What CI cannot check (SPEC §11.3). Run before each release; every step says wha
 2. Resize the window to very wide, then very tall. Expected: the content stays centered and fully visible, never stretched.
 
 3. Older browser versions (NF-05: the last two versions of Chrome, Firefox and Safari; CI runs one build of each engine). In the previous major version of each browser, open the release build of `party-game` and `visual-novel` (`pnpm build && pnpm preview` in the template). Expected: the title screen appears, keys and the mouse work, no error in the console.
+4. Firefox on a real Windows PC with a GPU (CI's Windows runner has none, so its Firefox only gets WebGL 2 with the driver blocklist lifted: `webgl.force-enabled`). With default Firefox settings, open `about:support` and check that "WebGL 2 Driver Renderer" names the GPU, then open the release build of every template (`pnpm build && pnpm preview` in each). Expected: each title screen appears, `2d-with-3d` shows its models and the KTX2 crate texture, keys and the mouse work, no error in the console.
 
 ## Runtime fixture (any desktop browser)
 
