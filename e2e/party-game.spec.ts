@@ -505,11 +505,25 @@ test.describe('online', () => {
     return { host: host!, guest: guest!, errors };
   }
 
+  /**
+   * Browsers of the running test. A test that times out never reaches its `finally`, and on the
+   * Windows runner the worker then spent 3 min in teardown with both browsers still drawing,
+   * so the retry started on a starved machine: `afterEach` closes them in every case.
+   */
+  const launched: Browser[] = [];
+  test.afterEach(async () => {
+    await Promise.all(launched.splice(0).map((b) => b.close().catch(() => undefined)));
+  });
+
   /** Launches two browsers and closes them however the test ends (a retry starts clean). */
   async function withBrowsers(body: (browsers: Browser[]) => Promise<void>): Promise<void> {
     const browsers: Browser[] = [];
     try {
-      browsers.push(await chromium.launch(), await chromium.launch());
+      for (let i = 0; i < 2; i++) {
+        const browser = await chromium.launch();
+        browsers.push(browser);
+        launched.push(browser);
+      }
       await body(browsers);
     } finally {
       await Promise.all(browsers.map((b) => b.close().catch(() => undefined)));
@@ -602,55 +616,97 @@ test.describe('online', () => {
 
   /**
    * Windows CI only (DECISIONS 2026-11-01): GitHub's 4-CPU Windows runner has no GPU, and two
-   * software-drawn browsers do not get through a full match there (the switch to the match took
-   * longer than 30 s with both pages compiling and drawing at once). The full match runs on Linux
+   * software-drawn browsers do not get through a full match there. The full match runs on Linux
    * and macOS and between two real Windows PCs (MANUAL_TESTS); NET determinism is proven by the
    * simulated 4-player gate and V8 vs JavaScriptCore. This check keeps the real stack on Windows:
-   * relay, room by code, ready, start, the match on both pages and the first checksums equal.
-   * Both pages load the match and Push-Push while they sit in the lobby, so the switch does not
-   * wait for the dev server's first compile of them. No screenshot.
+   * relay, room by code, ready, start, the match on both pages, then both sessions step past
+   * step 60 and agree on their first checksum (step 30). A session predicts at most
+   * `maxRollback` (8) steps ahead of the other player's input, so step 60 on both pages means
+   * inputs crossed the relay both ways for 50 steps. Both pages load the match and Push-Push
+   * while they sit in the lobby, so the switch does not wait for the dev server's first compile
+   * of them. No screenshot.
    */
-  test('two browsers start Push-Push online and agree on the first checksums', async () => {
+  test('two browsers start Push-Push online and step together to the first checksum', async () => {
     test.skip(process.platform !== 'win32', 'Linux and macOS play the full match above.');
-    test.setTimeout(360_000);
+    // The check has 8 min and the test 10: whatever stalls, the error is this test's own (it says
+    // where each page stopped) and afterEach still has time to close both browsers.
+    test.setTimeout(600_000);
+    const end = Date.now() + 480_000;
+    const left = () => Math.max(1_000, end - Date.now());
+    const STEPS = 60;
+    const within = <T>(promise: Promise<T>, ms: number, what: string): Promise<T> => {
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      const late = new Promise<never>((_, reject) => {
+        timer = setTimeout(
+          () => reject(new Error(`${what}: no result within ${Math.round(ms / 1000)} s`)),
+          ms,
+        );
+      });
+      return Promise.race([promise, late]).finally(() => clearTimeout(timer));
+    };
+    const state = (page: Page | undefined) =>
+      page
+        ? within(
+            page.evaluate(() => {
+              const session = (window as unknown as PartyWindow).blacklight.scene.minigame?.net
+                ?.session;
+              return {
+                scene: document.querySelector('#game')?.getAttribute('data-blacklight-scene'),
+                lobby: document.querySelector('.lobby')?.textContent?.replace(/\s+/g, ' ').trim(),
+                toasts: [...document.querySelectorAll('.bl-toast')].map((t) =>
+                  t.textContent?.trim(),
+                ),
+                frame: session?.frame,
+                checksums: session ? [...session.checksums].slice(0, 4) : undefined,
+              };
+            }),
+            15_000,
+            'page state',
+          ).catch(String)
+        : 'no page';
     await withBrowsers(async (browsers) => {
-      const { host, guest, errors } = await startMatch(browsers, { preload: true });
-      const state = (page: Page) =>
-        page.evaluate(() => ({
-          scene: document.querySelector('#game')?.getAttribute('data-blacklight-scene'),
-          lobby: document.querySelector('.lobby')?.textContent?.replace(/\s+/g, ' ').trim(),
-          toasts: [...document.querySelectorAll('.bl-toast')].map((t) => t.textContent?.trim()),
-        }));
-      try {
-        for (const page of [host, guest]) {
+      let stage = 'lobby (open, create, join, ready, start)';
+      let errors: string[] = [];
+      let compared: [number, number][] = [];
+      let theirs = new Map<number, number>();
+      const check = async () => {
+        const online = await startMatch(browsers, { preload: true });
+        const pages = [online.host, online.guest];
+        errors = online.errors;
+        stage = 'switch to match';
+        for (const page of pages) {
           await expect(scene(page)).toHaveAttribute('data-blacklight-scene', 'match', {
-            timeout: 120_000,
+            timeout: left(),
           });
         }
+        stage = `both sessions past step ${STEPS} with a common checksum`;
+        await expect
+          .poll(
+            async () => {
+              const [a, b] = await Promise.all(
+                pages.map((page) => read(page).catch(() => undefined)),
+              );
+              if (!a || !b) return false;
+              theirs = new Map(b.checksums);
+              compared = a.checksums.filter(([frame]) => theirs.has(frame));
+              return Math.min(a.frame, b.frame) >= STEPS && compared.length >= 1;
+            },
+            { timeout: left(), intervals: [1000] },
+          )
+          .toBe(true);
+      };
+      try {
+        await within(check(), left(), 'online check');
       } catch (error) {
-        // Says where each page stopped: still in the lobby (room, ready, a toast from the relay)
-        // or loading the match.
-        const where = await Promise.all([host, guest].map((page) => state(page).catch(String)));
+        // Says where each page stopped: still in the lobby (room, ready, a toast from the relay),
+        // loading the match, or in the match with its step and checksums.
+        const pages = browsers.map((b) => b.contexts()[0]?.pages()[0]);
+        const where = await Promise.all(pages.map(state));
         throw new Error(
-          `${(error as Error).message}\nhost: ${JSON.stringify(where[0])}\nguest: ${JSON.stringify(where[1])}\npage errors: ${JSON.stringify(errors)}`,
+          `${(error as Error).message}\nstage: ${stage}\nhost: ${JSON.stringify(where[0])}\nguest: ${JSON.stringify(where[1])}\npage errors: ${JSON.stringify(errors)}`,
           { cause: error },
         );
       }
-      // One checksum every 30 steps: three common ones are the first 90 steps or so.
-      let compared: [number, number][] = [];
-      await expect
-        .poll(
-          async () => {
-            const [a, b] = await Promise.all([host, guest].map(read));
-            const theirs = new Map(b!.checksums);
-            compared = a!.checksums.filter(([frame]) => theirs.has(frame));
-            return compared.length;
-          },
-          { timeout: 120_000, intervals: [1000] },
-        )
-        .toBeGreaterThanOrEqual(3);
-      const [, b] = await Promise.all([host, guest].map(read));
-      const theirs = new Map(b!.checksums);
       for (const [frame, hash] of compared) expect(theirs.get(frame), `step ${frame}`).toBe(hash);
       expect(errors).toEqual([]);
     });
