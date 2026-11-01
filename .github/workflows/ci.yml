@@ -4,13 +4,26 @@ on:
   push:
     branches: [main]
   pull_request:
+  # A partial run to iterate on one failure. Pushes and pull requests always run everything.
+  workflow_dispatch:
+    inputs:
+      jobs:
+        description: 'Jobs to run, comma-separated: check, e2e, bench, android, ios, desktop-packages'
+        default: 'check,e2e,bench,android,ios,desktop-packages'
+      os:
+        description: 'Operating systems of the check, e2e, bench and desktop-packages jobs (JSON list)'
+        default: '["ubuntu-latest","windows-latest","macos-latest"]'
+      spec:
+        description: 'Playwright arguments for the e2e and bench jobs, split on spaces (e2e/ui.spec.ts --grep=Survival); empty runs all'
+        default: ''
 
 jobs:
   check:
+    if: github.event_name != 'workflow_dispatch' || contains(inputs.jobs, 'check')
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        os: ${{ fromJSON(inputs.os || '["ubuntu-latest","windows-latest","macos-latest"]') }}
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v5
@@ -24,7 +37,7 @@ jobs:
       - run: pnpm lint
       - run: pnpm typecheck
       # Before the unit tests: the core-browser Vitest project runs in Chromium.
-      - run: pnpm exec playwright install --with-deps chromium firefox webkit
+      - run: pnpm exec playwright install --with-deps chromium
       - run: pnpm test
       # NF-07: unit coverage of core and net (Node and Chromium runs merged) at or above the
       # thresholds in vitest.config.ts, or the job fails. The sources are the same on every OS.
@@ -40,27 +53,90 @@ jobs:
       - run: pnpm --filter blacklight-template-empty build
       - run: pnpm --filter blacklight-template-persona-menu typecheck
       - run: pnpm docs:build
+      - run: pnpm --filter blacklight-vscode test:integration
+
+  # Playwright specs (`pnpm e2e`) in four shards on runners of their own. Each runs one test file
+  # at a time (playwright.config.ts): specs side by side fight over the runner's few CPUs, and the
+  # hosted runners' software GPU turns that into timeouts.
+  e2e:
+    if: github.event_name != 'workflow_dispatch' || contains(inputs.jobs, 'e2e')
+    strategy:
+      fail-fast: false
+      matrix:
+        os: ${{ fromJSON(inputs.os || '["ubuntu-latest","windows-latest","macos-latest"]') }}
+        shard: [1, 2, 3, 4]
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
+    env:
+      SPEC: ${{ inputs.spec }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      - run: pnpm exec playwright install --with-deps chromium firefox webkit
       # Electron (e2e/desktop.spec.ts) needs a display on Linux, and Ubuntu 24.04 restricts the
       # unprivileged user namespaces Chromium's sandbox uses.
       - if: runner.os == 'Linux'
         run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+      # $SPEC is split into Playwright arguments on purpose.
       - if: runner.os == 'Linux'
-        run: xvfb-run -a pnpm e2e
+        run: xvfb-run -a pnpm e2e --shard=${{ matrix.shard }}/4 --pass-with-no-tests $SPEC
       - if: runner.os != 'Linux'
-        run: pnpm e2e
-      - run: pnpm --filter blacklight-vscode test:integration
-      # NF-01 and NF-02 benchmarks, after the other tests so the runner is idle. Baselines are per
-      # runner (e2e/bench-baseline.json); a runner without one records its results and passes. Copy
-      # them from the bench-results-<os> artifact of a green main run: node scripts/bench.mjs update.
+        run: pnpm e2e --shard=${{ matrix.shard }}/4 --pass-with-no-tests $SPEC
+      - uses: actions/upload-artifact@v5
+        if: always()
+        with:
+          name: screenshots-${{ matrix.os }}-${{ matrix.shard }}
+          path: e2e/__screenshots__/
+          retention-days: 30
+      - uses: actions/upload-artifact@v5
+        if: failure()
+        with:
+          name: playwright-report-${{ matrix.os }}-${{ matrix.shard }}
+          path: playwright-report/
+          retention-days: 7
+
+  # NF-01 and NF-02 benchmarks on a runner of their own, so nothing else competes for it.
+  # Baselines are per runner (e2e/bench-baseline.json); a runner without one records its results
+  # and passes. Copy them from the bench-results-<os> artifact of a green main run:
+  # node scripts/bench.mjs update.
+  bench:
+    if: github.event_name != 'workflow_dispatch' || contains(inputs.jobs, 'bench')
+    strategy:
+      fail-fast: false
+      matrix:
+        os: ${{ fromJSON(inputs.os || '["ubuntu-latest","windows-latest","macos-latest"]') }}
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
+    env:
+      SPEC: ${{ inputs.spec }}
+      BLACKLIGHT_BENCH_RUNNER: github-${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      - run: pnpm exec playwright install --with-deps chromium
+      - if: runner.os == 'Linux'
+        run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
       # The cold-start spec starts the packaged desktop app, which needs a display on Linux.
       - if: runner.os == 'Linux'
-        run: xvfb-run -a pnpm bench
-        env:
-          BLACKLIGHT_BENCH_RUNNER: github-${{ matrix.os }}
+        run: xvfb-run -a pnpm bench --pass-with-no-tests $SPEC
       - if: runner.os != 'Linux'
-        run: pnpm bench
-        env:
-          BLACKLIGHT_BENCH_RUNNER: github-${{ matrix.os }}
+        run: pnpm bench --pass-with-no-tests $SPEC
       - uses: actions/upload-artifact@v5
         if: always()
         with:
@@ -69,15 +145,9 @@ jobs:
           if-no-files-found: ignore
           retention-days: 90
       - uses: actions/upload-artifact@v5
-        if: always()
-        with:
-          name: screenshots-${{ matrix.os }}
-          path: e2e/__screenshots__/
-          retention-days: 30
-      - uses: actions/upload-artifact@v5
         if: failure()
         with:
-          name: playwright-report-${{ matrix.os }}
+          name: bench-report-${{ matrix.os }}
           path: playwright-report/
           retention-days: 7
 
@@ -85,6 +155,7 @@ jobs:
   # then the Android benchmarks (NF-01, NF-02 mobile, NF-03: e2e/bench-android.spec.ts) against the
   # `github-android-emulator` baseline; without one they record their results and check the limits.
   android:
+    if: github.event_name != 'workflow_dispatch' || contains(inputs.jobs, 'android')
     runs-on: ubuntu-latest
     timeout-minutes: 100
     steps:
@@ -138,6 +209,7 @@ jobs:
 
   # Phase 3d gate: the mobile fixture on the iOS Simulator (e2e/mobile-ios.spec.ts).
   ios:
+    if: github.event_name != 'workflow_dispatch' || contains(inputs.jobs, 'ios')
     runs-on: macos-26
     timeout-minutes: 60
     steps:
@@ -162,6 +234,7 @@ jobs:
   # PF-03 / PF-07: real installers for each OS from the desktop fixture, built on that OS (V8
   # bytecode and the SDL binding match the machine), plus the signing plan in dry-run mode.
   desktop-packages:
+    if: github.event_name != 'workflow_dispatch' || contains(inputs.jobs, 'desktop-packages')
     strategy:
       fail-fast: false
       matrix:

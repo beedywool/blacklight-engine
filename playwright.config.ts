@@ -4,8 +4,10 @@ export default defineConfig({
   testDir: 'e2e',
   timeout: 180_000,
   fullyParallel: false,
-  // Specs start their own builds and servers; more workers than this overload busy machines.
-  workers: 2,
+  // Specs start their own builds and servers; more workers than this overload busy machines. CI
+  // runs one at a time on each shard (.github/workflows/ci.yml): hosted runners have few CPUs and
+  // draw WebGL in software, so two specs side by side miss their timeouts.
+  workers: process.env.CI ? 1 : 2,
   retries: process.env.CI ? 1 : 0,
   reporter: process.env.CI ? [['github'], ['html', { open: 'never' }]] : 'list',
   use: { trace: 'retain-on-failure' },
