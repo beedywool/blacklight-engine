@@ -71,26 +71,62 @@ const cpuMs = (): number => {
 };
 
 /**
- * `variant` CPU time / `plain` CPU time, each summed over 40 rounds in which both run back to back
- * (in alternating order), so a slow stretch of the runner falls on both sides alike. Sums rather
- * than per-round ratios: Windows counts thread time in 15.6 ms ticks, coarse for one ~30 ms round
- * but not for 40 of them. The rounds start after both sides have run for 3 s: V8 optimises hot
- * functions on a background thread, and on a busy runner that thread finishes seconds late, so
- * early rounds would time the variant's unoptimised code (×1.27 for code that costs ×1.02 once
- * optimised, with `--concurrent-recompilation-delay=1500`).
+ * Smallest step the CPU-time clock moves by, in ms: about 0.001 on Linux and macOS, one
+ * 15.6 ms scheduler tick on Windows (GetThreadTimes). Measured by spinning until the clock has
+ * moved 8 times.
  */
-function slowdown(plain: Run, variant: Run): { ratio: number; plainMs: number; ratios: number[] } {
-  const time = (run: Run) => {
-    const start = cpuMs();
-    run(600);
-    return cpuMs() - start;
-  };
+function clockResolutionMs(): number {
+  let last = cpuMs();
+  const first = last;
+  let steps = 0;
+  const deadline = performance.now() + 2000;
+  while (steps < 8 && performance.now() < deadline) {
+    const now = cpuMs();
+    if (now !== last) {
+      steps++;
+      last = now;
+    }
+  }
+  return steps ? (last - first) / steps : 16;
+}
+
+/**
+ * `variant` CPU time / `plain` CPU time, each summed over interleaved rounds in which both run
+ * back to back (in alternating order), so a slow stretch of the runner falls on both sides alike.
+ *
+ * A round runs as many steps as it takes to last 100 clock steps: Windows counts thread time in
+ * 15.6 ms ticks, and ~15 ms rounds there read as 0, 1 or 2 ticks; with both sides alternating at
+ * the tick period the error does not average out (×1.25 summed over 40 rounds, run 41320068995).
+ * At 100 ticks per round a tick is at most 1 % of it. The round count follows the round length
+ * (40 rounds of ~10 ms on Linux/macOS, 8 rounds of ~1.6 s on Windows).
+ *
+ * The rounds start after both sides have run for 3 s: V8 optimises hot functions on a background
+ * thread, and on a busy runner that thread finishes seconds late, so early rounds would time the
+ * variant's unoptimised code (×1.27 for code that costs ×1.02 once optimised, with
+ * `--concurrent-recompilation-delay=1500`).
+ */
+function slowdown(
+  plain: Run,
+  variant: Run,
+): { ratio: number; plainMs: number; ratios: number[]; steps: number; resolutionMs: number } {
   const warmUpEnd = performance.now() + 3000;
   for (let i = 0; i < 10 || performance.now() < warmUpEnd; i++) {
-    time(plain);
-    time(variant);
+    plain(600);
+    variant(600);
   }
-  const ROUNDS = 40;
+  const resolutionMs = clockResolutionMs();
+  // Wall time of 600 plain steps (high resolution), only to size the rounds.
+  const sizing = performance.now();
+  for (let i = 0; i < 5; i++) plain(600);
+  const msPer600 = Math.max((performance.now() - sizing) / 5, 0.01);
+  const steps = Math.max(600, Math.ceil((600 * 100 * resolutionMs) / msPer600));
+  const roundMs = (msPer600 * steps) / 600;
+  const ROUNDS = Math.min(40, Math.max(8, Math.floor(12_000 / roundMs)));
+  const time = (run: Run) => {
+    const start = cpuMs();
+    run(steps);
+    return cpuMs() - start;
+  };
   let plainTotal = 0;
   let variantTotal = 0;
   const ratios: number[] = [];
@@ -108,26 +144,32 @@ function slowdown(plain: Run, variant: Run): { ratio: number; plainMs: number; r
     variantTotal += variantMs;
     ratios.push(variantMs / plainMs);
   }
-  return { ratio: variantTotal / plainTotal, plainMs: plainTotal / ROUNDS, ratios };
+  return {
+    ratio: variantTotal / plainTotal,
+    plainMs: plainTotal / ROUNDS,
+    ratios,
+    steps,
+    resolutionMs,
+  };
 }
 
 describe('obfuscation cost (SEC-10)', () => {
   it(
     'costs at most 10 % at the default level (low), same results',
-    { timeout: 120_000 },
+    { timeout: 180_000 },
     async () => {
       const plain = compile(WORKLOAD);
       const low = compile(await obfuscate(WORKLOAD, 'low'));
       const medium = compile(await obfuscate(WORKLOAD, 'medium'));
       expect(low(600)).toBe(plain(600));
       expect(medium(600)).toBe(plain(600));
-      const { ratio, plainMs, ratios } = slowdown(plain, low);
+      const { ratio, plainMs, ratios, steps, resolutionMs } = slowdown(plain, low);
       expect(
         ratio,
-        `per-round CPU ratios ${ratios.map((r) => r.toFixed(2)).join(' ')}`,
+        `${ratios.length} rounds of ${steps} steps (plain ${plainMs.toFixed(1)} ms CPU, clock step ${resolutionMs.toFixed(3)} ms), per-round CPU ratios ${ratios.map((r) => r.toFixed(3)).join(' ')}`,
       ).toBeLessThanOrEqual(1.1);
       console.log(
-        `[SEC-10] plain ${plainMs.toFixed(1)} ms CPU, low ×${ratio.toFixed(2)}, medium ×${slowdown(plain, medium).ratio.toFixed(2)}`,
+        `[SEC-10] ${ratios.length} rounds × ${steps} steps, plain ${plainMs.toFixed(1)} ms CPU, clock step ${resolutionMs.toFixed(3)} ms, low ×${ratio.toFixed(3)}, medium ×${slowdown(plain, medium).ratio.toFixed(3)}`,
       );
     },
   );
