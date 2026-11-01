@@ -13,6 +13,7 @@ import Toggle from '../src/widgets/Toggle.vue';
 import Tooltip from '../src/widgets/Tooltip.vue';
 import Gauge from '../src/widgets/Gauge.vue';
 import { toast, toasts } from '../src/widgets/toast';
+import { accessibility } from '../src/a11y';
 import { Timeline } from '../src/timeline';
 import { installUi, place, settle } from './helpers';
 
@@ -218,5 +219,41 @@ describe('Timeline on the game clock', () => {
     await expect(done).resolves.toBeUndefined();
     expect(first.playing).toBe(false);
     expect(second.playing).toBe(true);
+  });
+});
+
+describe('Timeline with reduced motion', () => {
+  it('shows the end state at once and resolves on the next frame, so a loop lets frames run', async () => {
+    const { game } = installUi();
+    accessibility.reducedMotion = 'on';
+    try {
+      const element = document.createElement('div');
+      const log: string[] = [];
+      const loop = new Timeline(game, 'game')
+        .to(element, { opacity: [0, 1] }, { duration: 0.5 })
+        .call(() => log.push('cue'), 0.25);
+      let frames = 0;
+      let counting = true;
+      const count = () => {
+        frames++;
+        if (counting) requestAnimationFrame(count);
+      };
+      requestAnimationFrame(count);
+      let plays = 0;
+      while (plays < 3) {
+        const done = loop.play();
+        expect(log).toHaveLength(plays + 1);
+        expect(loop.playing).toBe(true);
+        await done;
+        plays++;
+      }
+      counting = false;
+      expect(loop.playing).toBe(false);
+      expect(element.style.opacity).toBe('1');
+      // Every play waited for a frame: before the fix, the loop ran without ever yielding.
+      expect(frames).toBeGreaterThanOrEqual(2);
+    } finally {
+      accessibility.reducedMotion = 'system';
+    }
   });
 });

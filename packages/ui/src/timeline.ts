@@ -191,10 +191,13 @@ export class Timeline {
     };
     const finished = new Promise<void>((resolve) => (this.done = resolve));
     if (prefersReducedMotion()) {
-      // Reduced motion: show the end state at once, still running every cue in order.
+      // Reduced motion: show the end state at once, still running every cue in order. The
+      // promise resolves on the next frame, not at once: a timeline played in a loop
+      // (`while (shown) await idle.play()`) would otherwise never let the page draw or answer.
       controls.complete();
       for (const cue of pending.splice(0)) if (!cue.sound) cue.run();
-      this.finish();
+      const frame = requestAnimationFrame(() => this.finish());
+      this.stopClock = () => cancelAnimationFrame(frame);
       return finished;
     }
     if (this.clock === 'game' && this.game) {
