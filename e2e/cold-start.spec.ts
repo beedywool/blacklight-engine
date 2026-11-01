@@ -49,8 +49,11 @@ const LAUNCHES = Number(process.env.BLACKLIGHT_BENCH_LAUNCHES ?? 9);
 const TEMPLATES = ['party-game', 'visual-novel'] as const;
 const root = resolve(import.meta.dirname, '..');
 const os = process.platform === 'win32' ? 'win' : process.platform === 'darwin' ? 'mac' : 'linux';
-// Linux: never wait on the desktop's keyring; CI has none anyway.
-const KEYRING = os === 'linux' ? ['--password-store=basic'] : [];
+// Never wait on the OS keystore: a prompt would hang the test and CI has nobody to answer it.
+// Linux: the desktop's keyring (CI has none); macOS: the login Keychain, which a headless runner
+// leaves the save key's first read waiting on (the real Keychain is in MANUAL_TESTS.md).
+const KEYRING =
+  os === 'linux' ? ['--password-store=basic'] : os === 'mac' ? ['--use-mock-keychain'] : [];
 const MARK = 'blacklight:interactive';
 
 type Launch = { coldStartMs: number; navigationMs: number; pageMs: number };

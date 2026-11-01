@@ -31,8 +31,11 @@ const electronBinary = createRequire(join(root, 'packages/native/package.json'))
   'electron',
 ) as string;
 const GAME_ID = 'dev.blacklight.fixture.desktop';
-// Linux: never wait on the desktop's keyring (a prompt would hang the test); CI has none anyway.
-const KEYRING = os === 'linux' ? ['--password-store=basic'] : [];
+// Never wait on the OS keystore: a prompt would hang the test and CI has nobody to answer it.
+// Linux: the desktop's keyring (CI has none); macOS: the login Keychain, which a headless runner
+// leaves the save key's first read waiting on (the real Keychain is in MANUAL_TESTS.md).
+const KEYRING =
+  os === 'linux' ? ['--password-store=basic'] : os === 'mac' ? ['--use-mock-keychain'] : [];
 
 /** Environment that puts the OS data folder (SV-02) in a temporary folder. */
 function sandbox(): { env: Record<string, string>; dataDir: string; dispose(): void } {
