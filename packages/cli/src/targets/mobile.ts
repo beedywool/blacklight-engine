@@ -379,7 +379,12 @@ export async function buildIos(options: TargetOptions): Promise<string | undefin
     'iphonesimulator',
     '-derivedDataPath',
     derived,
-    'CODE_SIGNING_ALLOWED=NO',
+    // Ad-hoc signed ("Sign to Run Locally"), no team needed. An unsigned app has no
+    // application-identifier entitlement, and the Simulator's Keychain then refuses every item:
+    // the save key could not be stored (capacitor-secure-storage-plugin's "error").
+    'CODE_SIGN_STYLE=Manual',
+    'CODE_SIGN_IDENTITY=-',
+    'DEVELOPMENT_TEAM=',
     'build',
   ];
   const archive = join(derived, 'App.xcarchive');
