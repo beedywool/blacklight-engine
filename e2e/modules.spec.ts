@@ -199,9 +199,27 @@ test('modules run in the browser: SQLite persists, OIDC login links the account'
     const { sqlite } = window.blacklight.modules;
     await sqlite.execute('INSERT INTO scores VALUES (?, ?)', ['ann', 1200]);
     await sqlite.execute('INSERT INTO scores VALUES (?, ?)', ['bob', 900]);
-    // Written to OPFS shortly after each change.
-    await new Promise((done) => setTimeout(done, 300));
   });
+  // Written to OPFS shortly after each change: wait until the file holds the last row (a fixed
+  // delay is too short on a loaded machine), then prove the reload reads it back.
+  await expect
+    .poll(() =>
+      page.evaluate(async () => {
+        type Folder = AsyncIterable<[string, FileSystemHandle]>;
+        const root = await navigator.storage.getDirectory();
+        for await (const [name, folder] of root as unknown as Folder) {
+          if (!name.startsWith('blacklight-') || folder.kind !== 'directory') continue;
+          for await (const [file, handle] of folder as unknown as Folder) {
+            if (handle.kind !== 'file') continue;
+            const data = await (await (handle as FileSystemFileHandle).getFile()).arrayBuffer();
+            if (file !== '.probe' && new TextDecoder('latin1').decode(data).includes('bob'))
+              return true;
+          }
+        }
+        return false;
+      }),
+    )
+    .toBe(true);
   await page.reload();
   await ready();
   const rows = await page.evaluate(() =>

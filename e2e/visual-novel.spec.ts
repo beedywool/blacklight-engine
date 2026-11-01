@@ -210,12 +210,23 @@ test('new game: IME name, cutscene with subtitles, iris transition, Ink dialogue
     )
     .toBe('rooftop');
 
-  // `# fx: glitch` pulses a shader on the game.
+  // `# fx: glitch` pulses a shader on the game. The pulse lasts 0.6 s of wall-clock time, which a
+  // poll of `fx.active` can miss on a loaded machine: record the effects as they are added.
+  await page.evaluate(() => {
+    const fx = (window.blacklight.ui as UiRuntime).fx;
+    const added: unknown[] = [];
+    const add = fx.add.bind(fx);
+    fx.add = (effect, options) => {
+      added.push(effect);
+      return add(effect, options);
+    };
+    Object.assign(window, { __fxAdded: added });
+  });
   await nextLine(page);
   await expect.poll(() => dialogueText(page)).toContain('flickers');
   await expect
-    .poll(() => page.evaluate(() => (window.blacklight.ui as UiRuntime).fx.active.length))
-    .toBeGreaterThan(0);
+    .poll(() => page.evaluate(() => (window as unknown as { __fxAdded: unknown[] }).__fxAdded))
+    .toContain('glitch');
 
   // Backlog lists the lines and the chosen choice.
   await page.getByRole('button', { name: 'LOG' }).click();
@@ -258,9 +269,10 @@ test('Japanese and Arabic: hot language switch, CJK line breaking, right-to-left
   await expect.poll(() => ui(page)).toBe('ja');
   await expect(page.locator('.bl-ui')).toHaveAttribute('lang', 'ja');
   await expect(page.locator('.bl-settings__title')).toHaveText('設定');
-  await page.keyboard.press('Escape');
+  // One screen per Escape: two presses within one frame would count as one.
   await page.keyboard.press('Escape');
   await expect(page.locator('.bl-settings')).toHaveCount(0);
+  await page.keyboard.press('Escape');
   await expect(page.locator('.bl-pause')).toHaveCount(0);
 
   // The story continues in Japanese from the next line, with word-level line breaks.
