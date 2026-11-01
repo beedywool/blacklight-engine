@@ -248,7 +248,7 @@ async function attach(id: string): Promise<Page> {
   let browser: Browser | undefined;
   try {
     // noDefaults: a WebView has no download or browser-context management (Playwright's default
-    // download setup is refused), and the measured page keeps its own focus and media settings.
+    // download setup is refused). That also skips Playwright's default media emulation, see below.
     browser = await chromium.connectOverCDP(`http://127.0.0.1:${port}`, {
       noDefaults: true,
       timeout: 60_000,
@@ -258,7 +258,18 @@ async function attach(id: string): Promise<Page> {
     // Right after `am start` the page may not exist yet, or not have navigated to the app.
     for (let tries = 0; ; tries++) {
       const page = context!.pages().find((open) => open.url().startsWith('https://localhost/'));
-      if (page) return page;
+      if (page) {
+        // GitHub's emulator runs with system animations off, which a WebView reports as
+        // `prefers-reduced-motion: reduce`: the UI would then skip its animations and NF-01 would
+        // not measure an animated UI screen. The page sees no preference, as it did under
+        // Playwright's default media emulation (device.webView); the session stays open, since
+        // closing it drops the emulation.
+        const session = await context!.newCDPSession(page);
+        await session.send('Emulation.setEmulatedMedia', {
+          features: [{ name: 'prefers-reduced-motion', value: 'no-preference' }],
+        });
+        return page;
+      }
       if (tries === 120)
         throw new Error(
           `pages: ${
@@ -306,6 +317,89 @@ function memory(id: string): { appMb: number; rendererMb: number; totalMb: numbe
   return { appMb: round(appMb), rendererMb: round(rendererMb), totalMb: round(appMb + rendererMb) };
 }
 
+/**
+ * What the device shows when the page stops reporting: whether the app still runs, which
+ * processes use the CPU (a renderer at 100 % runs, one at 0 % waits), whether the page answers a
+ * DevTools connection of its own (outside Playwright's), the activity and window that have focus,
+ * and the last WebView and system log lines. The screen goes to the test's attachments.
+ */
+async function stallReport(id: string): Promise<string> {
+  const shell = (command: string) =>
+    spawnSync('adb', ['shell', command], { encoding: 'utf8', timeout: 20_000 }).stdout ?? '';
+  const pid = shell(`pidof ${id}`).trim();
+  const top = shell('top -b -n 2 -d 2 -m 10 -s 4 -o PID,USER,S,%CPU,TIME+,ARGS')
+    .split(/\n(?=Tasks:)/)
+    .pop()!
+    .trim();
+  const focus = shell('dumpsys window | grep -E "mCurrentFocus|mFocusedApp"').trim();
+  let page = 'no DevTools socket';
+  if (pid) {
+    const socket = `webview_devtools_remote_${pid.split(/\s+/)[0]}`;
+    const port = adb('forward', 'tcp:0', `localabstract:${socket}`).trim();
+    try {
+      const list = (await (
+        await fetch(`http://127.0.0.1:${port}/json/list`, { signal: AbortSignal.timeout(5000) })
+      ).json()) as { type: string; url: string; webSocketDebuggerUrl?: string }[];
+      const target = list.find((t) => t.type === 'page' && t.webSocketDebuggerUrl);
+      page = target
+        ? await new Promise<string>((done) => {
+            const ws = new WebSocket(
+              target.webSocketDebuggerUrl!.replace(/^ws:\/\/[^/]+/, `ws://127.0.0.1:${port}`),
+            );
+            const timer = setTimeout(() => {
+              ws.close();
+              done('no answer to Runtime.evaluate within 10 s');
+            }, 10_000);
+            ws.onopen = () =>
+              ws.send(
+                JSON.stringify({
+                  id: 1,
+                  method: 'Runtime.evaluate',
+                  params: {
+                    expression: `JSON.stringify({ state: document.querySelector('#game')?.dataset.blacklightState, hidden: document.hidden, focus: document.hasFocus(), now: Math.round(performance.now()) })`,
+                  },
+                }),
+              );
+            ws.onmessage = (event) => {
+              clearTimeout(timer);
+              ws.close();
+              done(`answers ${String(event.data).slice(0, 300)}`);
+            };
+            ws.onerror = () => {
+              clearTimeout(timer);
+              done('WebSocket error');
+            };
+          })
+        : `no page target in ${JSON.stringify(list).slice(0, 500)}`;
+    } catch (error) {
+      page = `no answer (${(error as Error).message})`;
+    } finally {
+      spawnSync('adb', ['forward', '--remove', `tcp:${port}`]);
+    }
+  }
+  const log = spawnSync('adb', ['logcat', '-d', '-t', '2000'], { encoding: 'utf8' })
+    .stdout.split('\n')
+    .filter(
+      (line) =>
+        !/ artd /.test(line) &&
+        /chromium|cr_|lowmemorykiller|ANR in|not responding|FATAL|Killing|died|Skipped \d+ frames/i.test(
+          line,
+        ),
+    )
+    .slice(-60)
+    .join('\n');
+  const screen = spawnSync('adb', ['exec-out', 'screencap', '-p'], { maxBuffer: 64 * 2 ** 20 });
+  if (screen.status === 0)
+    await test.info().attach('device screen', { body: screen.stdout, contentType: 'image/png' });
+  return [
+    `app pid: ${pid || 'none'}`,
+    `focus: ${focus}`,
+    `page over its own DevTools connection: ${page}`,
+    `top:\n${top}`,
+    `log:\n${log}`,
+  ].join('\n');
+}
+
 // NF-01 ------------------------------------------------------------------------------------------
 
 type BenchRun = Record<string, unknown>;
@@ -322,7 +416,13 @@ async function measureBench(query?: string): Promise<BenchRun> {
   const errors: string[] = [];
   page.on('pageerror', (error) => errors.push(error.message));
   if (query !== undefined) await page.goto(`https://localhost/${query}`);
-  await expect(page.locator('#game')).toHaveAttribute('data-bench', /frames/, { timeout: 60_000 });
+  try {
+    await expect(page.locator('#game')).toHaveAttribute('data-bench', /frames/, {
+      timeout: 60_000,
+    });
+  } catch (error) {
+    throw new Error(`${(error as Error).message}\n${await stallReport(id)}`, { cause: error });
+  }
   const result = (await page.evaluate(() => window.blacklightBench)) as BenchRun;
   // The scene's heapMb is `performance.memory` without a GC and in coarse steps (no
   // --enable-precise-memory-info in a WebView): kept as heapNoGcMb.
