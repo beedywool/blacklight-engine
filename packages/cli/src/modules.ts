@@ -261,13 +261,22 @@ export function moduleDependencies(root: string, modules: ResolvedModule[]): str
   return [...include].sort();
 }
 
-/** `realpathSync`, but a path that no longer exists is compared as written. */
+/**
+ * The OS's own spelling of `path` (`realpathSync.native`: symlinks and Windows 8.3 short names
+ * expanded); a path that no longer exists is returned as written.
+ */
 function realpath(path: string): string {
   try {
-    return realpathSync(path);
+    return realpathSync.native(path);
   } catch {
     return resolve(path);
   }
+}
+
+/** {@link realpath}, lower-cased on Windows, whose file system ignores case: for comparisons. */
+function pathKey(path: string): string {
+  const real = realpath(path);
+  return process.platform === 'win32' ? real.toLowerCase() : real;
 }
 
 /**
@@ -276,17 +285,18 @@ function realpath(path: string): string {
  */
 export function blacklightModules(options: { root: string }): Plugin {
   // Real paths on both sides: on macOS a game under `/var/folders` (a symlink to
-  // `/private/var/folders`) and on any OS a repository reached through a symlink would otherwise
-  // compare two spellings of the same directory and never match, which silently lets Node imports
-  // through to Vite's browser stubs (MOD-04).
+  // `/private/var/folders`), on Windows a short 8.3 name (`C:\Users\RUNNER~1`, what `os.tmpdir()`
+  // returns on GitHub's runners) and on any OS a repository reached through a symlink would
+  // otherwise compare two spellings of the same directory and never match, which silently lets
+  // Node imports through to Vite's browser stubs (MOD-04). Only the native call expands short names.
   const root = realpath(options.root);
+  const rootKey = pathKey(root);
   const isGameFile = (file: string | undefined): file is string =>
     !!file &&
     !file.startsWith('\0') &&
-    realpath(file).startsWith(root + sep) &&
-    !file.includes(`${sep}node_modules${sep}`) &&
-    !file.includes('/node_modules/') &&
-    !file.includes(`${sep}.blacklight${sep}`);
+    pathKey(file).startsWith(rootKey + sep) &&
+    // Vite writes ids with `/` on every OS.
+    !/[\\/](node_modules|\.blacklight)[\\/]/.test(file);
   let server: ViteDevServer | undefined;
 
   return {
@@ -318,7 +328,7 @@ export function blacklightModules(options: { root: string }): Plugin {
       if (!isGameFile(importer) || source.startsWith('.') || source.startsWith('/')) return null;
       if (source.startsWith('virtual:') || source.startsWith('@blacklight/')) return null;
       if (isNodeBuiltin(source) || isNodeOnlyPackage(packageName(source), importer)) {
-        const message = nodeImportError(source, importer, root);
+        const message = nodeImportError(source, realpath(importer), root);
         if (server) server.config.logger.error(message);
         this.error(message);
       }
