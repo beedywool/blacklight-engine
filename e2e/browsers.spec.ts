@@ -46,13 +46,49 @@ const BROWSERS: [string, BrowserType][] = [
   ['webkit', webkit],
 ];
 
+/** The WebGL 2 renderer string of a blank page, `undefined` when the browser offers no WebGL 2. */
+async function webgl2(browser: Browser): Promise<string | undefined> {
+  const page = await browser.newPage();
+  try {
+    return await page.evaluate(() => {
+      const gl = document.createElement('canvas').getContext('webgl2');
+      if (!gl) return undefined;
+      const info = gl.getExtension('WEBGL_debug_renderer_info');
+      const name = String(gl.getParameter(info ? info.UNMASKED_RENDERER_WEBGL : gl.RENDERER));
+      gl.getExtension('WEBGL_lose_context')?.loseContext();
+      return name;
+    });
+  } finally {
+    await page.close();
+  }
+}
+
 async function launch(type: BrowserType): Promise<Browser | string> {
   // Playwright's WebKit for Windows is not Safari and has no Web Audio (`AudioContext` is
   // undefined); Safari's engine is checked on macOS and Linux.
   if (type.name() === 'webkit' && process.platform === 'win32')
     return 'Playwright’s WebKit build for Windows has no Web Audio; WebKit runs on macOS and Linux';
   try {
-    return await type.launch();
+    // Firefox on GitHub's GPU-less Windows runner sometimes starts without WebGL 2 at all (the
+    // 3D template then rightly reports that its KTX2 textures need it). That is the machine, not
+    // the build under test: a second browser process gets another chance, and a browser that
+    // still has no WebGL 2 fails with that reason instead of the template's error.
+    for (let attempt = 1; ; attempt++) {
+      const browser = await type.launch();
+      const renderer = await webgl2(browser);
+      if (renderer) {
+        test
+          .info()
+          .annotations.push({ type: 'webgl2', description: `${type.name()}: ${renderer}` });
+        return browser;
+      }
+      await browser.close();
+      if (attempt === 2)
+        throw new Error(
+          `${type.name()} started twice without WebGL 2 on this machine (getContext('webgl2') returned null on a blank page): the browser cannot run the templates here.`,
+        );
+      console.log(`[browsers] ${type.name()} started without WebGL 2; launching it again`);
+    }
   } catch (error) {
     const message = String(error);
     if (/missing dependencies|Executable doesn't exist/i.test(message)) {
