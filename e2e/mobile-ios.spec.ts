@@ -1,11 +1,12 @@
 // Phase 3d gate on the iOS Simulator (macOS with Xcode, BLACKLIGHT_E2E_IOS=1; CI runs it in the
 // ios job). Playwright cannot attach to WKWebView, so the fixture reports to `status.json` in its
-// app container: the app launches with its embedded files, a deep link (`<id>://tap`) makes an
-// encrypted save with the Keychain key, and the save is read back after a relaunch. Real touches
-// on iOS are in MANUAL_TESTS.md; the touch path is the same JavaScript the web and Android runs
-// check.
+// app container: the app launches with its embedded files, a tap requested through a file in its
+// container makes an encrypted save with the Keychain key, and the save is read back after a
+// relaunch. Real touches and the `<id>://tap` deep link (iOS asks "Open in …?" first, which nothing
+// can confirm from `simctl`) are in MANUAL_TESTS.md; the touch path is the same JavaScript the web
+// and Android runs check.
 import { spawnSync } from 'node:child_process';
-import { existsSync, mkdtempSync, readFileSync, rmSync, statSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { expect, test } from '@playwright/test';
@@ -68,8 +69,8 @@ async function until(
       )
       .toBe(true);
   } catch (error) {
-    // Without the last status the failure says only "false", which cannot tell a deep link that
-    // never arrived from a save that failed after it did. The screen and the app's log tell what
+    // Without the last status the failure says only "false", which cannot tell a tap that never
+    // arrived from a save that failed after it did. The screen and the app's log tell what
     // the status cannot (a system alert, a crash, a WebView error).
     const screen = screenshot();
     if (screen) await test.info().attach('failure.png', { body: screen, contentType: 'image/png' });
@@ -124,12 +125,14 @@ test('the fixture launches, saves with the Keychain key and reads the save after
   const first = await until((s) => s.restored === 'none' && s.platform === 'ios');
   expect(first.location).toMatch(/^file:\/\/.*\/Documents\/blacklight$/);
 
-  simctl('openurl', udid, `${ID}://tap`);
-  await until((s) => s.saved === '1' && s.device === 'link');
-  const save = join(
-    simctl('get_app_container', udid, ID, 'data'),
-    'Documents/blacklight/saves/taps.sav',
-  );
+  // The fixture counts a `tap.request` file as a tap when it starts.
+  simctl('terminate', udid, ID);
+  const files = join(simctl('get_app_container', udid, ID, 'data'), 'Documents/blacklight');
+  writeFileSync(join(files, 'tap.request'), '1');
+  simctl('launch', udid, ID);
+  await until((s) => s.saved === '1' && s.device === 'file');
+  expect(existsSync(join(files, 'tap.request'))).toBe(false);
+  const save = join(files, 'saves/taps.sav');
   expect(statSync(save).size).toBe(12 + 1 + 16);
 
   simctl('terminate', udid, ID);

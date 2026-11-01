@@ -1,6 +1,7 @@
 import { Graphics, Scene } from '@blacklight/core';
 
 const SAVE = 'saves/taps.sav';
+const TAP_REQUEST = 'tap.request';
 
 /**
  * Counts taps and back presses. Every tap is saved, encrypted with the platform save key, so a
@@ -37,6 +38,13 @@ export default class Play extends Scene {
     this.game.platform.on('deeplink', (link) => {
       if ((link as { url: string }).url.endsWith('://tap')) this.tap('link');
     });
+    // A `tap.request` file in the platform files counts as one tap at launch: the iOS Simulator
+    // test writes it into the app container, because iOS asks "Open in …?" before it hands a
+    // custom-scheme link to the app and nothing can confirm that prompt from `simctl`.
+    if (await this.game.platform.files.read(TAP_REQUEST)) {
+      await this.game.platform.files.remove(TAP_REQUEST);
+      this.tap('file');
+    }
     await this.openDatabase();
   }
 

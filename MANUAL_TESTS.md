@@ -71,7 +71,7 @@ Enable developer options and USB debugging, connect the phone, check `adb device
 2. Airplane mode, kill the app, reopen. Expected: starts the same way.
 3. Tap three times. Expected: the disc gets lighter with each tap.
 4. Kill the app from the app switcher, reopen. Expected: same lightness (save read back with the Keychain key).
-5. Open `dev.blacklight.fixture.mobile://tap` in Safari. Expected: the app opens and the disc gets lighter once.
+5. Open `dev.blacklight.fixture.mobile://tap` in Safari, tap Open on the "Open in “Mobile Gate”?" prompt. Expected: the app opens and the disc gets lighter once. (The deep link is checked here only: the Simulator test cannot confirm that prompt.)
 6. Home, wait, reopen. Expected: the game resumes, no audio while in the background; the screen does not dim while playing.
 7. `persona-menu` template on the phone: menus fit inside the safe area (notch / Dynamic Island, home indicator).
 8. Release: `APPLE_TEAM_ID=<team> blacklight build --target ios --release`. Expected: `release/ios/*.ipa`; uploading it with Transporter succeeds; Safari's Develop menu on the Mac does not list the app's web view.
