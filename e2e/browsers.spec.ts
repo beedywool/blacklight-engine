@@ -24,7 +24,7 @@ const { PNG } = require('pngjs') as {
 };
 
 /**
- * Distinct colors of a screenshot of the canvas, every pixel: a blank or failed canvas has one or
+ * Distinct colors of every pixel of a screenshot of the canvas area: a blank or failed game has one or
  * two. (A coarse grid of samples could miss everything a small first screen draws, depending on
  * where the OS's fonts put the text.)
  */
@@ -47,6 +47,10 @@ const BROWSERS: [string, BrowserType][] = [
 ];
 
 async function launch(type: BrowserType): Promise<Browser | string> {
+  // Playwright's WebKit for Windows is not Safari and has no Web Audio (`AudioContext` is
+  // undefined); Safari's engine is checked on macOS and Linux.
+  if (type.name() === 'webkit' && process.platform === 'win32')
+    return 'Playwright’s WebKit build for Windows has no Web Audio; WebKit runs on macOS and Linux';
   try {
     return await type.launch();
   } catch (error) {
@@ -90,7 +94,7 @@ templates.forEach((template, index) => {
 
     test.afterAll(() => {
       stop?.();
-      rmSync(work, { recursive: true, force: true });
+      rmSync(work, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
     });
 
     for (const [name, type] of BROWSERS) {
@@ -111,8 +115,11 @@ templates.forEach((template, index) => {
           // The game draws: WebGL works in this browser and the first screen is on it.
           const canvas = page.locator('#game canvas').first();
           await expect(canvas).toBeVisible();
+          // A page screenshot clipped to the canvas: an element screenshot first waits for two
+          // identical animation frames, which a busy software GPU (Windows runners) never delivered.
+          const clip = (await canvas.boundingBox())!;
           await expect
-            .poll(async () => colors(await canvas.screenshot()), { timeout: 20_000 })
+            .poll(async () => colors(await page.screenshot({ clip })), { timeout: 20_000 })
             .toBeGreaterThan(3);
           // Keys and the pointer reach the page without an error, and the game keeps running (Enter
           // may start another scene: the state is empty while it loads).
