@@ -1,5 +1,5 @@
 import { spawn, type ChildProcess } from 'node:child_process';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, readlinkSync, realpathSync } from 'node:fs';
 import { join } from 'node:path';
 import * as vscode from 'vscode';
 import type { BlacklightApi } from '../../src/extension';
@@ -78,9 +78,38 @@ export async function devServer(): Promise<{ url: string; port: number; token: s
   try {
     await waitFor(() => existsSync(info), 'the dev server', 60_000);
   } catch (error) {
-    throw new Error(`${(error as Error).message}. Its output:\n${serverOutput}`, { cause: error });
+    throw new Error(`${(error as Error).message}. Its output:\n${serverOutput}\n${linkReport()}`, {
+      cause: error,
+    });
   }
   return JSON.parse(readFileSync(info, 'utf8')) as { url: string; port: number; token: string };
+}
+
+/**
+ * How the workspace's node_modules link resolves, for the failure message: on the Windows runner
+ * the dev server could not find `@blacklight/core` through it while the e2e copy of the same
+ * fixture resolves it.
+ */
+function linkReport(): string {
+  const lines: string[] = [];
+  for (const path of [
+    join(workspace, 'node_modules'),
+    join(workspace, 'node_modules', '@blacklight', 'core'),
+    join(workspace, 'node_modules', '@blacklight', 'core', 'package.json'),
+  ]) {
+    const probe = (name: string, read: () => string) => {
+      try {
+        lines.push(`  ${name}: ${read()}`);
+      } catch (error) {
+        lines.push(`  ${name}: ${(error as Error).message}`);
+      }
+    };
+    lines.push(`${path} exists: ${existsSync(path)}`);
+    probe('readlink', () => readlinkSync(path));
+    probe('realpath', () => realpathSync(path));
+    probe('realpath.native', () => realpathSync.native(path));
+  }
+  return lines.join('\n');
 }
 
 export function stopDevServer(): void {

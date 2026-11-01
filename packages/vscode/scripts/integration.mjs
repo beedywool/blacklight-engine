@@ -6,7 +6,7 @@
 // VSCODE_EXECUTABLE=/path/to/code uses an installed VS Code instead of downloading one into
 // .vscode-test/ (about 150 MB).
 import { spawnSync } from 'node:child_process';
-import { cpSync, existsSync, mkdtempSync, realpathSync, rmSync, symlinkSync } from 'node:fs';
+import { cpSync, existsSync, mkdtempSync, rmSync, symlinkSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { runTests } from '@vscode/test-electron';
@@ -39,10 +39,10 @@ for (const [path, hint] of [
   }
 }
 
-// The long spelling of the temporary folder: on the Windows runner tmpdir() is C:\Users\RUNNER~1\…,
-// and the dev server started from that spelling could not resolve the fixture's @blacklight/core
-// through the node_modules junction.
-const work = mkdtempSync(join(realpathSync.native(tmpdir()), 'blacklight-vscode-'));
+const work = mkdtempSync(join(tmpdir(), 'blacklight-vscode-'));
+// VS Code listens on a Unix socket inside its user-data folder, and macOS caps socket paths at
+// 104 bytes: under the runner's /var/folders/…/T/ the path ran over (listen EINVAL). /tmp is short.
+const userData = mkdtempSync(join(process.platform === 'win32' ? tmpdir() : '/tmp', 'blvsc-'));
 const workspace = join(work, 'game');
 cpSync(fixture, workspace, {
   recursive: true,
@@ -71,7 +71,7 @@ try {
       '--disable-gpu',
       '--no-sandbox',
       '--user-data-dir',
-      join(work, 'user-data'),
+      userData,
     ],
   });
 } catch (error) {
@@ -79,5 +79,6 @@ try {
   code = 1;
 } finally {
   rmSync(work, { recursive: true, force: true });
+  rmSync(userData, { recursive: true, force: true });
 }
 process.exit(code);
