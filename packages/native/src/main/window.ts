@@ -39,3 +39,19 @@ export function heightForRatio(content: Size, ratio: number): number | undefined
   const height = Math.round(content.width / ratio);
   return Math.abs(height - content.height) > 1 ? height : undefined;
 }
+
+/**
+ * Display-mode options of the game window. `fullscreenable` is always set: on macOS Electron
+ * disables fullscreen (button, `setFullScreen`) when `fullscreen: false` is passed explicitly, and a
+ * game must be able to switch to fullscreen whatever it starts in.
+ */
+export function windowMode(
+  config: WindowConfig = {},
+  savedFullscreen?: boolean,
+): { fullscreen: boolean; fullscreenable: true; resizable: boolean } {
+  return {
+    fullscreen: savedFullscreen ?? config.fullscreen ?? false,
+    fullscreenable: true,
+    resizable: config.resizable ?? true,
+  };
+}

@@ -21,7 +21,7 @@ import {
 } from '../src/main/registry';
 import { classifyKey, debugSwitches } from '../src/main/security';
 import { v } from '../src/main/validate';
-import { heightForRatio, windowSizes } from '../src/main/window';
+import { heightForRatio, windowMode, windowSizes } from '../src/main/window';
 
 const cleanups: (() => void)[] = [];
 afterEach(() => {
@@ -240,6 +240,17 @@ describe('window and shortcuts (PF-02, SEC-01)', () => {
     expect(minSize).toEqual({ width: 960, height: 540 });
     expect(heightForRatio({ width: 1000, height: 1000 }, 16 / 9)).toBe(563);
     expect(heightForRatio({ width: 1600, height: 900 }, 16 / 9)).toBeUndefined();
+  });
+
+  it('keeps a windowed start fullscreenable (macOS disables it on an explicit fullscreen: false)', () => {
+    expect(windowMode()).toEqual({ fullscreen: false, fullscreenable: true, resizable: true });
+    expect(windowMode({ fullscreen: true, resizable: false })).toEqual({
+      fullscreen: true,
+      fullscreenable: true,
+      resizable: false,
+    });
+    expect(windowMode({ fullscreen: true }, false).fullscreen).toBe(false);
+    expect(windowMode({ resizable: false }, false).fullscreenable).toBe(true);
   });
 
   it('recognizes devtools, reload and fullscreen keys, and debugging switches', () => {

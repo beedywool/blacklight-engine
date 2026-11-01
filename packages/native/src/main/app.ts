@@ -41,7 +41,7 @@ import { startGamepads, type SdlBinding } from './sdl';
 import { classifyKey, debugSwitches } from './security';
 import { startSteam, type Steamworks } from './steam';
 import { v } from './validate';
-import { heightForRatio, windowSizes } from './window';
+import { heightForRatio, windowMode, windowSizes } from './window';
 
 /** Permissions a game page may get; everything else (camera, location, notifications…) is denied. */
 const ALLOWED_PERMISSIONS = new Set(['fullscreen', 'pointerLock', 'clipboard-sanitized-write']);
@@ -369,8 +369,7 @@ export function startApp(options: StartOptions = {}): void {
       minWidth: minSize.width,
       minHeight: minSize.height,
       useContentSize: true,
-      resizable: manifest.window.resizable ?? true,
-      fullscreen: readWindowSettings().fullscreen ?? manifest.window.fullscreen ?? false,
+      ...windowMode(manifest.window, readWindowSettings().fullscreen),
       backgroundColor: '#000000',
       show: false,
       autoHideMenuBar: true,
