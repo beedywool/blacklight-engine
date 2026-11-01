@@ -255,6 +255,18 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm build
+      # Electron and electron-builder's tools come from GitHub releases; a 500 there failed the
+      # macOS package once (run 41304946671). Cached, they are downloaded once per lockfile.
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/electron
+            ~/.cache/electron-builder
+            ~/Library/Caches/electron
+            ~/Library/Caches/electron-builder
+            ~/AppData/Local/electron/Cache
+            ~/AppData/Local/electron-builder/Cache
+          key: electron-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
       - if: runner.os == 'Linux'
         run: xvfb-run -a pnpm --dir e2e/fixtures/desktop exec blacklight build --target linux
       - if: runner.os != 'Linux'
