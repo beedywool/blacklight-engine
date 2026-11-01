@@ -564,9 +564,15 @@ test('PF-05: steam target stages steamworks.js and writes depot scripts; upload 
     // Without a Steam client the app either restarts through Steam (restartAppIfNecessary: it
     // quits with 0) or, when steam_appid.txt is found, runs and logs "Steam is not available".
     // Both prove the addon loaded and was called; the bytecode of that arch ran before it.
-    for (const arch of ['x86_64', 'arm64']) {
+    // The first x86_64 start waits in dyld while Rosetta translates the fused Electron Framework
+    // ahead of time (its bytes are new to this machine): over a minute on a runner, seen with
+    // `sample` (stack in the Rosetta runtime under dyld mapping the framework). Players under
+    // Rosetta pay that once; Intel Macs run the slice natively. The annotation records the time.
+    const startTimeout = { arm64: 60_000, x86_64: 360_000 };
+    for (const arch of ['arm64', 'x86_64'] as const) {
       const box = sandbox();
       writeFileSync(join(box.dir, 'steam_appid.txt'), '480');
+      const started = Date.now();
       const slice = start(
         'arch',
         [`-${arch}`, join(contents, 'MacOS', productName), ...KEYRING],
@@ -577,20 +583,26 @@ test('PF-05: steam target stages steamworks.js and writes depot scripts; upload 
         slice.output().includes('Steam is not available') ||
         (slice.child.exitCode === 0 && !slice.output().includes('steamworks.js is missing'));
       const ok = await expect
-        .poll(loaded, { timeout: 60_000 })
+        .poll(loaded, { timeout: startTimeout[arch] })
         .toBe(true)
         .then(
           () => true,
           () => false,
         );
+      const loadedAt = Date.now();
+      const state = `exit ${slice.child.exitCode}, signal ${slice.child.signalCode}`;
       await slice.stop();
-      expect(ok, `${arch} slice did not load steamworks.js:\n${slice.output()}`).toBe(true);
+      expect(ok, `${arch} slice did not load steamworks.js (${state}):\n${slice.output()}`).toBe(
+        true,
+      );
       expect(slice.output(), `${arch} slice`).not.toContain('steamworks.js is missing');
       test.info().annotations.push({
         type: `steam ${arch}`,
-        description: slice.output().includes('Steam is not available')
-          ? 'addon loaded, Steam not running'
-          : 'addon loaded, restartAppIfNecessary quit the app',
+        description: `${
+          slice.output().includes('Steam is not available')
+            ? 'addon loaded, Steam not running'
+            : 'addon loaded, restartAppIfNecessary quit the app'
+        } (${Math.round((loadedAt - started) / 1000)} s)`,
       });
       box.dispose();
     }
