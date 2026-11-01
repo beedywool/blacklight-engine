@@ -5,8 +5,9 @@
 // on iOS are in MANUAL_TESTS.md; the touch path is the same JavaScript the web and Android runs
 // check.
 import { spawnSync } from 'node:child_process';
-import { existsSync, readFileSync, statSync } from 'node:fs';
-import { join, resolve } from 'node:path';
+import { existsSync, mkdtempSync, readFileSync, rmSync, statSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { dirname, join, resolve } from 'node:path';
 import { expect, test } from '@playwright/test';
 import { run } from './server';
 
@@ -38,6 +39,20 @@ function status(): Record<string, string> | undefined {
   }
 }
 
+/**
+ * The Simulator's screen as PNG bytes. `simctl io screenshot -` gave an empty attachment on the CI
+ * runner, so it goes through a file.
+ */
+function screenshot(): Buffer | undefined {
+  const file = join(mkdtempSync(join(tmpdir(), 'blacklight-ios-')), 'screen.png');
+  const result = spawnSync('xcrun', ['simctl', 'io', udid, 'screenshot', file]);
+  try {
+    return result.status === 0 && existsSync(file) ? readFileSync(file) : undefined;
+  } finally {
+    rmSync(dirname(file), { recursive: true, force: true });
+  }
+}
+
 async function until(
   check: (s: Record<string, string>) => boolean,
 ): Promise<Record<string, string>> {
@@ -56,11 +71,8 @@ async function until(
     // Without the last status the failure says only "false", which cannot tell a deep link that
     // never arrived from a save that failed after it did. The screen and the app's log tell what
     // the status cannot (a system alert, a crash, a WebView error).
-    const screen = spawnSync('xcrun', ['simctl', 'io', udid, 'screenshot', '-'], {
-      maxBuffer: 64 << 20,
-    });
-    if (screen.status === 0)
-      await test.info().attach('failure.png', { body: screen.stdout, contentType: 'image/png' });
+    const screen = screenshot();
+    if (screen) await test.info().attach('failure.png', { body: screen, contentType: 'image/png' });
     const log = spawnSync(
       'xcrun',
       [
@@ -123,9 +135,6 @@ test('the fixture launches, saves with the Keychain key and reads the save after
   simctl('terminate', udid, ID);
   simctl('launch', udid, ID);
   await until((s) => s.restored === '1');
-  await test.info().attach('ios.png', {
-    body: spawnSync('xcrun', ['simctl', 'io', udid, 'screenshot', '-'], { maxBuffer: 64 << 20 })
-      .stdout,
-    contentType: 'image/png',
-  });
+  const screen = screenshot();
+  if (screen) await test.info().attach('ios.png', { body: screen, contentType: 'image/png' });
 });
