@@ -82,8 +82,9 @@ let gpu = 'unknown';
 let webview = 'unknown';
 const installed = new Set<App>();
 
+const serial = process.env.ANDROID_SERIAL ? ['-s', process.env.ANDROID_SERIAL] : [];
+
 function adb(...args: string[]): string {
-  const serial = process.env.ANDROID_SERIAL ? ['-s', process.env.ANDROID_SERIAL] : [];
   const result = spawnSync('adb', [...serial, ...args], { encoding: 'utf8' });
   if (result.status !== 0) throw new Error(`adb ${args.join(' ')}: ${result.stderr}`);
   return result.stdout;
@@ -208,8 +209,37 @@ async function devtoolsReport(socket: string): Promise<string> {
   }
 }
 
-/** DevTools connections of the current launch: closed before the next one (stop) and at the end. */
-const connections: { browser: Browser; port: string }[] = [];
+/**
+ * DevTools connections of the current launch: closed before the next one (stop) and at the end.
+ * `pid` is the app process the connection was made to.
+ */
+const connections: { browser: Browser; port: string; pid: string }[] = [];
+
+/** The app's process id, or '' when it does not run or adb cannot reach the device. */
+function pidOf(id: string): string {
+  const out = spawnSync('adb', [...serial, 'shell', 'pidof', id], { encoding: 'utf8' });
+  return (out.stdout ?? '').trim().split(/\s+/)[0] ?? '';
+}
+
+/**
+ * Why the current launch's DevTools connection closed while the app kept running, or `undefined`
+ * when it did not (still connected, or the app died: a real failure). The connection is a
+ * WebSocket through an adb forward, so it closes with adb's transport to the device: on GitHub's
+ * emulator `adb shell` failed for a moment while the app went on drawing (run 41335821433: no pid,
+ * no `top`, then logcat and the screen fine 2 s later, the bench still on screen). Such a run is
+ * not a measurement; the callers start it again, twice at most.
+ */
+function connectionLost(id: string): string | undefined {
+  const current = connections.at(-1);
+  if (!current || current.browser.isConnected()) return undefined;
+  const state = spawnSync('adb', [...serial, 'wait-for-device', 'get-state'], {
+    encoding: 'utf8',
+    timeout: 30_000,
+  });
+  const pid = pidOf(id);
+  if (pid !== current.pid) return undefined;
+  return `${id}: DevTools connection lost while the app kept running (pid ${pid}, adb state after: ${(state.stdout || state.stderr || 'none').trim()})`;
+}
 
 async function detach(): Promise<void> {
   for (const { browser, port } of connections.splice(0)) {
@@ -244,6 +274,7 @@ async function devtoolsSocket(id: string): Promise<string> {
  */
 async function attach(id: string): Promise<Page> {
   const socket = await devtoolsSocket(id);
+  const pid = socket.slice('webview_devtools_remote_'.length);
   const port = adb('forward', 'tcp:0', `localabstract:${socket}`).trim();
   let browser: Browser | undefined;
   try {
@@ -253,7 +284,7 @@ async function attach(id: string): Promise<Page> {
       noDefaults: true,
       timeout: 60_000,
     });
-    connections.push({ browser, port });
+    connections.push({ browser, port, pid });
     const [context] = browser.contexts();
     // Right after `am start` the page may not exist yet, or not have navigated to the app.
     for (let tries = 0; ; tries++) {
@@ -324,9 +355,17 @@ function memory(id: string): { appMb: number; rendererMb: number; totalMb: numbe
  * and the last WebView and system log lines. The screen goes to the test's attachments.
  */
 async function stallReport(id: string): Promise<string> {
-  const shell = (command: string) =>
-    spawnSync('adb', ['shell', command], { encoding: 'utf8', timeout: 20_000 }).stdout ?? '';
-  const pid = shell(`pidof ${id}`).trim();
+  // A failing adb says so (an empty answer once read as "the app died" while it still ran).
+  const shell = (command: string) => {
+    const out = spawnSync('adb', [...serial, 'shell', command], {
+      encoding: 'utf8',
+      timeout: 20_000,
+    });
+    return out.status === 0
+      ? (out.stdout ?? '')
+      : `[adb shell failed: ${out.status ?? out.signal} ${(out.stderr ?? '').trim()}]${out.stdout ?? ''}`;
+  };
+  const pid = pidOf(id);
   const top = shell('top -b -n 2 -d 2 -m 10 -s 4 -o PID,USER,S,%CPU,TIME+,ARGS')
     .split(/\n(?=Tasks:)/)
     .pop()!
@@ -334,7 +373,7 @@ async function stallReport(id: string): Promise<string> {
   const focus = shell('dumpsys window | grep -E "mCurrentFocus|mFocusedApp"').trim();
   let page = 'no DevTools socket';
   if (pid) {
-    const socket = `webview_devtools_remote_${pid.split(/\s+/)[0]}`;
+    const socket = `webview_devtools_remote_${pid}`;
     const port = adb('forward', 'tcp:0', `localabstract:${socket}`).trim();
     try {
       const list = (await (
@@ -377,7 +416,7 @@ async function stallReport(id: string): Promise<string> {
       spawnSync('adb', ['forward', '--remove', `tcp:${port}`]);
     }
   }
-  const log = spawnSync('adb', ['logcat', '-d', '-t', '2000'], { encoding: 'utf8' })
+  const log = spawnSync('adb', [...serial, 'logcat', '-d', '-t', '2000'], { encoding: 'utf8' })
     .stdout.split('\n')
     .filter(
       (line) =>
@@ -388,11 +427,14 @@ async function stallReport(id: string): Promise<string> {
     )
     .slice(-60)
     .join('\n');
-  const screen = spawnSync('adb', ['exec-out', 'screencap', '-p'], { maxBuffer: 64 * 2 ** 20 });
+  const screen = spawnSync('adb', [...serial, 'exec-out', 'screencap', '-p'], {
+    maxBuffer: 64 * 2 ** 20,
+  });
   if (screen.status === 0)
     await test.info().attach('device screen', { body: screen.stdout, contentType: 'image/png' });
+  const devices = spawnSync('adb', ['devices'], { encoding: 'utf8' }).stdout?.trim();
   return [
-    `app pid: ${pid || 'none'}`,
+    `app pid: ${pid || 'none'} (adb devices: ${devices?.replace(/\s+/g, ' ')})`,
     `focus: ${focus}`,
     `page over its own DevTools connection: ${page}`,
     `top:\n${top}`,
@@ -413,6 +455,15 @@ async function measureBench(query?: string): Promise<BenchRun> {
   await stop(id);
   start(id);
   const page = await attach(id);
+  try {
+    return await measureAttached(id, page, query);
+  } catch (error) {
+    const lost = connectionLost(id);
+    throw lost ? new Error(lost, { cause: error }) : error;
+  }
+}
+
+async function measureAttached(id: string, page: Page, query?: string): Promise<BenchRun> {
   const errors: string[] = [];
   page.on('pageerror', (error) => errors.push(error.message));
   if (query !== undefined) await page.goto(`https://localhost/${query}`);
@@ -421,6 +472,7 @@ async function measureBench(query?: string): Promise<BenchRun> {
       timeout: 60_000,
     });
   } catch (error) {
+    if (connectionLost(id)) throw error;
     throw new Error(`${(error as Error).message}\n${await stallReport(id)}`, { cause: error });
   }
   const result = (await page.evaluate(() => window.blacklightBench)) as BenchRun;
@@ -444,9 +496,21 @@ async function measureBench(query?: string): Promise<BenchRun> {
   };
 }
 
+/** Matches the errors of a launch that measured nothing: no connection, or one lost on the way. */
+const NOT_MEASURED = /no DevTools connection|DevTools connection lost/;
+
 async function measureBenchRuns(count: number, query?: string): Promise<BenchRun[]> {
   const runs: BenchRun[] = [];
-  for (let i = 0; i < count; i++) runs.push(await measureBench(query));
+  let lost = 0;
+  while (runs.length < count) {
+    try {
+      runs.push(await measureBench(query));
+    } catch (error) {
+      // As for NF-02 launches: a run without its DevTools connection is run again, twice at most.
+      if (!NOT_MEASURED.test((error as Error).message) || ++lost > 2) throw error;
+      console.log(`[bench] ${(error as Error).message}; running again`);
+    }
+  }
   return runs;
 }
 
@@ -508,15 +572,21 @@ async function launch(app: App): Promise<Launch> {
   // Attach only after the limit: a start under it is never slowed by the DevTools connection.
   await wait(Math.max(0, launchedMs + START_LIMIT_MS - Date.now()));
   const page = await attach(id);
-  await page.waitForFunction((mark) => performance.getEntriesByName(mark).length > 0, MARK, {
-    timeout: 30_000,
-  });
-  const { origin, mark } = await page.evaluate((name) => {
-    return {
-      origin: performance.timeOrigin,
-      mark: performance.getEntriesByName(name)[0]!.startTime,
-    };
-  }, MARK);
+  let origin: number, mark: number;
+  try {
+    await page.waitForFunction((name) => performance.getEntriesByName(name).length > 0, MARK, {
+      timeout: 30_000,
+    });
+    ({ origin, mark } = await page.evaluate((name) => {
+      return {
+        origin: performance.timeOrigin,
+        mark: performance.getEntriesByName(name)[0]!.startTime,
+      };
+    }, MARK));
+  } catch (error) {
+    const lost = connectionLost(id);
+    throw lost ? new Error(lost, { cause: error }) : error;
+  }
   const coldStartMs = origin + mark - launchedMs;
   if (!(origin > launchedMs && coldStartMs < 60_000))
     throw new Error(
@@ -539,7 +609,7 @@ async function launches(app: App, count: number): Promise<Launch[]> {
       results.push(await launch(app));
     } catch (error) {
       // A launch Playwright could not attach to is not a measurement: launch again, twice at most.
-      if (!/no DevTools connection/.test((error as Error).message) || ++lost > 2) throw error;
+      if (!NOT_MEASURED.test((error as Error).message) || ++lost > 2) throw error;
       console.log(`[bench] ${(error as Error).message}; launching again`);
     }
   }
