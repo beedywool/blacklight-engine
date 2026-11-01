@@ -194,10 +194,30 @@ async function loadWeb(url: string): Promise<PageLoad> {
         observer.disconnect();
       }).observe(document, { subtree: true, attributeFilter: ['data-blacklight-state'] });
     });
+    // Requests still open when a load misses the limit: tells a stalled server or file from a
+    // busy page (one load in nine missed 6 s on a slow Windows runner, without a trace).
+    const pending = new Map<object, string>();
+    page.on('request', (request) => pending.set(request, request.url()));
+    page.on('requestfinished', (request) => pending.delete(request));
+    page.on('requestfailed', (request) => pending.delete(request));
+    const started = Date.now();
     await page.goto(url, { waitUntil: 'commit' });
-    await page.waitForFunction((mark) => performance.getEntriesByName(mark).length > 0, MARK, {
-      timeout: TRACE_SECONDS * 1000,
-    });
+    try {
+      await page.waitForFunction((mark) => performance.getEntriesByName(mark).length > 0, MARK, {
+        timeout: TRACE_SECONDS * 1000,
+      });
+    } catch (error) {
+      const state = await Promise.race([
+        page
+          .evaluate(() => document.querySelector('#game')?.getAttribute('data-blacklight-state'))
+          .catch(() => 'unknown'),
+        new Promise<string>((done) => setTimeout(() => done('page not answering'), 5000)),
+      ]);
+      throw new Error(
+        `${(error as Error).message}\nAfter ${Date.now() - started} ms: state ${state}, errors ${JSON.stringify(errors)}, requests still open: ${[...pending.values()].join(', ') || 'none'}`,
+        { cause: error },
+      );
+    }
     const load = await page.evaluate((mark) => {
       const nav = performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming;
       return {
