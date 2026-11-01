@@ -1,11 +1,12 @@
 // Phase 3g: hot reload keeps the game's state (TL-02) and the dev-only debug channel answers
 // tools such as the VS Code extension (TL-03). The fixture is copied to a temporary folder so the
 // test can edit its files.
-import { cpSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { cpSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
 import type { Game } from '@blacklight/core';
+import { linkNodeModules } from './link';
 import { serve } from './server';
 
 const fixture = resolve(import.meta.dirname, 'fixtures/tooling');
@@ -26,7 +27,7 @@ test.beforeAll(async () => {
     recursive: true,
     filter: (path) => !/node_modules|\.blacklight|dist/.test(path.slice(fixture.length)),
   });
-  symlinkSync(join(fixture, 'node_modules'), join(root, 'node_modules'), 'junction');
+  linkNodeModules(join(fixture, 'node_modules'), join(root, 'node_modules'));
   stop = await serve(root, 'dev', port);
 });
 test.afterAll(() => {

@@ -6,7 +6,18 @@
 // VSCODE_EXECUTABLE=/path/to/code uses an installed VS Code instead of downloading one into
 // .vscode-test/ (about 150 MB).
 import { spawnSync } from 'node:child_process';
-import { cpSync, existsSync, mkdtempSync, rmSync, symlinkSync } from 'node:fs';
+import {
+  copyFileSync,
+  cpSync,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  realpathSync,
+  rmSync,
+  statSync,
+  symlinkSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { runTests } from '@vscode/test-electron';
@@ -48,7 +59,27 @@ cpSync(fixture, workspace, {
   recursive: true,
   filter: (path) => !/node_modules|\.blacklight|dist/.test(path.slice(fixture.length)),
 });
-symlinkSync(join(fixture, 'node_modules'), join(workspace, 'node_modules'), 'junction');
+linkNodeModules(join(fixture, 'node_modules'), join(workspace, 'node_modules'));
+
+/**
+ * One link per installed package, to its real folder (same as e2e/link.ts). A single junction to
+ * the whole node_modules breaks on Windows: pnpm links workspace packages with relative paths,
+ * which Windows resolves from the path it was reached through, i.e. next to the copy.
+ */
+function linkNodeModules(from, to) {
+  mkdirSync(to, { recursive: true });
+  for (const entry of readdirSync(from, { withFileTypes: true })) {
+    if (entry.name === '.vite') continue;
+    const source = join(from, entry.name);
+    if (entry.isDirectory() && entry.name.startsWith('@')) {
+      linkNodeModules(source, join(to, entry.name));
+      continue;
+    }
+    const target = realpathSync(source);
+    if (statSync(target).isDirectory()) symlinkSync(target, join(to, entry.name), 'junction');
+    else copyFileSync(target, join(to, entry.name));
+  }
+}
 
 let code = 0;
 try {
