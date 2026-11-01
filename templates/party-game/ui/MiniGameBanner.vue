@@ -7,8 +7,9 @@ import type { Phase } from '@objects/referee/referee.object';
 
 // Shared by every mini-game: the title banner slides in while the controls are locked, "GO!"
 // zooms out when they unlock, the mini-game's notice (countdowns, turns) shows during play and
-// "FINISH!" at the end. Everything follows the referee's step counter, so a paused game freezes
-// the banner too.
+// "FINISH!" at the end. Every animation is computed from the referee's step counter, not played
+// by CSS on the wall clock: a paused game freezes the banner too, and a given step always looks
+// the same (screenshots, replays).
 const props = defineProps<{ scene: MiniGame }>();
 const phase = shallowRef<Phase>('intro');
 const clock = shallowRef(0);
@@ -26,23 +27,51 @@ const rect = computed(() => {
   const r = props.scene.hostRect ?? { x: 0, y: 0, width: 1920, height: 1080 };
   return { left: `${r.x}px`, top: `${r.y}px`, width: `${r.width}px`, height: `${r.height}px` };
 });
-const leaving = computed(() => phase.value === 'intro' && clock.value > INTRO_STEPS - 25);
+
+/** Progress (0 to 1) of an animation that starts at step `start` and lasts `steps`. */
+const progress = (start: number, steps: number) =>
+  Math.min(1, Math.max(0, (clock.value - start) / steps));
+const easeOut = (t: number) => 1 - (1 - t) ** 3;
+const easeIn = (t: number) => t * t;
+const mix = (from: number, to: number, t: number) => from + (to - from) * t;
+
+/** The band slides in (0.45 s), then out during the last 25 steps of the intro. */
+const LEAVE_AT = INTRO_STEPS - 25;
+const band = computed(() => {
+  const x =
+    clock.value < LEAVE_AT
+      ? mix(-110, 0, easeOut(progress(0, 27)))
+      : mix(0, 110, easeIn(progress(LEAVE_AT, 21)));
+  return { transform: `skewY(-4deg) translateX(${x}%)` };
+});
+const title = computed(() => ({
+  transform: `translateX(${mix(-30, 6, easeOut(progress(0, INTRO_STEPS)))}%)`,
+}));
 const go = computed(() => phase.value === 'play' && clock.value < GO_STEPS);
+const goStyle = computed(() => {
+  const t = progress(0, GO_STEPS);
+  return {
+    transform: `scale(${mix(3, 0.6, easeOut(t))})`,
+    opacity: t < 0.7 ? 1 : 1 - (t - 0.7) / 0.3,
+  };
+});
+const finishStyle = computed(() => {
+  // Overshoots a little before it settles.
+  const t = progress(0, 24);
+  const scale = mix(0.2, 1, 1 + 2.2 * (t - 1) ** 3 + 1.2 * (t - 1) ** 2);
+  return { transform: `scale(${scale}) rotate(${mix(-12, -4, easeOut(t))}deg)` };
+});
 </script>
 
 <template>
   <div class="banner" :style="rect">
-    <div
-      v-if="phase === 'intro'"
-      class="banner__band"
-      :class="{ 'banner__band--leaving': leaving }"
-    >
-      <span class="banner__title">{{ scene.info.title }}</span>
+    <div v-if="phase === 'intro'" class="banner__band" :style="band">
+      <span class="banner__title" :style="title">{{ scene.info.title }}</span>
       <span class="banner__hint">{{ scene.info.description }}</span>
     </div>
-    <div v-if="go" class="banner__go">GO!</div>
+    <div v-if="go" class="banner__go" :style="goStyle">GO!</div>
     <div v-if="phase === 'play' && notice" class="banner__notice">{{ notice }}</div>
-    <div v-if="phase === 'over'" class="banner__finish">FINISH!</div>
+    <div v-if="phase === 'over'" class="banner__finish" :style="finishStyle">FINISH!</div>
   </div>
 </template>
 
@@ -64,16 +93,11 @@ const go = computed(() => phase.value === 'play' && clock.value < GO_STEPS);
   display: flex;
   flex-direction: column;
   align-items: center;
-  animation: band-in 0.45s cubic-bezier(0.05, 0.7, 0.1, 1) both;
-}
-.banner__band--leaving {
-  animation: band-out 0.35s ease-in both;
 }
 .banner__title {
   font: 400 120px/1 var(--bl-font-display);
   color: #fff;
   letter-spacing: 0.04em;
-  animation: title-slide 2.5s cubic-bezier(0.2, 0.9, 0.3, 1) both;
 }
 .banner__hint {
   margin-top: 10px;
@@ -89,7 +113,6 @@ const go = computed(() => phase.value === 'play' && clock.value < GO_STEPS);
   color: var(--bl-color-primary);
   -webkit-text-stroke: 10px #111;
   paint-order: stroke fill;
-  animation: go 0.66s ease-out both;
 }
 .banner__notice {
   position: absolute;
@@ -111,45 +134,5 @@ const go = computed(() => phase.value === 'play' && clock.value < GO_STEPS);
   color: #fff;
   -webkit-text-stroke: 10px #111;
   paint-order: stroke fill;
-  animation: finish 0.4s cubic-bezier(0.2, 1.6, 0.4, 1) both;
-}
-@keyframes band-in {
-  from {
-    transform: skewY(-4deg) translateX(-110%);
-  }
-}
-@keyframes band-out {
-  to {
-    transform: skewY(-4deg) translateX(110%);
-  }
-}
-@keyframes title-slide {
-  from {
-    transform: translateX(-30%);
-  }
-  to {
-    transform: translateX(6%);
-  }
-}
-@keyframes go {
-  from {
-    transform: scale(3);
-    opacity: 1;
-  }
-  70% {
-    opacity: 1;
-  }
-  to {
-    transform: scale(0.6);
-    opacity: 0;
-  }
-}
-@keyframes finish {
-  from {
-    transform: scale(0.2) rotate(-12deg);
-  }
-  to {
-    transform: rotate(-4deg);
-  }
 }
 </style>
