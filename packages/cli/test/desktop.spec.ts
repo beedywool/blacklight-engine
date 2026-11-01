@@ -26,11 +26,16 @@ describe('desktop targets (PF-03, PF-05)', () => {
     expect(hostOs('darwin')).toBe('mac');
     expect(unpackedDir('/out', 'mac', 'arm64')).toBe(join('/out', 'mac-arm64'));
     expect(unpackedDir('/out', 'linux', 'x64')).toBe(join('/out', 'linux-unpacked'));
-    // A Mac build ships both architectures; Steam builds the machine's own, natively.
+    // A Mac build ships one package per architecture; the Steam depot for macOS holds one
+    // universal app (PF-05); --arch forces one; other OSes build the machine's own.
     expect(desktopArches('mac', {}, 'arm64')).toEqual(['x64', 'arm64']);
-    expect(desktopArches('mac', { steam: true }, 'arm64')).toEqual(['arm64']);
+    expect(desktopArches('mac', { steam: true }, 'arm64')).toEqual(['universal']);
+    expect(desktopArches('mac', { steam: true }, 'x64')).toEqual(['universal']);
     expect(desktopArches('mac', { steam: true, arch: 'x64' }, 'arm64')).toEqual(['x64']);
     expect(desktopArches('linux', { steam: true }, 'x64')).toEqual(['x64']);
+    expect(desktopArches('win', { steam: true }, 'x64')).toEqual(['x64']);
+    expect(desktopArches('win', {}, 'x64')).toEqual(['x64']);
+    expect(unpackedDir('/out', 'mac', 'universal')).toBe(join('/out', 'mac-universal'));
   });
 
   it('adds the desktop plugin to the generated entry only', () => {

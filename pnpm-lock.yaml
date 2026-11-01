@@ -663,6 +663,9 @@ importers:
       '@electron/fuses':
         specifier: 2.1.3
         version: 2.1.3
+      '@electron/get':
+        specifier: 5.1.0
+        version: 5.1.0(supports-color@7.2.0)
       '@kmamal/sdl':
         specifier: 0.11.13
         version: 0.11.13

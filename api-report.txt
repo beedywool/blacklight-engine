@@ -2693,19 +2693,25 @@ type DesktopOs = "win" | "mac" | "linux"
 const DESKTOP_TARGETS: Record<DesktopOs, ({ arch: string[]; target: string })[]>
 const MAC_ENTITLEMENTS: "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\" \"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">\n<plist version=\"1.0\">\n  <dict>\n    <key>com.apple.security.cs.allow-jit</key>\n    <true/>\n    <key>com.apple.security.cs.allow-unsigned-executable-memory</key>\n    <true/>\n  </dict>\n</plist>\n"
 const RELEASE_FUSES: { readonly enableCookieEncryption: true; readonly enableEmbeddedAsarIntegrityValidation: true; readonly enableNodeCliInspectArguments: false; readonly enableNodeOptionsEnvironmentVariable: false; readonly grantFileProtocolExtraPrivileges: false; readonly onlyLoadAppFromAsar: true; readonly runAsNode: false }
+const UNIVERSAL_ARCHES: readonly ["x64", "arm64"]
+const UNIVERSAL_X64_ARCH_FILES: "**/native_modules/steamworks.js/dist/osx/steamworksjs.darwin-{x64,arm64}.node"
 function appManifest(config: ResolvedGameConfig, options: { devServer?: string; natives?: string[]; release: boolean; steam?: boolean }): AppManifest
 function builderConfig(options: PackageOptions): Configuration
-function compileMainToBytecode(appDir: string, electron?: string): Promise<void>
+function compileMainToBytecode(appDir: string, electron?: string | Record<string, string>): Promise<void>
 function depotId(options: Pick<SteamUploadOptions, "appId" | "depots">, os: DesktopOs): number
 function electronBinary(): string
 function electronVersion(): string
 function isStaged(appDir: string): boolean
+function machOKind(head: Uint8Array): "thin" | "universal" | undefined
+function makeSdlUniversal(appDir: string): Promise<void>
 function packageApp(options: PackageOptions): Promise<string[]>
 function packageDir(name: string): string
 function readFuses(executable: string): Promise<Record<string, "enabled" | "disabled" | "removed">>
+function sdlPrebuildUrl(version: string, arch: string): string
 function signingPlan(os: DesktopOs, env?: ProcessEnv, artifact?: string): SigningPlan
 function stageApp(options: StageOptions): void
 function steamUploadCommand(appBuild: string, options?: { cwd?: string; dryRun?: boolean; username?: string }): { args: string[]; command: string; display: string }
+function universalElectrons(): Promise<Record<string, string>>
 function writeSteamScripts(options: SteamUploadOptions): string
 
 ## @blacklight/mobile

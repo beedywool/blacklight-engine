@@ -8,6 +8,7 @@ import { resolveConfig } from '../../core/src/config';
 import { appManifest } from '../src/build/stage';
 import { DESKTOP_TARGETS, RELEASE_FUSES, builderConfig } from '../src/build/package';
 import { signingPlan } from '../src/build/sign';
+import { UNIVERSAL_X64_ARCH_FILES, machOKind, sdlPrebuildUrl } from '../src/build/universal';
 import { depotId, steamUploadCommand, writeSteamScripts } from '../src/build/steam';
 import { DiscordClient, startDiscord, toDiscordActivity } from '../src/main/discord';
 import { addEventSink, callNative } from '../src/main/registry';
@@ -393,6 +394,37 @@ describe('builds (PF-03, PF-05, PF-07)', () => {
     expect(
       builderConfig({ ...base, os: 'linux', fuses: false, unpackedOnly: true }).electronFuses,
     ).toBeUndefined();
+  });
+
+  it('packs a universal macOS app from one staged app, steamworks.js per-arch addons kept as is', () => {
+    const base = {
+      os: 'mac' as const,
+      appDir: join(tempDir(), 'app'),
+      outDir: tempDir(),
+      id: config.id,
+      name: config.name,
+      fuses: true,
+      env: {},
+    };
+    const universal = builderConfig({ ...base, unpackedOnly: true, arch: ['universal'] });
+    expect(universal.mac).toMatchObject({
+      target: [{ target: 'dir', arch: ['universal'] }],
+      x64ArchFiles: UNIVERSAL_X64_ARCH_FILES,
+    });
+    expect(universal.electronFuses).toEqual(RELEASE_FUSES);
+    // dmg/zip stay one package per architecture (PF-03), without merge rules.
+    const perArch = builderConfig(base);
+    expect(perArch.mac).toMatchObject({ target: DESKTOP_TARGETS.mac });
+    expect(perArch.mac).not.toHaveProperty('x64ArchFiles');
+    expect(builderConfig({ ...base, arch: ['arm64'] }).mac).not.toHaveProperty('x64ArchFiles');
+
+    expect(machOKind(Buffer.from([0xcf, 0xfa, 0xed, 0xfe, 0, 0]))).toBe('thin');
+    expect(machOKind(Buffer.from([0xca, 0xfe, 0xba, 0xbe]))).toBe('universal');
+    expect(machOKind(Buffer.from('\x7fELF'))).toBeUndefined();
+    expect(machOKind(Buffer.from([0xcf]))).toBeUndefined();
+    expect(sdlPrebuildUrl('0.11.13', 'x64')).toBe(
+      'https://github.com/kmamal/node-sdl/releases/download/v0.11.13/sdl.node-v0.11.13-darwin-x64.tar.gz',
+    );
   });
 
   it('plans signing and notarization from the certificates present (dry run)', () => {

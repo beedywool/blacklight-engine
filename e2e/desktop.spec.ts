@@ -9,6 +9,7 @@ import {
   mkdtempSync,
   readFileSync,
   readdirSync,
+  readlinkSync,
   rmSync,
   writeFileSync,
 } from 'node:fs';
@@ -489,10 +490,58 @@ test('SEC-02, SEC-04: packaged app has its fuses set, runs from bytecode and ref
   box.dispose();
 });
 
+/** Architectures of a Mach-O file (`lipo -archs`), e.g. `['x86_64', 'arm64']`. */
+function machOArches(file: string): string[] {
+  const lipo = spawnSync('lipo', ['-archs', file], { encoding: 'utf8' });
+  expect(lipo.status, `lipo -archs ${file}: ${lipo.stderr}`).toBe(0);
+  return lipo.stdout.trim().split(/\s+/).sort();
+}
+
+function filesUnder(dir: string): string[] {
+  return readdirSync(dir, { recursive: true, withFileTypes: true })
+    .filter((entry) => entry.isFile())
+    .map((entry) => join(entry.parentPath, entry.name));
+}
+
 test('PF-05: steam target stages steamworks.js and writes depot scripts; upload runs as a dry run', async () => {
-  test.setTimeout(600_000);
-  run('pnpm', ['exec', 'blacklight', 'build', '--target', 'steam', '--dry-run'], fixture);
+  test.setTimeout(900_000);
+  // macOS: the real build, since the depot is a universal app whose binaries are checked below.
+  run(
+    'pnpm',
+    ['exec', 'blacklight', 'build', '--target', 'steam', ...(os === 'mac' ? [] : ['--dry-run'])],
+    fixture,
+  );
   const steam = join(fixture, 'release', 'steam');
+  if (os === 'mac') {
+    // One .app holds x64 and arm64: the executables, the Electron framework and every native addon
+    // are universal, except steamworks.js's two per-arch addons (it loads the one of process.arch).
+    const { productName } = JSON.parse(
+      readFileSync(join(steam, 'app', 'package.json'), 'utf8'),
+    ) as { productName: string };
+    const contents = join(steam, 'content', 'mac', `${productName}.app`, 'Contents');
+    const both = ['arm64', 'x86_64'];
+    expect(machOArches(join(contents, 'MacOS', productName))).toEqual(both);
+    const framework = join(contents, 'Frameworks', 'Electron Framework.framework');
+    expect(machOArches(join(framework, 'Electron Framework'))).toEqual(both);
+    // The depot is self-contained: framework links stay relative.
+    expect(readlinkSync(join(framework, 'Electron Framework'))).not.toMatch(/^\//);
+    const unpacked = join(contents, 'Resources', 'app.asar.unpacked', 'native_modules');
+    // Mach-O only: steamworks.js also ships its Linux and Windows addons.
+    const machO = (f: string) =>
+      [0xcffaedfe, 0xcafebabe].includes(readFileSync(f).subarray(0, 4).readUInt32BE(0));
+    const addons = filesUnder(unpacked).filter((f) => /\.(node|dylib)$/.test(f) && machO(f));
+    expect(addons.some((f) => f.endsWith('sdl.node'))).toBe(true);
+    for (const addon of addons) {
+      const perArch = /steamworksjs\.darwin-(x64|arm64)\.node$/.exec(addon);
+      const expected = perArch ? [perArch[1] === 'x64' ? 'x86_64' : 'arm64'] : both;
+      expect(machOArches(addon), addon).toEqual(expected);
+    }
+    // Bytecode is per architecture (V8's snapshot checksum differs): both ship, no source.
+    const asar = readFileSync(join(contents, 'Resources', 'app.asar')).toString('latin1');
+    expect(asar).toContain('blacklight-main.x64.jsc');
+    expect(asar).toContain('blacklight-main.arm64.jsc');
+    expect(asar).not.toContain('function isGameUrl(');
+  }
   const manifest = JSON.parse(readFileSync(join(steam, 'app', 'blacklight.json'), 'utf8'));
   expect(manifest.steam).toEqual({ appId: 480 });
   expect(existsSync(join(steam, 'app', 'native_modules', 'steamworks.js', 'package.json'))).toBe(

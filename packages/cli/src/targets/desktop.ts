@@ -109,8 +109,9 @@ export interface DesktopBuild {
 const ARCHES: Record<DesktopOs, string[]> = { win: ['x64'], mac: ['x64', 'arm64'], linux: ['x64'] };
 
 /**
- * Architectures a desktop build packages: `--arch` when given; for Steam the machine's own (one
- * depot per OS holds one app, built natively with SDL and bytecode); otherwise every shipped one.
+ * Architectures a desktop build packages: `--arch` when given; for Steam one app per depot, which
+ * on macOS is `universal` (x64 + arm64 in one `.app`) and elsewhere the machine's own; otherwise
+ * every shipped one, each in its own package.
  */
 export function desktopArches(
   os: DesktopOs,
@@ -118,7 +119,8 @@ export function desktopArches(
   hostArch: string = process.arch,
 ): string[] {
   if (options.arch) return [options.arch];
-  return options.steam ? [hostArch] : ARCHES[os];
+  if (options.steam) return os === 'mac' ? ['universal'] : [hostArch];
+  return ARCHES[os];
 }
 
 /**
@@ -171,8 +173,20 @@ export async function buildDesktop(
   }
 
   for (const arch of arches) {
-    // Native addons and V8 bytecode match the machine that installed / runs them.
-    const native_ = sameOs && arch === process.arch;
+    const universal = arch === 'universal';
+    if (universal && (os !== 'mac' || process.platform !== 'darwin')) {
+      throw new Error(
+        'A universal macOS app (x64 + arm64) is built on a Mac with the mac or steam target; pass --arch x64 or --arch arm64 to build one architecture.',
+      );
+    }
+    if (universal && natives.addons.length > 0) {
+      result.warnings.push(
+        `universal app: native addons ${natives.addons.map((a) => a.name).join(', ')} must be universal binaries (lipo), or the x64 + arm64 merge fails; otherwise build each architecture with --arch.`,
+      );
+    }
+    // Native addons and V8 bytecode match the machine that installed / runs them; a universal app
+    // gets both architectures of each (SDL made universal, bytecode compiled per architecture).
+    const native_ = sameOs && (universal || arch === process.arch);
     const appDir = join(out, arches.length > 1 ? `app-${arch}` : 'app');
     native.build.stageApp({
       appDir,
@@ -184,12 +198,16 @@ export async function buildDesktop(
     });
     for (const addon of natives.addons)
       copyAddon(addon.name, addon.importer, join(appDir, 'native_modules'));
+    if (native_ && universal) await native.build.makeSdlUniversal(appDir);
     if (!native_) {
       result.warnings.push(
         `${os} ${arch}: built on ${hostOs()} ${process.arch}, so SDL gamepads (Gamepad API instead) and V8 bytecode are left out; build on a ${os} ${arch} machine for those.`,
       );
     } else if (security.bytecode) {
-      await native.build.compileMainToBytecode(appDir);
+      await native.build.compileMainToBytecode(
+        appDir,
+        universal ? await native.build.universalElectrons() : undefined,
+      );
     }
     result.apps[arch] = appDir;
     if (options.dryRun) continue;
@@ -224,8 +242,9 @@ export function unpackedDir(out: string, os: DesktopOs, arch: string = process.a
 }
 
 /**
- * The steam target: an unpacked build for this OS and this machine's architecture (or `--arch`)
- * with steamworks.js, staged in `release/steam/app/`, copied to
+ * The steam target: an unpacked build for this OS with steamworks.js (on macOS a universal app,
+ * x64 + arm64; elsewhere this machine's architecture; `--arch` forces one), staged in
+ * `release/steam/app/`, copied to
  * `release/steam/content/<os>/`, and the steamcmd depot scripts in `release/steam/scripts/`.
  * Upload with `blacklight upload --target steam` (`--dry-run` checks without uploading).
  */
@@ -238,7 +257,10 @@ export async function buildSteam(options: TargetOptions): Promise<DesktopBuild> 
   rmSync(content, { recursive: true, force: true });
   mkdirSync(content, { recursive: true });
   const [arch] = Object.keys(result.apps);
-  if (!options.dryRun) cpSync(unpackedDir(out, os, arch), content, { recursive: true });
+  // Verbatim: the .app's framework symlinks stay relative, so the depot does not point back into
+  // release/steam/.
+  if (!options.dryRun)
+    cpSync(unpackedDir(out, os, arch), content, { recursive: true, verbatimSymlinks: true });
   const config = (await loadGameConfig(root)) as unknown as ResolvedGameConfig;
   const native = await loadNative(root);
   const script = native.build.writeSteamScripts({

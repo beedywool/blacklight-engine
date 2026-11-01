@@ -159,6 +159,7 @@ Assets:
 | --------------------- | ------- | ------------ | ------------------------------------------------- |
 | electron-builder      | 26.18.1 | MIT          | @blacklight/native/build (installers)             |
 | @electron/fuses       | 2.1.3   | MIT          | @blacklight/native/build (fuses, verification)    |
+| @electron/get         | 5.1.0   | MIT          | @blacklight/native/build (universal macOS app)    |
 | javascript-obfuscator | 5.9.0   | BSD-2-Clause | @blacklight/cli (release obfuscation, build time) |
 
 ## Added in phase 4c (templates, PWA, release tooling)

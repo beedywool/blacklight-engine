@@ -79,7 +79,7 @@ When SDL cannot load (a build made for another OS, see Limits) the game falls ba
 steam: { appId: 480 }, // 480 is Valve's test app; use yours
 ```
 
-`blacklight build --target steam` builds an unpacked app for this OS and this machine's architecture with steamworks.js (on a Mac the depot holds an arm64 app when built on Apple silicon; pass `--arch x64` for Intel Macs), copies it to `release/steam/content/<os>/` and writes the steamcmd scripts (`scripts/app_build_<appId>.vdf`, one `depot_build_<depot>.vdf` per OS; depots default to `appId + 1`, `+ 2`, `+ 3` for Windows, macOS, Linux, or set `steam.depots`). Build on each OS, then upload:
+`blacklight build --target steam` builds an unpacked app for this OS with steamworks.js (on a Mac one universal app, x64 + arm64, for Intel and Apple silicon Macs; on Windows and Linux this machine's architecture; `--arch` forces one), copies it to `release/steam/content/<os>/` and writes the steamcmd scripts (`scripts/app_build_<appId>.vdf`, one `depot_build_<depot>.vdf` per OS; depots default to `appId + 1`, `+ 2`, `+ 3` for Windows, macOS, Linux, or set `steam.depots`). Build on each OS, then upload:
 
 ```sh
 pnpm blacklight upload --target steam --dry-run   # prints the steamcmd command, uploads nothing
@@ -146,7 +146,7 @@ pnpm blacklight build --target win --no-sign
 | Flag                | Meaning                                                                    |
 | ------------------- | -------------------------------------------------------------------------- |
 | `--dir`             | Only the unpacked app (`release/<os>/<os>-unpacked`), fast; used by tests. |
-| `--arch x64\|arm64` | One architecture (macOS builds both by default).                           |
+| `--arch x64\|arm64` | One architecture (macOS builds both by default, Steam one universal app).  |
 | `--no-sign`         | Do not sign even when certificates are present.                            |
 | `--dry-run`         | Stage the app and print the signing plan without packaging.                |
 
@@ -155,6 +155,7 @@ A 512×512 (or larger) `icon.png` at the root of the game becomes the app icon o
 ## Limits
 
 - Build each OS on that OS (CI runners): V8 bytecode and the SDL binding match the machine that builds them. A cross build still works but leaves both out (the game then reads pads through the Gamepad API) and says so. The x64 macOS package built on an Apple Silicon runner has no bytecode; build it on an Intel runner for that.
+- The universal macOS app of the steam target is built on an Apple silicon Mac (an Intel Mac cannot run the arm64 Electron that compiles the arm64 bytecode; there, pass `--arch x64`), with network access the first time: the other architecture's SDL prebuild (cached in `~/Library/Caches/blacklight/`) and Electron (cached by @electron/get) are downloaded, the bytecode of the other architecture is compiled under Rosetta 2 on Apple silicon (`softwareupdate --install-rosetta`), and `lipo` comes with the Xcode command line tools. Native addons of modules must be universal binaries there, or build one architecture with `--arch`.
 - Gyroscope and accelerometer of controllers are not available: @kmamal/sdl 0.11 does not expose SDL's controller sensors (`gamepad(game, i).hasGyro` is `false`). LEDs, rumble and trigger rumble work.
 - Steam leaderboards are not available: steamworks.js 0.4.0 does not expose them (`uploadScore` and `getScores` fail with a message); use the reference server for scores. The Steam overlay may not show in Electron (accepted limitation L3); achievements, Cloud and rich presence work.
 - Native addons of modules that use Node's ABI instead of Node-API (better-sqlite3) ship as installed and must be rebuilt for the Electron version (`npx @electron/rebuild`) before packaging; Node-API addons (the SDL binding, steamworks.js) work as is.

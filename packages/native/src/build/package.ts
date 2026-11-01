@@ -4,6 +4,7 @@ import { FuseState, FuseV1Options, getCurrentFuseWire } from '@electron/fuses';
 import type { Configuration } from 'electron-builder';
 import { MAC_ENTITLEMENTS, signingPlan, type DesktopOs } from './sign';
 import { electronVersion } from './stage';
+import { UNIVERSAL_X64_ARCH_FILES } from './universal';
 
 /**
  * Fuses of release builds (SEC-02): no `ELECTRON_RUN_AS_NODE`, no `NODE_OPTIONS`, no `--inspect`,
@@ -68,7 +69,10 @@ export interface PackageOptions {
   sign?: boolean;
   /** Only the unpacked app folder (fast; used by tests and Steam depots). */
   unpackedOnly?: boolean;
-  /** Architectures to build (default: those of {@link DESKTOP_TARGETS}). */
+  /**
+   * Architectures to build (default: those of {@link DESKTOP_TARGETS}). `universal` (macOS, on a
+   * Mac) packs x64 and arm64 from the same staged app and merges them into one `.app`.
+   */
   arch?: string[];
   /** 512×512 (or larger) PNG used for every icon. */
   icon?: string;
@@ -132,6 +136,10 @@ export function builderConfig(options: PackageOptions): Configuration {
       entitlementsInherit: entitlements,
       // `null` turns signing off; electron-builder otherwise looks for any identity.
       ...(sign ? {} : { identity: null }),
+      // Universal: both packs come from one staged app that already holds both architectures
+      // (universal SDL binding, bytecode per arch); only steamworks.js's per-arch addons are the
+      // same Mach-O file in both packs on purpose.
+      ...(options.arch?.includes('universal') ? { x64ArchFiles: UNIVERSAL_X64_ARCH_FILES } : {}),
       notarize: sign && plan.notarize,
     },
     linux: {
