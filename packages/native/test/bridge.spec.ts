@@ -161,18 +161,23 @@ describe('data folder (SV-02, SV-04)', () => {
       XDG_DATA_HOME: '/xdg',
       GAMES: '/games',
     };
+    // Each platform's own path rules, whatever OS runs the test.
     expect(defaultDataDir('com.x.y', undefined, 'win32', env, 'C:\\Users\\a')).toBe(
-      join(env.APPDATA, 'com.x.y'),
+      'C:\\Users\\a\\AppData\\Roaming\\com.x.y',
+    );
+    expect(defaultDataDir('com.x.y', undefined, 'win32', {}, 'C:\\Users\\a')).toBe(
+      'C:\\Users\\a\\AppData\\Roaming\\com.x.y',
     );
     expect(defaultDataDir('com.x.y', undefined, 'darwin', env, '/Users/a')).toBe(
-      join('/Users/a', 'Library', 'Application Support', 'com.x.y'),
+      '/Users/a/Library/Application Support/com.x.y',
     );
-    expect(defaultDataDir('com.x.y', undefined, 'linux', env, '/home/a')).toBe(
-      join('/xdg', 'com.x.y'),
-    );
+    expect(defaultDataDir('com.x.y', undefined, 'linux', env, '/home/a')).toBe('/xdg/com.x.y');
     expect(defaultDataDir('com.x.y', undefined, 'linux', {}, '/home/a')).toBe(
-      join('/home/a', '.local', 'share', 'com.x.y'),
+      '/home/a/.local/share/com.x.y',
     );
+    expect(
+      defaultDataDir('com.x.y', { windows: '%GAMES%\\mine' }, 'win32', { GAMES: 'D:\\games' }),
+    ).toBe('D:\\games\\mine');
     expect(defaultDataDir('com.x.y', { linux: '$GAMES/mine' }, 'linux', env, '/home/a')).toBe(
       '/games/mine',
     );

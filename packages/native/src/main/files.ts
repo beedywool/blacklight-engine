@@ -1,7 +1,7 @@
 import { randomBytes } from 'node:crypto';
 import { mkdir, open, readFile, readdir, rename, rm } from 'node:fs/promises';
 import { homedir } from 'node:os';
-import { dirname, join, relative, resolve, sep } from 'node:path';
+import { dirname, join, posix, relative, resolve, sep, win32 } from 'node:path';
 import type { SaveLocation } from '@blacklight/core/config';
 
 /**
@@ -67,11 +67,14 @@ export function defaultDataDir(
   home = homedir(),
 ): string {
   const os = platform === 'win32' ? 'windows' : platform === 'darwin' ? 'mac' : 'linux';
+  // The path rules of `platform`, not of the machine running this.
+  const path = platform === 'win32' ? win32 : posix;
   const configured = typeof location === 'string' ? location : location?.[os];
-  if (configured) return resolve(expandPath(configured, env, home));
-  if (platform === 'win32') return join(env.APPDATA || join(home, 'AppData', 'Roaming'), id);
-  if (platform === 'darwin') return join(home, 'Library', 'Application Support', id);
-  return join(env.XDG_DATA_HOME || join(home, '.local', 'share'), id);
+  if (configured) return path.resolve(expandPath(configured, env, home));
+  if (platform === 'win32')
+    return path.join(env.APPDATA || path.join(home, 'AppData', 'Roaming'), id);
+  if (platform === 'darwin') return path.join(home, 'Library', 'Application Support', id);
+  return path.join(env.XDG_DATA_HOME || path.join(home, '.local', 'share'), id);
 }
 
 /**

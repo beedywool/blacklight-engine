@@ -441,8 +441,9 @@ describe('builds (PF-03, PF-05, PF-07)', () => {
       '"ContentRoot" "../content/linux/"',
     );
     expect(depotId({ appId: 480 }, 'mac')).toBe(482);
+    // The script path is relative to `cwd`, with the separator of the OS that runs steamcmd.
     expect(steamUploadCommand(app, { dryRun: true, cwd: dir }).display).toBe(
-      'steamcmd +login $STEAM_USERNAME +run_app_build -preview scripts/app_build_480.vdf +quit',
+      `steamcmd +login $STEAM_USERNAME +run_app_build -preview ${join('scripts', 'app_build_480.vdf')} +quit`,
     );
   });
 });
