@@ -4,12 +4,13 @@
 import { mkdtempSync, readdirSync, readFileSync, rmSync, statSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, relative, resolve, sep } from 'node:path';
-import { expect, test } from '@playwright/test';
+import { expect, test, type Browser } from '@playwright/test';
 import { run, serve } from './server';
 
 const repo = resolve(import.meta.dirname, '..');
-const port = 5420;
-const url = `http://localhost:${port}/`;
+// One port per attempt: a server a killed worker left behind keeps the first one on Windows.
+let port = 5420;
+let url = '';
 let work: string;
 let game: string;
 let stop: (() => void) | undefined;
@@ -24,6 +25,8 @@ function listBuild(dir: string): string[] {
 
 test.beforeAll(async () => {
   test.setTimeout(300_000);
+  port = 5420 + test.info().retry;
+  url = `http://localhost:${port}/`;
   work = mkdtempSync(join(tmpdir(), 'blacklight-pwa-'));
   run(
     process.execPath,
@@ -67,7 +70,33 @@ test('the web build has a manifest from game.config.ts and precaches every file'
   expect(files.some((file) => file.endsWith('.json'))).toBe(true);
 });
 
-test('installable, then plays offline after one visit', async ({ page, context }) => {
+/**
+ * CPU time each browser process used over a few seconds, by process type, and the GPU's feature
+ * status: tells a renderer waiting on another process (nobody busy) from a GPU process or a
+ * renderer that is working (Windows runners froze the page here once for 54 s).
+ */
+async function processActivity(browser: Browser): Promise<string> {
+  const cdp = await browser.newBrowserCDPSession();
+  type Info = { processInfo: { type: string; id: number; cpuTime: number }[] };
+  const sample = async () => (await cdp.send('SystemInfo.getProcessInfo')) as Info;
+  const before = await sample();
+  await new Promise((wait) => setTimeout(wait, 5000));
+  const after = await sample();
+  const { gpu } = (await cdp.send('SystemInfo.getInfo')) as {
+    gpu: { featureStatus: Record<string, string> };
+  };
+  await cdp.detach();
+  const busy = after.processInfo.map(({ type, id, cpuTime }) => {
+    const start = before.processInfo.find((p) => p.id === id)?.cpuTime ?? 0;
+    return `${type}#${id} ${(cpuTime - start).toFixed(2)} s`;
+  });
+  const status = ['webgl', 'gpu_compositing', 'rasterization', '2d_canvas']
+    .map((name) => `${name}=${gpu.featureStatus[name]}`)
+    .join(' ');
+  return `CPU over 5 s: ${busy.join(', ')}; GPU: ${status}`;
+}
+
+test('installable, then plays offline after one visit', async ({ browser, page, context }) => {
   const errors: string[] = [];
   page.on('pageerror', (error) => errors.push(error.message));
   await page.goto(url);
@@ -109,7 +138,16 @@ test('installable, then plays offline after one visit', async ({ page, context }
   await expect(mount).toHaveAttribute('data-blacklight-state', 'running', { timeout: 30_000 });
   await expect(page.locator('.title')).toBeVisible();
   await page.keyboard.press('Enter');
-  await expect(mount).toHaveAttribute('data-blacklight-scene', 'level', { timeout: 10_000 });
+  try {
+    await expect(mount).toHaveAttribute('data-blacklight-scene', 'level', { timeout: 10_000 });
+  } catch (error) {
+    throw new Error(
+      `${(error as Error).message}\n${await processActivity(browser).catch((e: unknown) => `no process info: ${String(e)}`)}`,
+      {
+        cause: error,
+      },
+    );
+  }
   await expect(page.locator('.hud-coins')).toContainText('/ 30');
 
   // PF-06: a request the cache cannot answer (an online feature) fails with an error the game

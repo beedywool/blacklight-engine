@@ -28,6 +28,17 @@ export async function serve(
   port: number,
   output?: (text: string) => void,
 ): Promise<() => void> {
+  // A server left behind by an earlier attempt (a worker killed on Windows leaves its children
+  // running) would answer instead of this one: `preview` then moves to the next port and the test
+  // silently checks an old build.
+  // A server stopped a moment ago may still be closing: give it a few seconds.
+  const freeBy = Date.now() + 5000;
+  while ((await answers(port)) && Date.now() < freeBy)
+    await new Promise((wait) => setTimeout(wait, 250));
+  if (await answers(port))
+    throw new Error(
+      `Port ${port} already answers before \`pnpm ${script}\` starts: a server from an earlier attempt is still running. Use another port for the retry or stop that process.`,
+    );
   // Own process group on POSIX so stopping it also stops the Vite process pnpm starts.
   const server: ChildProcess = spawn(
     'pnpm',
@@ -61,12 +72,16 @@ export async function serve(
       stop();
       throw new Error(`pnpm ${script} did not answer in ${limit} s`);
     }
-    try {
-      if ((await fetch(`http://localhost:${port}/`)).ok) break;
-    } catch {
-      // not listening yet
-    }
+    if (await answers(port)) break;
     await new Promise((wait) => setTimeout(wait, 250));
   }
   return stop;
+}
+
+async function answers(port: number): Promise<boolean> {
+  try {
+    return (await fetch(`http://localhost:${port}/`)).ok;
+  } catch {
+    return false;
+  }
 }
