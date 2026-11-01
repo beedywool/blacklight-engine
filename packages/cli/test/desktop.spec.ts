@@ -8,7 +8,7 @@ import {
   resolvePixiUnsafeEval,
   withoutEmbindEval,
 } from '../src/security';
-import { desktopEntry, hostOs, unpackedDir } from '../src/targets/desktop';
+import { desktopArches, desktopEntry, hostOs, unpackedDir } from '../src/targets/desktop';
 import { capacitorConfig } from '../src/targets/mobile-native';
 import { nativeEntry } from '../src/targets/natives';
 import { runners } from '../src/targets/runners';
@@ -26,6 +26,11 @@ describe('desktop targets (PF-03, PF-05)', () => {
     expect(hostOs('darwin')).toBe('mac');
     expect(unpackedDir('/out', 'mac', 'arm64')).toBe(join('/out', 'mac-arm64'));
     expect(unpackedDir('/out', 'linux', 'x64')).toBe(join('/out', 'linux-unpacked'));
+    // A Mac build ships both architectures; Steam builds the machine's own, natively.
+    expect(desktopArches('mac', {}, 'arm64')).toEqual(['x64', 'arm64']);
+    expect(desktopArches('mac', { steam: true }, 'arm64')).toEqual(['arm64']);
+    expect(desktopArches('mac', { steam: true, arch: 'x64' }, 'arm64')).toEqual(['x64']);
+    expect(desktopArches('linux', { steam: true }, 'x64')).toEqual(['x64']);
   });
 
   it('adds the desktop plugin to the generated entry only', () => {

@@ -79,7 +79,7 @@ When SDL cannot load (a build made for another OS, see Limits) the game falls ba
 steam: { appId: 480 }, // 480 is Valve's test app; use yours
 ```
 
-`blacklight build --target steam` builds an unpacked app for this OS with steamworks.js, copies it to `release/steam/content/<os>/` and writes the steamcmd scripts (`scripts/app_build_<appId>.vdf`, one `depot_build_<depot>.vdf` per OS; depots default to `appId + 1`, `+ 2`, `+ 3` for Windows, macOS, Linux, or set `steam.depots`). Build on each OS, then upload:
+`blacklight build --target steam` builds an unpacked app for this OS and this machine's architecture with steamworks.js (on a Mac the depot holds an arm64 app when built on Apple silicon; pass `--arch x64` for Intel Macs), copies it to `release/steam/content/<os>/` and writes the steamcmd scripts (`scripts/app_build_<appId>.vdf`, one `depot_build_<depot>.vdf` per OS; depots default to `appId + 1`, `+ 2`, `+ 3` for Windows, macOS, Linux, or set `steam.depots`). Build on each OS, then upload:
 
 ```sh
 pnpm blacklight upload --target steam --dry-run   # prints the steamcmd command, uploads nothing

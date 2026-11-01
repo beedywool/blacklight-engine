@@ -109,6 +109,19 @@ export interface DesktopBuild {
 const ARCHES: Record<DesktopOs, string[]> = { win: ['x64'], mac: ['x64', 'arm64'], linux: ['x64'] };
 
 /**
+ * Architectures a desktop build packages: `--arch` when given; for Steam the machine's own (one
+ * depot per OS holds one app, built natively with SDL and bytecode); otherwise every shipped one.
+ */
+export function desktopArches(
+  os: DesktopOs,
+  options: { arch?: string; steam?: boolean } = {},
+  hostArch: string = process.arch,
+): string[] {
+  if (options.arch) return [options.arch];
+  return options.steam ? [hostArch] : ARCHES[os];
+}
+
+/**
  * Builds a desktop target: web build with the desktop plugin, staged app (main process, preload,
  * manifest, native addons), V8 bytecode of the main process, then electron-builder packages with
  * fuses and, when certificates are present, signatures.
@@ -140,7 +153,7 @@ export async function buildDesktop(
   }
 
   const flags = options.flags as { dir?: boolean; arch?: string; sign?: boolean };
-  const arches = flags.arch ? [flags.arch] : ARCHES[os];
+  const arches = desktopArches(os, { arch: flags.arch, steam: options.steam });
   const sameOs = os === hostOs();
   const manifest = native.build.appManifest(config, { release: true, steam: options.steam });
   const plan = native.build.signingPlan(os);
@@ -203,7 +216,7 @@ export async function buildDesktop(
 }
 
 /** Folder electron-builder writes the unpacked app of `os` to. */
-export function unpackedDir(out: string, os: DesktopOs, arch = process.arch): string {
+export function unpackedDir(out: string, os: DesktopOs, arch: string = process.arch): string {
   if (os === 'win') return join(out, arch === 'x64' ? 'win-unpacked' : `win-${arch}-unpacked`);
   if (os === 'linux')
     return join(out, arch === 'x64' ? 'linux-unpacked' : `linux-${arch}-unpacked`);
@@ -211,7 +224,8 @@ export function unpackedDir(out: string, os: DesktopOs, arch = process.arch): st
 }
 
 /**
- * The steam target: an unpacked build for this OS with steamworks.js, copied to
+ * The steam target: an unpacked build for this OS and this machine's architecture (or `--arch`)
+ * with steamworks.js, staged in `release/steam/app/`, copied to
  * `release/steam/content/<os>/`, and the steamcmd depot scripts in `release/steam/scripts/`.
  * Upload with `blacklight upload --target steam` (`--dry-run` checks without uploading).
  */
@@ -223,7 +237,8 @@ export async function buildSteam(options: TargetOptions): Promise<DesktopBuild> 
   const content = join(out, 'content', os);
   rmSync(content, { recursive: true, force: true });
   mkdirSync(content, { recursive: true });
-  if (!options.dryRun) cpSync(unpackedDir(out, os), content, { recursive: true });
+  const [arch] = Object.keys(result.apps);
+  if (!options.dryRun) cpSync(unpackedDir(out, os, arch), content, { recursive: true });
   const config = (await loadGameConfig(root)) as unknown as ResolvedGameConfig;
   const native = await loadNative(root);
   const script = native.build.writeSteamScripts({
