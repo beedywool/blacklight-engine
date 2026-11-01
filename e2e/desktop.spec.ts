@@ -53,7 +53,11 @@ function sandbox(): { env: Record<string, string>; dataDir: string; dispose(): v
     env.HOME = dir;
     dataDir = join(dir, 'Library', 'Application Support', GAME_ID);
   }
-  return { env, dataDir, dispose: () => rmSync(dir, { recursive: true, force: true }) };
+  return {
+    env,
+    dataDir,
+    dispose: () => rmSync(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 }),
+  };
 }
 
 async function launch(
@@ -442,7 +446,7 @@ test('PF-05: steam target stages steamworks.js and writes depot scripts; upload 
 test.afterAll(() => {
   // Packaged apps are large: keep the disk clean between runs.
   for (const dir of [join(fixture, 'release'), join(fixture, 'dist')])
-    rmSync(dir, { recursive: true, force: true });
+    rmSync(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
 });
 
 declare global {

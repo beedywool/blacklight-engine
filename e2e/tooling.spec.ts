@@ -31,7 +31,7 @@ test.beforeAll(async () => {
 });
 test.afterAll(() => {
   stop?.();
-  rmSync(root, { recursive: true, force: true });
+  rmSync(root, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
 });
 
 function edit(path: string, from: string, to: string): void {

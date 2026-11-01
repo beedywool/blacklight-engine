@@ -119,7 +119,7 @@ test.afterAll(async () => {
   await reference?.stop();
   await provider?.close();
   await new Promise<void>((done) => (registry ? registry.close(() => done()) : done()));
-  rmSync(work, { recursive: true, force: true });
+  rmSync(work, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
 });
 
 test('blacklight add installs modules from the registry and types game.modules', async () => {

@@ -48,7 +48,7 @@ test.beforeAll(async () => {
 
 test.afterAll(() => {
   stop?.();
-  rmSync(work, { recursive: true, force: true });
+  rmSync(work, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
 });
 
 test('the guide shows every file of the finished project', () => {

@@ -49,7 +49,7 @@ test.beforeAll(async () => {
 
 test.afterAll(() => {
   stop?.();
-  rmSync(work, { recursive: true, force: true });
+  rmSync(work, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
 });
 
 function collectErrors(page: Page): string[] {
@@ -95,7 +95,8 @@ async function startLevel(page: Page): Promise<void> {
   await expect(page.locator('.title')).toBeVisible();
   await page.keyboard.press('Enter');
   await expect(mount).toHaveAttribute('data-blacklight-scene', 'level', { timeout: 10_000 });
-  await expect(page.locator('.hud-coins')).toBeVisible();
+  // The dev server compiles the HUD's Vue files on their first request: seconds on a slow runner.
+  await expect(page.locator('.hud-coins')).toBeVisible({ timeout: 30_000 });
   await page.evaluate(() => window.blacklight.pause());
 }
 

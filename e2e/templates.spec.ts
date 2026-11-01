@@ -97,7 +97,7 @@ templates.forEach((template, index) => {
       build('ios', '--dry-run');
       expect(existsSync(join(game, '.blacklight/mobile/ios/App/App.xcodeproj'))).toBe(true);
     } finally {
-      rmSync(work, { recursive: true, force: true });
+      rmSync(work, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
     }
   });
 });

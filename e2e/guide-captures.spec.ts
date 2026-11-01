@@ -383,7 +383,7 @@ test('every step of the installation and getting-started guides, captured', asyn
   } finally {
     await vscode?.close();
     stop?.();
-    rmSync(work, { recursive: true, force: true });
+    rmSync(work, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
   }
 });
 

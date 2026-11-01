@@ -24,7 +24,7 @@ test.beforeAll(async () => {
 
 test.afterAll(() => {
   stop?.();
-  rmSync(work, { recursive: true, force: true });
+  rmSync(work, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
 });
 
 test('the empty template runs in the browser', async ({ page }) => {
