@@ -271,27 +271,51 @@ test('SEC-01: developer tools shortcuts are ignored in release, work in dev', as
 test('PF-02: the window keeps the aspect ratio, goes fullscreen and quits', async () => {
   const box = sandbox();
   const { electron, page } = await launch(appDir, box.env);
-  await electron.evaluate(({ BrowserWindow }) =>
-    BrowserWindow.getAllWindows()[0]!.setContentSize(1000, 1000),
-  );
-  await expect
-    .poll(async () => {
+  // What the window looked like, for a failure message: on the macOS runner a window that never
+  // went fullscreen, and its retry that never got its ratio back, left nothing else to read.
+  const state = () =>
+    electron.evaluate(({ BrowserWindow, screen }) => {
+      const win = BrowserWindow.getAllWindows()[0]!;
+      return JSON.stringify({
+        content: win.getContentSize(),
+        visible: win.isVisible(),
+        focused: win.isFocused(),
+        fullscreen: win.isFullScreen(),
+        workArea: screen.getPrimaryDisplay().workAreaSize,
+      });
+    });
+  /** Polls `check` for 15 s (window managers and macOS's fullscreen animation take their time). */
+  const until = async (what: string, check: () => Promise<boolean>) => {
+    try {
+      await expect.poll(check, { timeout: 15_000 }).toBe(true);
+    } catch (error) {
+      throw new Error(`${what} did not happen: ${await state()}`, { cause: error });
+    }
+  };
+  try {
+    await electron.evaluate(({ BrowserWindow }) =>
+      BrowserWindow.getAllWindows()[0]!.setContentSize(1000, 1000),
+    );
+    await until('16:9 after a resize to 1000×1000', async () => {
       const [w, h] = await electron.evaluate(({ BrowserWindow }) =>
         BrowserWindow.getAllWindows()[0]!.getContentSize(),
       );
       return Math.abs(w! / h! - 16 / 9) < 0.02;
-    })
-    .toBe(true);
-  await page.evaluate(() => window.blacklightNative!.invoke('window', 'setFullscreen', [true]));
-  await expect
-    .poll(() => page.evaluate(() => window.blacklightNative!.invoke('window', 'isFullscreen', [])))
-    .toBe(true);
-  await page.evaluate(() => window.blacklightNative!.invoke('window', 'setFullscreen', [false]));
-  const closed = electron.waitForEvent('close');
-  // The fixture calls game.platform.quit() on Escape; the app may close before the key goes up.
-  await page.keyboard.down('Escape');
-  await closed;
-  box.dispose();
+    });
+    await page.evaluate(() => window.blacklightNative!.invoke('window', 'setFullscreen', [true]));
+    await until('fullscreen', () =>
+      page.evaluate(() => window.blacklightNative!.invoke('window', 'isFullscreen', [])),
+    );
+    await page.evaluate(() => window.blacklightNative!.invoke('window', 'setFullscreen', [false]));
+    const closed = electron.waitForEvent('close');
+    // The fixture calls game.platform.quit() on Escape; the app may close before the key goes up.
+    await page.keyboard.down('Escape');
+    await closed;
+  } finally {
+    // A failed attempt must not leave a fullscreen window over the retry's.
+    await electron.close().catch(() => undefined);
+    box.dispose();
+  }
 });
 
 test('RT-12: SDL pads reach the input system over the bridge, same API', async () => {
