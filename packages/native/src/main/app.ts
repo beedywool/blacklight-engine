@@ -324,6 +324,10 @@ export function startApp(options: StartOptions = {}): void {
     });
   }
 
+  /** True from a fullscreen switch until the window reports it done (enter/leave-full-screen). */
+  let fullscreenSwitch = false;
+  let fullscreenSwitchTimer: NodeJS.Timeout | undefined;
+
   function settingsFile(): string {
     return join(app.getPath('userData'), 'window.json');
   }
@@ -338,6 +342,12 @@ export function startApp(options: StartOptions = {}): void {
 
   /** Switches fullscreen and remembers the player's choice (next to the save key, not in the page's folder). */
   function setFullscreen(on: boolean): void {
+    if (window && on !== window.isFullScreen()) {
+      fullscreenSwitch = true;
+      // A window manager that refuses the switch sends no event: fit again after a while anyway.
+      clearTimeout(fullscreenSwitchTimer);
+      fullscreenSwitchTimer = setTimeout(() => (fullscreenSwitch = false), 3000);
+    }
     window?.setFullScreen(on);
     mkdir(dirname(settingsFile()), { recursive: true })
       .then(() => writeFile(settingsFile(), JSON.stringify({ fullscreen: on })))
@@ -385,6 +395,9 @@ export function startApp(options: StartOptions = {}): void {
     win.setAspectRatio(ratio);
     let fitTimer: NodeJS.Timeout | undefined;
     const fit = () => {
+      // Not while macOS animates into or out of fullscreen: the window resizes during the animation
+      // but isFullScreen() is still false, and a setContentSize() then can cancel the switch.
+      if (fullscreenSwitch) return;
       if (win.isDestroyed() || win.isFullScreen() || win.isMaximized()) return;
       const [width = 0, height = 0] = win.getContentSize();
       const target = heightForRatio({ width, height }, ratio);
@@ -394,7 +407,11 @@ export function startApp(options: StartOptions = {}): void {
       clearTimeout(fitTimer);
       fitTimer = setTimeout(fit, 150);
     });
-    win.on('leave-full-screen', () => setTimeout(fit, 50));
+    win.on('enter-full-screen', () => (fullscreenSwitch = false));
+    win.on('leave-full-screen', () => {
+      fullscreenSwitch = false;
+      setTimeout(fit, 50);
+    });
     win.once('ready-to-show', () => win.show());
 
     win.webContents.on('before-input-event', (event, input) => {

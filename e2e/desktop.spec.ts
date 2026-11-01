@@ -274,9 +274,10 @@ test('PF-02: the window keeps the aspect ratio, goes fullscreen and quits', asyn
   // What the window looked like, for a failure message: on the macOS runner a window that never
   // went fullscreen, and its retry that never got its ratio back, left nothing else to read.
   const state = () =>
-    electron.evaluate(({ BrowserWindow, screen }) => {
+    electron.evaluate(({ app, BrowserWindow, screen }) => {
       const win = BrowserWindow.getAllWindows()[0]!;
       return JSON.stringify({
+        userData: app.getPath('userData'),
         content: win.getContentSize(),
         visible: win.isVisible(),
         focused: win.isFocused(),
@@ -312,8 +313,16 @@ test('PF-02: the window keeps the aspect ratio, goes fullscreen and quits', asyn
     await page.keyboard.down('Escape');
     await closed;
   } finally {
+    // The app saves the fullscreen choice in Electron's userData, which on macOS may not follow
+    // the sandbox's HOME: the macOS runner's retry opened fullscreen right away after a failed
+    // attempt. The failure message shows where userData was.
+    const settings = await electron
+      .evaluate(({ app }) => app.getPath('userData'))
+      .then((dir) => join(dir, 'window.json'))
+      .catch(() => undefined);
     // A failed attempt must not leave a fullscreen window over the retry's.
     await electron.close().catch(() => undefined);
+    if (settings) rmSync(settings, { force: true });
     box.dispose();
   }
 });
