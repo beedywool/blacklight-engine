@@ -90,7 +90,14 @@ async function measure(profile: BrowserContextOptions, query = ''): Promise<Run>
     // Cross-origin isolation: performance.now() gets 5 µs resolution instead of 100 µs (a median of
     // 1 ms frames would move by 10 % steps otherwise), and measureUserAgentSpecificMemory() works.
     await context.route('**/*', async (route) => {
-      const response = await route.fetch();
+      // Playwright reuses keep-alive connections that the preview server may have just closed: on
+      // the Windows runner a GET of a built file failed with ECONNRESET. Static GETs are safe to
+      // send again.
+      const response = await route
+        .fetch()
+        .catch((error: Error) =>
+          /ECONNRESET/.test(error.message) ? route.fetch() : Promise.reject(error),
+        );
       await route.fulfill({
         response,
         headers: {
