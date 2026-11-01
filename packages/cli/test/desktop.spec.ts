@@ -155,37 +155,59 @@ describe('obfuscation (SEC-03, SEC-10)', () => {
     }
   `;
 
-  async function measure(source: string): Promise<{ time: number; result: number }> {
+  /** The workload's `run`, compiled and warmed up (JIT). */
+  function compile(source: string): (steps: number) => number {
     const run = new Function(`${source}; return run;`)() as (steps: number) => number;
-    run(200); // warm up the JIT
-    const times: number[] = [];
-    let result = 0;
-    for (let i = 0; i < 9; i++) {
+    run(200);
+    return run;
+  }
+
+  /**
+   * Median over 15 rounds of `variant` time / `plain` time, both timed back to back in each round
+   * (in alternating order): a busy neighbour (the other test files run in parallel) slows both
+   * sides of a round alike instead of one whole series.
+   */
+  function slowdown(
+    plain: (steps: number) => number,
+    variant: (steps: number) => number,
+  ): { ratio: number; plainMs: number } {
+    const time = (run: (steps: number) => number) => {
       const start = performance.now();
-      result = run(600);
-      times.push(performance.now() - start);
+      run(600);
+      return performance.now() - start;
+    };
+    const ratios: number[] = [];
+    const plainTimes: number[] = [];
+    for (let i = 0; i < 15; i++) {
+      let plainMs: number;
+      let variantMs: number;
+      if (i % 2) {
+        variantMs = time(variant);
+        plainMs = time(plain);
+      } else {
+        plainMs = time(plain);
+        variantMs = time(variant);
+      }
+      ratios.push(variantMs / plainMs);
+      plainTimes.push(plainMs);
     }
-    times.sort((a, b) => a - b);
-    return { time: times[4]!, result };
+    const median = (values: number[]) => values.sort((x, y) => x - y)[values.length >> 1]!;
+    return { ratio: median(ratios), plainMs: median(plainTimes) };
   }
 
   it(
     'costs at most 10 % at the default level (low), same results',
     { timeout: 120_000 },
     async () => {
-      const plain = await measure(WORKLOAD);
-      const low = await measure(await obfuscate(WORKLOAD, 'low'));
-      expect(low.result).toBe(plain.result);
-      // Median of 9 runs each; the comparison is repeated once to absorb a noisy neighbour in CI.
-      let ratio = low.time / plain.time;
-      if (ratio > 1.1)
-        ratio =
-          (await measure(await obfuscate(WORKLOAD, 'low'))).time / (await measure(WORKLOAD)).time;
+      const plain = compile(WORKLOAD);
+      const low = compile(await obfuscate(WORKLOAD, 'low'));
+      const medium = compile(await obfuscate(WORKLOAD, 'medium'));
+      expect(low(600)).toBe(plain(600));
+      expect(medium(600)).toBe(plain(600));
+      const { ratio, plainMs } = slowdown(plain, low);
       expect(ratio).toBeLessThanOrEqual(1.1);
-      const medium = await measure(await obfuscate(WORKLOAD, 'medium'));
-      expect(medium.result).toBe(plain.result);
       console.log(
-        `[SEC-10] plain ${plain.time.toFixed(1)} ms, low ×${ratio.toFixed(2)}, medium ×${(medium.time / plain.time).toFixed(2)}`,
+        `[SEC-10] plain ${plainMs.toFixed(1)} ms, low ×${ratio.toFixed(2)}, medium ×${slowdown(plain, medium).ratio.toFixed(2)}`,
       );
     },
   );
