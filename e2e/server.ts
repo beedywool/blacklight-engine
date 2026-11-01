@@ -45,10 +45,22 @@ export async function serve(
   }
   let exited: number | null | undefined;
   server.on('exit', (code) => (exited = code));
-  const deadline = Date.now() + 60_000;
+  const stop = () => {
+    if (!server.pid) return;
+    if (shell) spawnSync('taskkill', ['/pid', String(server.pid), '/T', '/F']);
+    else process.kill(-server.pid, 'SIGTERM');
+  };
+  // GitHub's Windows runner once took 65 s before Vite listened (2d-with-3d, after the template
+  // builds of the same shard); elsewhere a few seconds.
+  const limit = process.platform === 'win32' ? 120 : 60;
+  const deadline = Date.now() + limit * 1000;
   for (;;) {
     if (exited !== undefined) throw new Error(`pnpm ${script} exited with ${exited}`);
-    if (Date.now() > deadline) throw new Error(`pnpm ${script} did not answer in 60 s`);
+    if (Date.now() > deadline) {
+      // A server that answers later must not hold the port for the retry.
+      stop();
+      throw new Error(`pnpm ${script} did not answer in ${limit} s`);
+    }
     try {
       if ((await fetch(`http://localhost:${port}/`)).ok) break;
     } catch {
@@ -56,9 +68,5 @@ export async function serve(
     }
     await new Promise((wait) => setTimeout(wait, 250));
   }
-  return () => {
-    if (!server.pid) return;
-    if (shell) spawnSync('taskkill', ['/pid', String(server.pid), '/T', '/F']);
-    else process.kill(-server.pid, 'SIGTERM');
-  };
+  return stop;
 }
