@@ -165,17 +165,25 @@ describe('obfuscation (SEC-03, SEC-10)', () => {
   /**
    * Median over 15 rounds of `variant` time / `plain` time, both timed back to back in each round
    * (in alternating order): a busy neighbour (the other test files run in parallel) slows both
-   * sides of a round alike instead of one whole series.
+   * sides of a round alike instead of one whole series. The rounds start after both sides have
+   * run for 3 s: V8 optimises hot functions on a background thread, and on a busy CI runner that
+   * thread finishes seconds late, so early rounds time the variant's unoptimised code (×1.27 for
+   * code that costs ×1.02 once optimised, with `--concurrent-recompilation-delay=1500`).
    */
   function slowdown(
     plain: (steps: number) => number,
     variant: (steps: number) => number,
-  ): { ratio: number; plainMs: number } {
+  ): { ratio: number; plainMs: number; ratios: number[] } {
     const time = (run: (steps: number) => number) => {
       const start = performance.now();
       run(600);
       return performance.now() - start;
     };
+    const warmUpEnd = performance.now() + 3000;
+    for (let i = 0; i < 10 || performance.now() < warmUpEnd; i++) {
+      time(plain);
+      time(variant);
+    }
     const ratios: number[] = [];
     const plainTimes: number[] = [];
     for (let i = 0; i < 15; i++) {
@@ -191,8 +199,8 @@ describe('obfuscation (SEC-03, SEC-10)', () => {
       ratios.push(variantMs / plainMs);
       plainTimes.push(plainMs);
     }
-    const median = (values: number[]) => values.sort((x, y) => x - y)[values.length >> 1]!;
-    return { ratio: median(ratios), plainMs: median(plainTimes) };
+    const median = (values: number[]) => [...values].sort((x, y) => x - y)[values.length >> 1]!;
+    return { ratio: median(ratios), plainMs: median(plainTimes), ratios };
   }
 
   it(
@@ -204,8 +212,11 @@ describe('obfuscation (SEC-03, SEC-10)', () => {
       const medium = compile(await obfuscate(WORKLOAD, 'medium'));
       expect(low(600)).toBe(plain(600));
       expect(medium(600)).toBe(plain(600));
-      const { ratio, plainMs } = slowdown(plain, low);
-      expect(ratio).toBeLessThanOrEqual(1.1);
+      const { ratio, plainMs, ratios } = slowdown(plain, low);
+      expect(
+        ratio,
+        `per-round ratios ${ratios.map((r) => r.toFixed(2)).join(' ')}`,
+      ).toBeLessThanOrEqual(1.1);
       console.log(
         `[SEC-10] plain ${plainMs.toFixed(1)} ms, low ×${ratio.toFixed(2)}, medium ×${slowdown(plain, medium).ratio.toFixed(2)}`,
       );
