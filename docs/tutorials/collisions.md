@@ -14,10 +14,6 @@ Click a preview to give it the keyboard; arrows or WASD move the white square.
 `other.is(Coin)` tells whether `other` is a coin (an instance of the class, or of a subclass). `other.destroy()` removes it from the scene.
 :::
 
-::: details Solution
-<<< @/examples/tutorials/collisions/1-pickup.solution.ts{15}
-:::
-
 </BlExercise>
 
 `is` also takes a name or a tag: `other.is('Coin')`, or `other.is('pickup')` for every object whose class declares `static tags = ['pickup']`. Tags let one test cover coins, hearts and keys.
@@ -32,10 +28,6 @@ Walk right: the square goes through the grey wall. Add `solid: true` to the wall
 `static collision = { layer: 'walls', solid: true }`.
 :::
 
-::: details Solution
-<<< @/examples/tutorials/collisions/2-solid.solution.ts{30}
-:::
-
 </BlExercise>
 
 The square stops against the wall because it moves with a movement behavior, which asks the engine to move it and checks solids on the way. Code that sets `x` directly bypasses solids. Pushing against a solid is not an overlap, so it calls no `onCollide`.
@@ -48,10 +40,6 @@ Make the spikes deadly: when the square touches them, destroy the square. Walk d
 
 ::: details Hint
 Same place as the coins: one more test in `Player.onCollide`, with `this.destroy()`.
-:::
-
-::: details Solution
-<<< @/examples/tutorials/collisions/3-spikes.solution.ts{16}
 :::
 
 </BlExercise>

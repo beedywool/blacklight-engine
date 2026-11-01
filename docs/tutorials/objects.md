@@ -12,10 +12,6 @@ Everything a scene draws or moves is a game object: the player, a coin, a wall, 
 Copy the second `this.spawn(Planet, { … })` line and change its properties.
 :::
 
-::: details Solution
-<<< @/examples/tutorials/objects/1-spawn.solution.ts{21}
-:::
-
 </BlExercise>
 
 Fields are set before `create()` runs, so `create()` sees the spawned values. A property the class does not have is a type error: try `this.spawn(Planet, { size: 40 })`.
@@ -30,10 +26,6 @@ Make the planets turn. Add a field `speed = 0` (radians per second) to `Planet`,
 `update()` runs 60 times per second, whatever the display's refresh rate: a step is 1/60 s, so `speed / 60` per step is `speed` per second. Write it as `override update() { … }`, next to `create()`.
 :::
 
-::: details Solution
-<<< @/examples/tutorials/objects/2-update.solution.ts{8,16-18,26}
-:::
-
 </BlExercise>
 
 Each planet is its own instance: changing `speed` on one leaves the others alone. Set `speed: -1` on the white planet to turn it the other way.
@@ -46,10 +38,6 @@ An object spawned with `parent: other` is drawn inside `other`: its `x` and `y` 
 
 ::: details Hint
 `const red = this.spawn(Planet, { … });` then `this.spawn(Planet, { parent: red, x: 90, radius: 14 })`. The child's `y` is 0 by default: the parent's center line.
-:::
-
-::: details Solution
-<<< @/examples/tutorials/objects/3-children.solution.ts{26-27}
 :::
 
 </BlExercise>

@@ -1,5 +1,6 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { defineConfig, type DefaultTheme } from 'vitepress';
+import { shikiTheme } from './theme/syntax';
 
 /** Sidebar of the API reference, written by `scripts/api.mjs` (TypeDoc) before each build. */
 function apiSidebar(): DefaultTheme.SidebarItem[] {
@@ -204,6 +205,8 @@ export default defineConfig({
   metaChunk: true,
   appearance: 'force-dark',
   lastUpdated: true,
+  // Static snippets use the palette of the live editors (theme/syntax.ts).
+  markdown: { theme: shikiTheme },
   // The API reference is generated; its pages link to each other by file name.
   ignoreDeadLinks: [/^\.\.?\/api\//],
   head: [

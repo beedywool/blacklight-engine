@@ -56,7 +56,8 @@
 
   --vp-c-default-soft: var(--bl-surface-high);
   --vp-code-bg: var(--bl-surface-container);
-  --vp-code-block-bg: #111111;
+  /* Code blocks and the live editors share one surface and one palette (theme/syntax.ts). */
+  --vp-code-block-bg: #0f1115;
   --vp-code-color: #f1f1f1;
 
   --vp-button-brand-bg: #ffffff;
@@ -124,4 +125,8 @@
 ::selection {
   background: var(--bl-primary-container);
   color: #f1f1f1;
+}
+/* A live example opens its code full screen: the page behind must not scroll. */
+html.bl-dialog-open {
+  overflow: hidden;
 }

@@ -18,10 +18,6 @@ The hero walks back and forth but shows its `idle` animation, the `default` of `
 `this.play('run')`. In a project, animation names are typed from the `.anim.json` files, so `this.play('runn')` is a type error; at run time a missing name plays the closest animation and logs a warning once.
 :::
 
-::: details Solution
-<<< @/examples/tutorials/sprites/1-play.solution/objects/hero/hero.object.ts{12}
-:::
-
 </BlExercise>
 
 In `hero.anim.json`, change the `fps` of `run` to 20 and then to 4: the frames are the same, the legs move faster or slower. The walking speed itself is the `3` in `update()`; matching the two is what makes feet stick to the ground.
@@ -36,10 +32,6 @@ The sheet only has frames facing right, so the hero walks backwards to the left.
 `flipX` is a boolean property of `Sprite`. `this.direction < 0` is the boolean you need.
 :::
 
-::: details Solution
-<<< @/examples/tutorials/sprites/2-flip.solution/objects/hero/hero.object.ts{13}
-:::
-
 </BlExercise>
 
 `flipX` mirrors around the sprite's anchor, its center by default, so the hero turns on the spot. `flipY` mirrors vertically.
@@ -52,12 +44,6 @@ Every two seconds the hero jumps (a tween on `y`), and `jumping` is true while i
 
 ::: details Hint
 In the JSON file, add an entry to `animations`: `"jump": { "frames": [3], "fps": 1 }` (mind the comma after `run`). In `update()`, `this.play(this.jumping ? 'jump' : 'run')`.
-:::
-
-::: details Solution
-<<< @/examples/tutorials/sprites/3-jump.solution/objects/hero/hero.anim.json{6-7}
-
-<<< @/examples/tutorials/sprites/3-jump.solution/objects/hero/hero.object.ts{23}
 :::
 
 </BlExercise>

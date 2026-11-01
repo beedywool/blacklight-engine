@@ -14,10 +14,6 @@ The ship crawls at 200 pixels per second. Change the `speed` option of its `eigh
 The options are the object given to `behaviors.eightDirections(…)` in `static behaviors`.
 :::
 
-::: details Solution
-<<< @/examples/tutorials/behaviors/1-speed.solution.ts{6}
-:::
-
 </BlExercise>
 
 ## Exercise 2: a second behavior
@@ -28,10 +24,6 @@ Fly off the screen: the ship is gone. Add `behaviors.wrapAroundScreen()` to the 
 
 ::: details Hint
 `static behaviors` is an array: add an element after `behaviors.eightDirections(…)`. Behaviors run in the order of the array.
-:::
-
-::: details Solution
-<<< @/examples/tutorials/behaviors/2-wrap.solution.ts{7}
 :::
 
 </BlExercise>
@@ -48,10 +40,6 @@ The star floats with `sineWave`. Every behavior has an `enabled` flag; a disable
 `this.behavior('sineWave')` returns the star's instance (or `undefined` if it has none, hence the `!`). `this.input.held('jump')` is true on every step the key is down.
 :::
 
-::: details Solution
-<<< @/examples/tutorials/behaviors/3-enabled.solution.ts{22-24}
-:::
-
 </BlExercise>
 
 For a ready-made behavior, `this.behavior<EightDirections>('eightDirections')` returns it typed, with its own fields: `facing` is the last direction the ship moved.
@@ -64,10 +52,6 @@ For a ready-made behavior, `this.behavior<EightDirections>('eightDirections')` r
 
 ::: details Hint
 `dt` is the length of a step in seconds (1/60). Adding `speed * dt` to `object.rotation` on every step turns it by `speed` per second. Rename `_object` and `_dt` once you use them: the underscore marks unused parameters.
-:::
-
-::: details Solution
-<<< @/examples/tutorials/behaviors/4-custom.solution.ts{8,10}
 :::
 
 </BlExercise>

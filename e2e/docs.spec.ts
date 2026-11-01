@@ -81,42 +81,6 @@ function tutorialFiles(): { starts: string[]; solutions: string[] } {
   return { starts: starts.sort(), solutions: solutions.sort() };
 }
 
-/**
- * Lines of `after` that are not in `before` (longest common subsequence), blank lines left out,
- * as a VitePress highlight list: `{3,7-9}`.
- */
-function changedLines(before: string, after: string): string {
-  const a = before.split('\n');
-  const b = after.split('\n');
-  const common = Array.from({ length: a.length + 1 }, () =>
-    new Array<number>(b.length + 1).fill(0),
-  );
-  for (let i = a.length - 1; i >= 0; i--)
-    for (let j = b.length - 1; j >= 0; j--)
-      common[i]![j] =
-        a[i] === b[j]
-          ? common[i + 1]![j + 1]! + 1
-          : Math.max(common[i + 1]![j]!, common[i]![j + 1]!);
-  const added: number[] = [];
-  for (let i = 0, j = 0; j < b.length;) {
-    if (i < a.length && a[i] === b[j]) {
-      i++;
-      j++;
-    } else if (i < a.length && common[i + 1]![j]! >= common[i]![j + 1]!) i++;
-    else {
-      if (b[j]!.trim()) added.push(j + 1);
-      j++;
-    }
-  }
-  const ranges: [number, number][] = [];
-  for (const line of added) {
-    const last = ranges.at(-1);
-    if (last && last[1] === line - 1) last[1] = line;
-    else ranges.push([line, line]);
-  }
-  return `{${ranges.map(([from, to]) => (from === to ? `${from}` : `${from}-${to}`)).join(',')}}`;
-}
-
 /** Example ids from the files: `group/name.ts` and folders `group/name/` holding a `main.ts`. */
 function exampleFiles(): string[] {
   const ids: string[] = [];
@@ -160,6 +124,25 @@ function watchConsole(page: Page): string[] {
   });
   page.on('pageerror', (error) => errors.push(error.message));
   return errors;
+}
+
+/**
+ * Opens the code of a live example in its full-screen dialog. The dialog mirrors the example's
+ * `data-*` state, so it can stand in for the example in the checks below.
+ */
+async function openCode(page: Page, live: Locator): Promise<Locator> {
+  const dialog = page.locator('.bl-dialog');
+  if (!(await dialog.isVisible())) await live.locator('.bl-live__open').click();
+  await expect(dialog).toBeVisible();
+  return dialog;
+}
+
+/** Closes the code dialog, if it is open. */
+async function closeCode(page: Page): Promise<void> {
+  const dialog = page.locator('.bl-dialog');
+  if (!(await dialog.isVisible())) return;
+  await dialog.getByRole('button', { name: 'Close' }).click();
+  await expect(dialog).toBeHidden();
 }
 
 /** Replaces the text of the editor inside `host` and waits for the run it triggers to start. */
@@ -240,39 +223,80 @@ test('a broken example fails the check', async ({ page }) => {
   await page.goto(`${site}/behaviors/eight-directions`);
   const live = page.locator('.bl-live').first();
   expect(await checkExample(live, consoleErrors)).toEqual([]);
+  // The editor lives in the dialog the example opens.
+  const dialog = await openCode(page, live);
   const source = readFileSync(join(examples, 'behaviors/eight-directions.ts'), 'utf8');
 
   // An exception at run time.
   await setEditorText(
     page,
-    live,
+    dialog,
     source.replace(
       'override create() {',
       "override create() {\n    throw new Error('broken on purpose');",
     ),
   );
-  let problems = await checkExample(live, consoleErrors);
+  let problems = await checkExample(dialog, consoleErrors);
   expect(problems.join('\n')).toContain('broken on purpose');
 
   // A syntax error.
-  await setEditorText(page, live, source.replace('class Ship', 'class Ship {'));
-  problems = await checkExample(live, consoleErrors);
+  await setEditorText(page, dialog, source.replace('class Ship', 'class Ship {'));
+  problems = await checkExample(dialog, consoleErrors);
   expect(problems.join('\n')).toMatch(/error: .*main\.scene\.ts/);
 
   // A scene that draws nothing.
   await setEditorText(
     page,
-    live,
+    dialog,
     "import { Scene } from '@blacklight/core';\nexport default class Empty extends Scene {}\n",
   );
-  problems = await checkExample(live, consoleErrors);
+  problems = await checkExample(dialog, consoleErrors);
   expect(problems).toEqual(['blank canvas']);
 
   // Reset brings the example back.
   const run = (await live.getAttribute('data-run'))!;
-  await live.getByRole('button', { name: 'Reset' }).click();
+  await dialog.getByRole('button', { name: 'Reset' }).click();
   await expect(live).not.toHaveAttribute('data-run', run);
-  expect(await checkExample(live, consoleErrors)).toEqual([]);
+  expect(await checkExample(dialog, consoleErrors)).toEqual([]);
+});
+
+test('an example opens its code full screen, the panel under the preview', async ({ page }) => {
+  await page.goto(`${site}/tutorials/camera`);
+  const live = page.locator('.bl-exercise').first().locator('.bl-live');
+  await live.scrollIntoViewIfNeeded();
+  await expect(live).toHaveAttribute('data-status', /running|error/, { timeout: 45_000 });
+  // The check of an exercise is in the popup, not on the page.
+  await expect(page.locator('.bl-exercise__status')).toHaveCount(0);
+  const dialog = await openCode(page, live);
+  await expect(dialog.locator('.bl-exercise__status')).toBeVisible();
+
+  // The whole screen.
+  const viewport = page.viewportSize()!;
+  const box = (await dialog.boundingBox())!;
+  expect(box.width).toBeGreaterThanOrEqual(viewport.width - 1);
+  expect(box.height).toBeGreaterThanOrEqual(viewport.height - 1);
+  // The editor on the left of the preview, the task and the hint in the panel below it.
+  const editor = (await dialog.locator('.bl-dialog__editor').boundingBox())!;
+  const preview = (await dialog.locator('.bl-dialog__preview').boundingBox())!;
+  const panel = (await dialog.locator('.bl-dialog__panel').boundingBox())!;
+  expect(editor.x + editor.width).toBeLessThanOrEqual(preview.x);
+  expect(panel.y).toBeGreaterThanOrEqual(preview.y + preview.height - 1);
+  // The preview keeps the 16:9 of the game, so no black bars push the panel down.
+  expect(Math.abs(preview.width / preview.height - 16 / 9)).toBeLessThan(0.02);
+  // The close button is at the right edge of the bar.
+  const close = (await dialog.getByRole('button', { name: 'Close' }).boundingBox())!;
+  expect(box.x + box.width - (close.x + close.width)).toBeLessThan(40);
+  await expect(dialog.locator('.cm-content')).toContainText('create()');
+  await expect(dialog.locator('.bl-dialog__panel')).toContainText('Hint');
+  // The solution is a button under the hint, not a block of code.
+  const hint = (await dialog.locator('.bl-dialog__panel summary').first().boundingBox())!;
+  const solution = (await dialog.getByRole('button', { name: 'Solution' }).boundingBox())!;
+  expect(solution.y).toBeGreaterThan(hint.y);
+
+  // Escape closes it, with the page usable again.
+  await page.keyboard.press('Escape');
+  await expect(dialog).toBeHidden();
+  await expect(live).toHaveAttribute('data-status', /running|error/, { timeout: 45_000 });
 });
 
 /** Files of an example id, relative to it: `main.ts` for a single file. */
@@ -297,7 +321,7 @@ function exampleSources(id: string): Map<string, string> {
   return files;
 }
 
-test('every exercise has a solution, shown on its page with the changed lines highlighted', () => {
+test('every exercise has a solution its button applies, and no page shows it', () => {
   const { starts, solutions } = tutorialFiles();
   const exercises = [...exercisesByPage()].flatMap(([url, ids]) => ids.map((id) => ({ url, id })));
   expect(exercises.map(({ id }) => id).sort()).toEqual(starts);
@@ -306,38 +330,21 @@ test('every exercise has a solution, shown on its page with the changed lines hi
   const problems: string[] = [];
   for (const { url, id } of exercises) {
     const page = readFileSync(join(docs, `${url.slice(1)}.md`), 'utf8');
-    const shown = new Map(
-      [...page.matchAll(/^<<< @\/examples\/(\S+?)(\{[^}]*\})?$/gm)].map((m) => [
-        m[1]!,
-        m[2] ?? '{}',
-      ]),
-    );
+    // The solution is the button, not a snippet: the editor marks what it changed.
+    if (page.includes(`${id}.solution`)) problems.push(`${url}: shows the solution of ${id}`);
     const start = exampleSources(id);
     const solution = exampleSources(`${id}.solution`);
     expect([...solution.keys()].sort(), id).toEqual([...start.keys()].sort());
-    let changed = 0;
-    for (const [file, text] of solution) {
-      if (text === start.get(file)) continue;
-      changed++;
-      const path =
-        file === 'main.ts' && existsSync(join(examples, `${id}.ts`))
-          ? `${id}.solution.ts`
-          : `${id}.solution/${file}`;
-      const lines = changedLines(start.get(file)!, text);
-      if (!shown.has(path))
-        problems.push(`${url}: ${path} is not shown (<<< @/examples/${path}${lines})`);
-      else if (shown.get(path) !== lines)
-        problems.push(`${url}: ${path} highlights ${shown.get(path)}, changed lines are ${lines}`);
-    }
-    if (!changed) problems.push(`${id}: the solution is the same as the start`);
+    if (![...solution].some(([file, text]) => text !== start.get(file)))
+      problems.push(`${id}: the solution is the same as the start`);
   }
   expect(problems).toEqual([]);
 });
 
-/** Clicks the middle of a live example's preview, then holds each key for a moment. */
-async function pressKeys(page: Page, live: Locator, keys: string[]): Promise<void> {
+/** Clicks the middle of a preview inside `host`, then holds each key for a moment. */
+async function pressKeys(page: Page, host: Locator, keys: string[]): Promise<void> {
   // Held for a few steps: a click shorter than a step is not seen by `pointer.pressed`.
-  const box = (await live.locator('.bl-live__preview iframe').boundingBox())!;
+  const box = (await host.locator('.bl-preview iframe').boundingBox())!;
   await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
   await page.mouse.down();
   await page.waitForTimeout(100);
@@ -373,26 +380,59 @@ test('every exercise solution runs, and each check passes on the solution, not o
         await page.waitForTimeout(1_000);
         if ((await live.getAttribute('data-done')) !== 'false') fail('the start passes the check');
       }
+      // The task, the hint and the solution are in the panel under the dialog's preview.
+      const dialog = await openCode(page, live);
+      await expect(dialog.locator('.bl-dialog__panel')).toContainText(/\S/);
       const run = (await live.getAttribute('data-run')) ?? '0';
-      await live.getByRole('button', { name: 'Solution' }).click();
+      await dialog.getByRole('button', { name: 'Solution' }).click();
       await expect(live).not.toHaveAttribute('data-run', run, { timeout: 10_000 });
       await expect(live).toHaveAttribute('data-solution', 'true');
-      for (const problem of await checkExample(live, consoleErrors)) fail(`solution ${problem}`);
+      // The lines the solution changed are marked in the editor.
+      await expect(dialog.locator('.cm-highlight-line').first()).toBeVisible();
+      for (const problem of await checkExample(dialog, consoleErrors)) fail(`solution ${problem}`);
       if (checks) {
         const deadline = Date.now() + 15_000;
         while ((await live.getAttribute('data-done')) !== 'true' && Date.now() < deadline) {
           // A click on the preview, then the keys: what a reader does to try it.
-          await pressKeys(page, live, keys);
+          await pressKeys(page, dialog, keys);
           await page.waitForTimeout(250);
         }
         if ((await live.getAttribute('data-done')) !== 'true') fail('the solution fails the check');
-        else await expect(exercises.nth(i).locator('.bl-exercise__status')).toContainText('Done');
+        else await expect(dialog.locator('.bl-exercise__status')).toContainText('Done');
       }
+      await closeCode(page);
       checked++;
     }
   }
   expect(failures).toEqual([]);
   expect(checked).toBeGreaterThanOrEqual(20);
+});
+
+test('the solution button keeps the reader code and reverts to it', async ({ page }) => {
+  await page.goto(`${site}/tutorials/camera`);
+  const live = page.locator('.bl-exercise').first().locator('.bl-live');
+  await live.scrollIntoViewIfNeeded();
+  await expect(live).toHaveAttribute('data-status', /running|error/, { timeout: 45_000 });
+  const dialog = await openCode(page, live);
+  const editor = dialog.locator('.cm-content');
+
+  // The reader's own version of the file.
+  const start = readFileSync(join(examples, 'tutorials/camera/1-follow.ts'), 'utf8');
+  await setEditorText(page, dialog, `// mine\n${start}`);
+  await expect(editor).toContainText('// mine');
+
+  await dialog.getByRole('button', { name: 'Solution' }).click();
+  await expect(live).toHaveAttribute('data-solution', 'true');
+  await expect(editor).not.toContainText('// mine');
+  await expect(editor).toContainText('this.camera.follow(runner);');
+  await expect(dialog.locator('.cm-highlight-line').first()).toBeVisible();
+
+  // Pressing it again, now Revert, gives the reader their code back, not the starting example.
+  await dialog.getByRole('button', { name: 'Revert' }).click();
+  await expect(live).not.toHaveAttribute('data-solution', 'true');
+  await expect(editor).toContainText('// mine');
+  await expect(dialog.locator('.cm-highlight-line')).toHaveCount(0);
+  await expect(live).toHaveAttribute('data-status', /running|error/, { timeout: 45_000 });
 });
 
 test('a type error in an example fails pnpm typecheck', () => {

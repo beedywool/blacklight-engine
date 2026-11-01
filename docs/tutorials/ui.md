@@ -16,10 +16,6 @@ The scene opens the HUD with `this.ui.open(Hud)`. `Menu` is written but never sh
 `this.ui.push(Menu)`, inside `if (this.input.pressed('pause'))`.
 :::
 
-::: details Solution
-<<< @/examples/tutorials/ui/1-push.solution.ts{47-49}
-:::
-
 </BlExercise>
 
 The white dot keeps moving under the menu: pushing a screen takes the input, not the time. `this.game.pause()` would also freeze the scene; the [scenes tutorial](./scenes) shows an overlay scene, the other way to build a pause.
@@ -34,10 +30,6 @@ Add a `Slider` labelled VOLUME under the menu list, holding a value from 0 to 1 
 Import `Slider` from `@blacklight/ui`. In `h()`, `v-model` is written as two props: `modelValue: volume.value` and `'onUpdate:modelValue': (value: number) => (volume.value = value)`.
 :::
 
-::: details Solution
-<<< @/examples/tutorials/ui/2-slider.solution.ts{3,23,34-38}
-:::
-
 </BlExercise>
 
 Focus moves between every focusable widget of the screen in reading order, and the focused one gets the white outline. In a `.vue` file the slider is one line: `<Slider v-model="volume" label="VOLUME" />`.
@@ -50,10 +42,6 @@ The HUD writes `HP 5 / 5` as text, and the scene takes one point every 1.5 secon
 
 ::: details Hint
 `h(Gauge, { value: hp.value, max: 5 }, () => 'label')`: the third argument of `h` for a component is its slot content.
-:::
-
-::: details Solution
-<<< @/examples/tutorials/ui/3-gauge.solution.ts{3,15}
 :::
 
 </BlExercise>

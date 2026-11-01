@@ -14,10 +14,6 @@ Make the dot grow to 1.5 times its size while Space is held, and shrink back whe
 `this.input.held('jump')` is a boolean, true on every step the key is down. `this.dot.scale.set(1.5)` scales both axes.
 :::
 
-::: details Solution
-<<< @/examples/tutorials/input/1-held.solution.ts{30}
-:::
-
 </BlExercise>
 
 Replace `held` with `pressed`: the dot grows for one step only, 1/60 of a second, too short to see. `pressed` is for things that happen once per press (a jump, a shot, a menu choice), `held` for things that last (a charge, a run button).
@@ -32,10 +28,6 @@ Actions are declared in the game config (`input.actions` in `game.config.ts`; he
 Key names are `KeyboardEvent.code` values (`KeyC`, `Space`, `ArrowLeft`), gamepad buttons are `Pad:A`, `Pad:B`… The example needs `type GameConfig` in its import to type `config`.
 :::
 
-::: details Solution
-<<< @/examples/tutorials/input/2-action.solution.ts{2,4-7,36}
-:::
-
 </BlExercise>
 
 In a project, the CLI generates the list of action names from `game.config.ts`, so `this.input.pressed('dsah')` is a type error and the VS Code extension completes the names. Bindings declared in the config are added to the defaults, which stay: `left` is still the arrows, WASD and the D-pad.
@@ -48,10 +40,6 @@ In a project, the CLI generates the list of action names from `game.config.ts`, 
 
 ::: details Hint
 `this.pointer.pressed` is true on the step of the click. `this.dot.teleport(x, y)` sets both coordinates at once, without the slide that display interpolation would draw from the old position ([Objects](../guide/objects#position-and-interpolation)).
-:::
-
-::: details Solution
-<<< @/examples/tutorials/input/3-pointer.solution.ts{37}
 :::
 
 </BlExercise>

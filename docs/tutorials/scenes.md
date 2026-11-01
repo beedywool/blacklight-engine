@@ -14,10 +14,6 @@ Press Enter in the preview: the title switches to level 1. Keep that, and also m
 `this.after(ms, callback)` runs `callback` once after `ms` milliseconds of game time. Call it in `create()`. Timers belong to the scene: if Enter switches first, the timer is dropped with the title and never fires.
 :::
 
-::: details Solution
-<<< @/examples/tutorials/scenes/1-auto-start.solution.ts{18}
-:::
-
 </BlExercise>
 
 `void` in front of `this.goto(…)` says that the returned promise is ignored on purpose: it resolves once the new scene has started, which matters only to code that has to wait for it.
@@ -32,10 +28,6 @@ Press Enter in the preview: the title switches to level 1. Keep that, and also m
 Parameters reach `create()` only. To use one in `update()`, keep it in a field of the scene (`private speed = 6;`), set in `create()`.
 :::
 
-::: details Solution
-<<< @/examples/tutorials/scenes/2-parameters.solution.ts{18,22,31,34,48}
-:::
-
 </BlExercise>
 
 Try `this.goto('level')` without parameters, or with `{ number: 'three' }`: the editor underlines it, because `Level` declares `Scene<{ number: number }>`. `pnpm typecheck` reports the same error in a project.
@@ -48,10 +40,6 @@ An overlay is a scene opened over the current one: the scene below keeps drawing
 
 ::: details Hint
 The countdown runs in `this.every(1000, …)`. After `this.left--`, test whether `this.left` is 0.
-:::
-
-::: details Solution
-<<< @/examples/tutorials/scenes/3-overlay.solution.ts{44}
 :::
 
 </BlExercise>

@@ -3,7 +3,7 @@
 import type { EditorView } from '@codemirror/view';
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue';
 
-const props = defineProps<{ path: string; text: string }>();
+const props = defineProps<{ path: string; text: string; highlight?: number[] }>();
 const emit = defineEmits<{ change: [path: string, text: string] }>();
 
 const host = ref<HTMLElement | null>(null);
@@ -21,11 +21,19 @@ async function open() {
     shown = text;
     emit('change', path, text);
   });
+  editor.setHighlight(view, props.highlight ?? []);
 }
 
 onMounted(open);
 onBeforeUnmount(() => view?.destroy());
 watch(() => props.path, open);
+// Lines marked from outside (the solution of an exercise, then reverted).
+watch(
+  () => props.highlight,
+  (lines) => {
+    if (view && editor) editor.setHighlight(view, lines ?? []);
+  },
+);
 // Text replaced from outside (reset, shared link): show it.
 watch(
   () => props.text,

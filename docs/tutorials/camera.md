@@ -8,14 +8,10 @@ The examples below run a 4000 × 1400 world on a 1280 × 720 screen. Click a pre
 
 <BlExercise src="tutorials/camera/1-follow">
 
-The runner leaves the screen after a second of running to the right: the camera stays at its starting place, the center of the screen. In `create()`, keep the spawned runner in a variable and make the camera follow it. The status line under this text turns to **Done** when the camera follows something.
+The runner leaves the screen after a second of running to the right: the camera stays at its starting place, the center of the screen. In `create()`, keep the spawned runner in a variable and make the camera follow it. The status line above this text turns to **Done** when the camera follows something.
 
 ::: details Hint
 `spawn` returns the object it creates. `this.camera.follow(object)` takes it.
-:::
-
-::: details Solution
-<<< @/examples/tutorials/camera/1-follow.solution.ts{22-23}
 :::
 
 </BlExercise>
@@ -32,10 +28,6 @@ A camera locked on the player makes every small move scroll the whole screen. `f
 `this.camera.follow(runner, { lerp: …, deadzone: { width: …, height: … } })`.
 :::
 
-::: details Solution
-<<< @/examples/tutorials/camera/2-smooth.solution.ts{24}
-:::
-
 </BlExercise>
 
 Try `lerp: 0.02`: the camera lags so far behind that the runner can leave the screen. Values between 0.05 and 0.2 suit most games.
@@ -48,10 +40,6 @@ Two more properties of the camera. `zoom` above 1 shows a smaller part of the wo
 
 ::: details Hint
 Set `this.camera.zoom` in `create()`. Add an `update()` method to the scene and test `this.input.pressed('jump')` in it.
-:::
-
-::: details Solution
-<<< @/examples/tutorials/camera/3-zoom-and-shake.solution.ts{24,27-29}
 :::
 
 </BlExercise>

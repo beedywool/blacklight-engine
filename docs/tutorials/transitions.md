@@ -14,10 +14,6 @@ The rooms swap from one frame to the next. Pass `{ transition: 'iris' }` as the 
 `this.goto(this.next, undefined, { transition: 'iris' })`.
 :::
 
-::: details Solution
-<<< @/examples/tutorials/transitions/1-scene.solution.ts{28}
-:::
-
 </BlExercise>
 
 The old scene is destroyed and the new one created while the screen is covered, so the player never sees a half-built scene.
@@ -32,10 +28,6 @@ The menu pops in and out. Give `this.ui.open` a third argument with `enter: 'sla
 `this.ui.open(Menu, {}, { enter: 'slash', leave: 'slash' })`.
 :::
 
-::: details Solution
-<<< @/examples/tutorials/transitions/2-screen.solution.ts{26}
-:::
-
 </BlExercise>
 
 `enter` and `leave` need not match: `{ enter: 'zoom', leave: 'fade' }` is common for dialogs. A screen that always opens the same way declares it itself with `useScreen({ enter: 'slash' })`, as the [UI tutorial](./ui)'s menu does.
@@ -48,10 +40,6 @@ The menu pops in and out. Give `this.ui.open` a third argument with `enter: 'sla
 
 ::: details Hint
 `X` is `(1 - t) * 100`. A template string builds the value: `` `inset(0 ${(1 - t) * 100}% 0 0)` ``. Rename `_el` and `_t` once you use them.
-:::
-
-::: details Solution
-<<< @/examples/tutorials/transitions/3-custom.solution.ts{9-11}
 :::
 
 </BlExercise>
