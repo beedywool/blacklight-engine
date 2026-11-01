@@ -17,6 +17,7 @@ const A = 0;
 const Y = 3;
 const UP = 12;
 const DOWN = 13;
+const LEFT = 14;
 const RIGHT = 15;
 
 interface PartyWindow {
@@ -131,9 +132,13 @@ function collectErrors(page: Page): string[] {
  * shows (dev-only debug tools and the first Vue screen compiling): one `evaluate` of the focus
  * poll took 40 s there (run 41319143877), so the focus poll waits up to 60 s.
  */
-async function open(page: Page, port = DEV_PORT): Promise<void> {
+async function open(
+  page: Page,
+  port = DEV_PORT,
+  size = { width: 1920, height: 1080 },
+): Promise<void> {
   await page.emulateMedia({ reducedMotion: 'reduce' });
-  await page.setViewportSize({ width: 1920, height: 1080 });
+  await page.setViewportSize(size);
   await page.goto(`http://localhost:${port}/`);
   await expect(scene(page)).toHaveAttribute('data-blacklight-state', 'running', {
     timeout: 30_000,
@@ -430,15 +435,19 @@ test.describe('online', () => {
   test.afterAll(() => relay.close());
 
   test('two browsers play Push-Push online to the end without desync', async () => {
-    // Two browsers draw in software on one runner: every action took 2–5 s on GitHub's Linux
-    // runner, and the lobby alone used 127 s of the default 180 s.
+    // Two browsers draw in software on one runner (SwiftShader, or WARP on Windows), and every
+    // Playwright call waits for the page's next frame, whose cost grows with its pixels: at
+    // 1920×1080 a frame took about 5 s on GitHub's Linux runner (the test used 5.3 of its 6 min)
+    // and the Windows runner ran out of time in the lobby. Both pages run at half that size (the
+    // game letterboxes its 1920×1080 design the same way); the netcode under test does not
+    // depend on the resolution.
     test.setTimeout(360_000);
     const browsers = [await chromium.launch(), await chromium.launch()];
     const [host, guest] = await Promise.all(browsers.map((b) => b.newPage()));
     const errors = [...collectErrors(host!), ...collectErrors(guest!)];
     for (const page of [host!, guest!]) {
       await fakeGamepads(page, 1);
-      await open(page);
+      await open(page, DEV_PORT, { width: 960, height: 540 });
       await page.locator('.title__menu .bl-menu__item', { hasText: 'ONLINE' }).click();
       await expect(scene(page)).toHaveAttribute('data-blacklight-scene', 'online');
       await page.locator('.lobby__address input').fill(`127.0.0.1:${RELAY_PORT}`);
@@ -446,10 +455,9 @@ test.describe('online', () => {
     await host!.locator('.lobby__name input').fill('HOST');
     await guest!.locator('.lobby__name input').fill('GUEST');
 
-    // Host: Push-Push (the default), small ring, 30 s.
+    // Host: Push-Push (the default), large ring (the default), 30 s.
     await host!.locator('.lobby__host').click();
     const selects = host!.locator('.lobby__panel .bl-select');
-    await selects.nth(1).click();
     await selects.nth(2).click();
     await expect(selects.nth(2)).toContainText('30 S');
     await host!.locator('.lobby__create').click();
@@ -479,22 +487,44 @@ test.describe('online', () => {
           phase: minigame.referee!.phase,
         };
       });
-    // Inputs change every 0.4 s until the match ends (time limit or ring-out); buttons are
+    // The pages drive their own pads from the match's step (a Playwright call per change came
+    // tens of steps late on a busy machine, and late or skipped changes walked the wrestlers out
+    // of the ring within a few seconds): the input changes every 24 steps (0.4 s of game time),
+    // each move followed by the opposite one, so both players step back and forth around their
+    // start and shove; from step 384 the host walks out of the ring, which ends the match
+    // (ring-out) soon after: 18 checksums or so to compare (one every 30 steps). Buttons are
     // released as soon as the mini-game is over, before the end panel shows.
-    const buttons = [RIGHT, A, UP, DOWN, A];
-    const over = async () =>
-      (await Promise.all([host!, guest!].map(read))).some((r) => r.phase === 'over');
     await still(host!, 'online-push-push.png', { banner: false });
-    for (let i = 0; !(await over()) && i < 600; i++) {
-      if (i % 4 === 0) {
-        for (const [k, page] of [host!, guest!].entries()) {
-          for (const b of buttons) await hold(page, 0, b, false);
-          await hold(page, 0, buttons[(i / 4 + k * 2) % buttons.length]!, true);
-        }
-      }
-      await host!.waitForTimeout(100);
-    }
-    for (const page of [host!, guest!]) for (const b of buttons) await hold(page, 0, b, false);
+    await Promise.all(
+      [host!, guest!].map((page, k) =>
+        page.evaluate(
+          ([pattern, offset, walkOut]) => {
+            const w = window as unknown as PartyWindow;
+            const drive = () => {
+              const minigame = w.blacklight.scene.minigame;
+              const over = !minigame?.net || minigame.referee?.phase === 'over';
+              const change = over ? -1 : Math.floor(minigame.net!.session.frame / 24);
+              const pressed =
+                change < 0
+                  ? undefined
+                  : walkOut !== undefined && change >= 16
+                    ? walkOut
+                    : pattern[(change + offset) % pattern.length];
+              for (const b of pattern) w.__pads[0]![b] = b === pressed ? 1 : 0;
+              if (!over) requestAnimationFrame(drive);
+            };
+            drive();
+          },
+          [[LEFT, RIGHT, A, UP, DOWN, A], k * 3, k === 0 ? RIGHT : undefined] as const,
+        ),
+      ),
+    );
+    await expect
+      .poll(async () => (await Promise.all([host!, guest!].map(read))).map((r) => r.phase), {
+        timeout: 240_000,
+        intervals: [500],
+      })
+      .toContain('over');
     for (const page of [host!, guest!]) {
       await expect(page.locator('.end__panel')).toBeVisible({ timeout: 60_000 });
     }
