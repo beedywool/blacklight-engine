@@ -54,7 +54,33 @@ async function until(
       .toBe(true);
   } catch (error) {
     // Without the last status the failure says only "false", which cannot tell a deep link that
-    // never arrived from a save that failed after it did.
+    // never arrived from a save that failed after it did. The screen and the app's log tell what
+    // the status cannot (a system alert, a crash, a WebView error).
+    const screen = spawnSync('xcrun', ['simctl', 'io', udid, 'screenshot', '-'], {
+      maxBuffer: 64 << 20,
+    });
+    if (screen.status === 0)
+      await test.info().attach('failure.png', { body: screen.stdout, contentType: 'image/png' });
+    const log = spawnSync(
+      'xcrun',
+      [
+        'simctl',
+        'spawn',
+        udid,
+        'log',
+        'show',
+        '--last',
+        '3m',
+        '--style',
+        'compact',
+        '--predicate',
+        'process == "App"',
+      ],
+      { encoding: 'utf8', maxBuffer: 64 << 20 },
+    );
+    await test
+      .info()
+      .attach('app.log', { body: log.stdout || log.stderr, contentType: 'text/plain' });
     throw new Error(`${(error as Error).message}\nLast status.json: ${JSON.stringify(last)}`, {
       cause: error,
     });
