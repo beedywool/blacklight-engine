@@ -3,7 +3,7 @@
 // match between two browsers through the relay without desync.
 import { existsSync, readdirSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { chromium, expect, test, type Page } from '@playwright/test';
+import { chromium, expect, test, type Browser, type Page } from '@playwright/test';
 import { startRelay, type RelayServer } from '../servers/relay/src/index';
 import { run, serve } from './server';
 
@@ -434,17 +434,29 @@ test.describe('online', () => {
   });
   test.afterAll(() => relay.close());
 
-  test('two browsers play Push-Push online to the end without desync', async () => {
-    // Two browsers draw in software (SwiftShader) on one 4-CPU runner, and every Playwright call
-    // waits for the page's next frame: at 1920×1080 and 60 frames a second a call took about 5 s
-    // on GitHub's Linux runner (the test used 5.3 of its 6 min), and on the Windows runner the
-    // second browser took up to a minute per step while the first one drew its lobby. One idle
-    // title screen kept 6 to 8 cores of SwiftShader busy here. Both pages run at half that size
-    // (the game letterboxes its 1920×1080 design the same way) and draw at most 15 frames a
-    // second (the game still steps 60 times a second: up to 5 steps per frame); the netcode
-    // under test depends on neither.
-    test.setTimeout(360_000);
-    const browsers = [await chromium.launch(), await chromium.launch()];
+  // Two browsers draw in software (SwiftShader) on one 4-CPU runner, and every Playwright call
+  // waits for the page's next frame: at 1920×1080 and 60 frames a second a call took about 5 s
+  // on GitHub's Linux runner (the test used 5.3 of its 6 min), and on the Windows runner the
+  // second browser took up to a minute per step while the first one drew its lobby. One idle
+  // title screen kept 6 to 8 cores of SwiftShader busy here. Both pages run at half that size
+  // (the game letterboxes its 1920×1080 design the same way) and draw at most 15 frames a
+  // second (the game still steps 60 times a second: up to 5 steps per frame); the netcode
+  // under test depends on neither.
+  interface Online {
+    host: Page;
+    guest: Page;
+    errors: string[];
+  }
+
+  /**
+   * Two browsers open the template, the host creates a Push-Push room (large ring, 30 s) through
+   * the relay, the guest joins it by code and gets ready, the host starts. With `preload`, both
+   * pages load the match and Push-Push before the room is made.
+   */
+  async function startMatch(
+    browsers: Browser[],
+    options: { preload?: boolean } = {},
+  ): Promise<Online> {
     const [host, guest] = await Promise.all(browsers.map((b) => b.newPage()));
     const errors = [...collectErrors(host!), ...collectErrors(guest!)];
     for (const page of [host!, guest!]) {
@@ -460,6 +472,17 @@ test.describe('online', () => {
         timeout: SWITCH,
       });
       await page.locator('.lobby__address input').fill(`127.0.0.1:${RELAY_PORT}`);
+    }
+    if (options.preload) {
+      for (const page of [host!, guest!]) {
+        await page.evaluate(async () => {
+          const game = (
+            window as unknown as { blacklight: { preload(name: string): Promise<void> } }
+          ).blacklight;
+          await game.preload('match');
+          await game.preload('push-push');
+        });
+      }
     }
     await host!.locator('.lobby__name input').fill('HOST');
     await guest!.locator('.lobby__name input').fill('GUEST');
@@ -479,78 +502,157 @@ test.describe('online', () => {
     await guest!.locator('.lobby__ready').click();
     await expect(host!.locator('.lobby__start')).toBeEnabled();
     await host!.locator('.lobby__start').click();
-    for (const page of [host!, guest!]) {
-      await expect(scene(page)).toHaveAttribute('data-blacklight-scene', 'match', {
-        timeout: SWITCH,
-      });
-      await expect(page.locator('.hud .row')).toHaveCount(2);
-    }
+    return { host: host!, guest: guest!, errors };
+  }
 
-    // Both players move and shove; predictions fail often, so rollbacks happen.
-    const read = (page: Page) =>
-      page.evaluate(() => {
-        const minigame = (window as unknown as PartyWindow).blacklight.scene.minigame!;
-        return {
-          frame: minigame.net!.session.frame,
-          checksums: [...minigame.net!.session.checksums],
-          phase: minigame.referee!.phase,
-        };
-      });
-    // The pages drive their own pads from the match's step (a Playwright call per change came
-    // tens of steps late on a busy machine, and late or skipped changes walked the wrestlers out
-    // of the ring within a few seconds): the input changes every 24 steps (0.4 s of game time),
-    // each move followed by the opposite one, so both players step back and forth around their
-    // start and shove; from step 384 the host walks out of the ring, which ends the match
-    // (ring-out) soon after: 18 checksums or so to compare (one every 30 steps). Buttons are
-    // released as soon as the mini-game is over, before the end panel shows.
-    await still(host!, 'online-push-push.png', { banner: false });
-    await Promise.all(
-      [host!, guest!].map((page, k) =>
-        page.evaluate(
-          ([pattern, offset, walkOut]) => {
-            const w = window as unknown as PartyWindow;
-            const drive = () => {
-              const minigame = w.blacklight.scene.minigame;
-              const over = !minigame?.net || minigame.referee?.phase === 'over';
-              const change = over ? -1 : Math.floor(minigame.net!.session.frame / 24);
-              const pressed =
-                change < 0
-                  ? undefined
-                  : walkOut !== undefined && change >= 16
-                    ? walkOut
-                    : pattern[(change + offset) % pattern.length];
-              for (const b of pattern) w.__pads[0]![b] = b === pressed ? 1 : 0;
-              if (!over) requestAnimationFrame(drive);
-            };
-            drive();
-          },
-          [[LEFT, RIGHT, A, UP, DOWN, A], k * 3, k === 0 ? RIGHT : undefined] as const,
+  /** Launches two browsers and closes them however the test ends (a retry starts clean). */
+  async function withBrowsers(body: (browsers: Browser[]) => Promise<void>): Promise<void> {
+    const browsers: Browser[] = [];
+    try {
+      browsers.push(await chromium.launch(), await chromium.launch());
+      await body(browsers);
+    } finally {
+      await Promise.all(browsers.map((b) => b.close().catch(() => undefined)));
+    }
+  }
+
+  const read = (page: Page) =>
+    page.evaluate(() => {
+      const minigame = (window as unknown as PartyWindow).blacklight.scene.minigame!;
+      return {
+        frame: minigame.net!.session.frame,
+        checksums: [...minigame.net!.session.checksums],
+        phase: minigame.referee!.phase,
+      };
+    });
+
+  test('two browsers play Push-Push online to the end without desync', async () => {
+    test.skip(
+      process.platform === 'win32',
+      'Windows CI runs the lighter online check below; a full match is a manual test (DECISIONS 2026-11-01).',
+    );
+    test.setTimeout(360_000);
+    await withBrowsers(async (browsers) => {
+      const { host, guest, errors } = await startMatch(browsers);
+      for (const page of [host, guest]) {
+        await expect(scene(page)).toHaveAttribute('data-blacklight-scene', 'match', {
+          timeout: SWITCH,
+        });
+        await expect(page.locator('.hud .row')).toHaveCount(2);
+      }
+
+      // Both players move and shove; predictions fail often, so rollbacks happen.
+      // The pages drive their own pads from the match's step (a Playwright call per change came
+      // tens of steps late on a busy machine, and late or skipped changes walked the wrestlers out
+      // of the ring within a few seconds): the input changes every 24 steps (0.4 s of game time),
+      // each move followed by the opposite one, so both players step back and forth around their
+      // start and shove; from step 384 the host walks out of the ring, which ends the match
+      // (ring-out) soon after: 18 checksums or so to compare (one every 30 steps). Buttons are
+      // released as soon as the mini-game is over, before the end panel shows.
+      await still(host, 'online-push-push.png', { banner: false });
+      await Promise.all(
+        [host, guest].map((page, k) =>
+          page.evaluate(
+            ([pattern, offset, walkOut]) => {
+              const w = window as unknown as PartyWindow;
+              const drive = () => {
+                const minigame = w.blacklight.scene.minigame;
+                const over = !minigame?.net || minigame.referee?.phase === 'over';
+                const change = over ? -1 : Math.floor(minigame.net!.session.frame / 24);
+                const pressed =
+                  change < 0
+                    ? undefined
+                    : walkOut !== undefined && change >= 16
+                      ? walkOut
+                      : pattern[(change + offset) % pattern.length];
+                for (const b of pattern) w.__pads[0]![b] = b === pressed ? 1 : 0;
+                if (!over) requestAnimationFrame(drive);
+              };
+              drive();
+            },
+            [[LEFT, RIGHT, A, UP, DOWN, A], k * 3, k === 0 ? RIGHT : undefined] as const,
+          ),
         ),
-      ),
-    );
-    await expect
-      .poll(async () => (await Promise.all([host!, guest!].map(read))).map((r) => r.phase), {
-        timeout: 240_000,
-        intervals: [500],
-      })
-      .toContain('over');
-    for (const page of [host!, guest!]) {
-      await expect(page.locator('.end__panel')).toBeVisible({ timeout: 60_000 });
-    }
-    const [a, b] = [await read(host!), await read(guest!)];
-    const theirs = new Map(b.checksums);
-    const common = a.checksums.filter(([frame]) => theirs.has(frame));
-    expect(common.length).toBeGreaterThan(10);
-    for (const [frame, hash] of common) expect(theirs.get(frame), `step ${frame}`).toBe(hash);
-    const scores = await Promise.all(
-      [host!, guest!].map((page) => page.locator('.hud .row .row__score').allTextContents()),
-    );
-    expect(scores[0]).toEqual(scores[1]);
-    for (const page of [host!, guest!]) {
-      await page.locator('.end__menu .bl-menu__item', { hasText: 'RESULTS' }).click();
-      await expect(scene(page)).toHaveAttribute('data-blacklight-scene', 'results');
-    }
-    expect(errors).toEqual([]);
-    for (const browser of browsers) await browser.close();
+      );
+      await expect
+        .poll(async () => (await Promise.all([host, guest].map(read))).map((r) => r.phase), {
+          timeout: 240_000,
+          intervals: [500],
+        })
+        .toContain('over');
+      for (const page of [host, guest]) {
+        await expect(page.locator('.end__panel')).toBeVisible({ timeout: 60_000 });
+      }
+      const [a, b] = [await read(host), await read(guest)];
+      const theirs = new Map(b.checksums);
+      const common = a.checksums.filter(([frame]) => theirs.has(frame));
+      expect(common.length).toBeGreaterThan(10);
+      for (const [frame, hash] of common) expect(theirs.get(frame), `step ${frame}`).toBe(hash);
+      const scores = await Promise.all(
+        [host, guest].map((page) => page.locator('.hud .row .row__score').allTextContents()),
+      );
+      expect(scores[0]).toEqual(scores[1]);
+      for (const page of [host, guest]) {
+        await page.locator('.end__menu .bl-menu__item', { hasText: 'RESULTS' }).click();
+        await expect(scene(page)).toHaveAttribute('data-blacklight-scene', 'results');
+      }
+      expect(errors).toEqual([]);
+    });
+  });
+
+  /**
+   * Windows CI only (DECISIONS 2026-11-01): GitHub's 4-CPU Windows runner has no GPU, and two
+   * software-drawn browsers do not get through a full match there (the switch to the match took
+   * longer than 30 s with both pages compiling and drawing at once). The full match runs on Linux
+   * and macOS and between two real Windows PCs (MANUAL_TESTS); NET determinism is proven by the
+   * simulated 4-player gate and V8 vs JavaScriptCore. This check keeps the real stack on Windows:
+   * relay, room by code, ready, start, the match on both pages and the first checksums equal.
+   * Both pages load the match and Push-Push while they sit in the lobby, so the switch does not
+   * wait for the dev server's first compile of them. No screenshot.
+   */
+  test('two browsers start Push-Push online and agree on the first checksums', async () => {
+    test.skip(process.platform !== 'win32', 'Linux and macOS play the full match above.');
+    test.setTimeout(360_000);
+    await withBrowsers(async (browsers) => {
+      const { host, guest, errors } = await startMatch(browsers, { preload: true });
+      const state = (page: Page) =>
+        page.evaluate(() => ({
+          scene: document.querySelector('#game')?.getAttribute('data-blacklight-scene'),
+          lobby: document.querySelector('.lobby')?.textContent?.replace(/\s+/g, ' ').trim(),
+          toasts: [...document.querySelectorAll('.bl-toast')].map((t) => t.textContent?.trim()),
+        }));
+      try {
+        for (const page of [host, guest]) {
+          await expect(scene(page)).toHaveAttribute('data-blacklight-scene', 'match', {
+            timeout: 120_000,
+          });
+        }
+      } catch (error) {
+        // Says where each page stopped: still in the lobby (room, ready, a toast from the relay)
+        // or loading the match.
+        const where = await Promise.all([host, guest].map((page) => state(page).catch(String)));
+        throw new Error(
+          `${(error as Error).message}\nhost: ${JSON.stringify(where[0])}\nguest: ${JSON.stringify(where[1])}\npage errors: ${JSON.stringify(errors)}`,
+          { cause: error },
+        );
+      }
+      // One checksum every 30 steps: three common ones are the first 90 steps or so.
+      let compared: [number, number][] = [];
+      await expect
+        .poll(
+          async () => {
+            const [a, b] = await Promise.all([host, guest].map(read));
+            const theirs = new Map(b!.checksums);
+            compared = a!.checksums.filter(([frame]) => theirs.has(frame));
+            return compared.length;
+          },
+          { timeout: 120_000, intervals: [1000] },
+        )
+        .toBeGreaterThanOrEqual(3);
+      const [, b] = await Promise.all([host, guest].map(read));
+      const theirs = new Map(b!.checksums);
+      for (const [frame, hash] of compared) expect(theirs.get(frame), `step ${frame}`).toBe(hash);
+      expect(errors).toEqual([]);
+    });
   });
 });
