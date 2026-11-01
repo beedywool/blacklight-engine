@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { installDebug } from '../../src/debug/index';
 import { GameObject } from '../../src/objects/game-object';
 import { Scene } from '../../src/scene';
-import { Empty, frames, scenes, startGame } from './helpers';
+import { Empty, scenes, startGame, until } from './helpers';
 
 const press = (code: string) => {
   const event = new KeyboardEvent('keydown', { code, cancelable: true });
@@ -54,22 +54,22 @@ describe('installDebug', () => {
     expect(panel.style.display).toBe('block');
     await game.overlay('pause' as never, undefined, { pauseBelow: false });
     game.audio.history.push('coin');
-    await frames(2);
-    expect(panel.textContent).toContain('scene main + pause');
+    // The overlay is written by a ticker listener, and Pixi's ticker skips its listeners on an
+    // animation frame whose timestamp is not later than the last one: a fixed number of frames
+    // does not guarantee an update (run 41322614717, Windows). Wait for the state instead.
+    await until(() => panel.textContent.includes('scene main + pause'));
     expect(panel.textContent).toContain('Ball ×3');
     expect(panel.textContent).toContain('sounds coin');
 
     press('F4');
-    await frames(2);
     const hitboxes = game.app.stage.children.find(
       (c) => c instanceof PixiGraphics && c.parent === game.app.stage,
     ) as PixiGraphics;
-    expect(hitboxes.bounds.width).toBeGreaterThan(0);
+    await until(() => hitboxes.bounds.width > 0);
 
     press('F6');
     expect(game.paused).toBe(true);
-    await frames(2);
-    expect(panel.textContent).toContain('PAUSED');
+    await until(() => panel.textContent.includes('PAUSED'));
     press('F6');
     expect(game.paused).toBe(false);
 
