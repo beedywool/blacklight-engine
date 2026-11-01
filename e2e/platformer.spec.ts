@@ -94,8 +94,9 @@ async function startLevel(page: Page): Promise<void> {
   await expect(mount).toHaveAttribute('data-blacklight-scene', 'title');
   await expect(page.locator('.title')).toBeVisible();
   await page.keyboard.press('Enter');
-  await expect(mount).toHaveAttribute('data-blacklight-scene', 'level', { timeout: 10_000 });
-  // The dev server compiles the HUD's Vue files on their first request: seconds on a slow runner.
+  // The dev server compiles the level's modules and the HUD's Vue files on their first request:
+  // up to 27 s on the Windows runner.
+  await expect(mount).toHaveAttribute('data-blacklight-scene', 'level', { timeout: 30_000 });
   await expect(page.locator('.hud-coins')).toBeVisible({ timeout: 30_000 });
   await page.evaluate(() => window.blacklight.pause());
 }
@@ -200,7 +201,8 @@ test('keyboard: run, jump, collect coins, checkpoint, slime, goal', async ({ pag
   await page.keyboard.down('ArrowRight');
   await step(page, 40);
   await page.keyboard.up('ArrowRight');
-  await expect(page.locator('.clear')).toBeVisible();
+  // Clear.vue's first request is compiled then, like the HUD's (seconds on the Windows runner).
+  await expect(page.locator('.clear')).toBeVisible({ timeout: 30_000 });
   await expect(page.locator('.clear')).toContainText('LEVEL CLEAR');
   expect(errors).toEqual([]);
 });

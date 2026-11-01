@@ -117,9 +117,10 @@ templates.forEach((template, index) => {
           await expect(canvas).toBeVisible();
           // A page screenshot clipped to the canvas: an element screenshot first waits for two
           // identical animation frames, which a busy software GPU (Windows runners) never delivered.
+          // One screenshot of the party-game's title took 22 s there: room for a few.
           const clip = (await canvas.boundingBox())!;
           await expect
-            .poll(async () => colors(await page.screenshot({ clip })), { timeout: 20_000 })
+            .poll(async () => colors(await page.screenshot({ clip })), { timeout: 60_000 })
             .toBeGreaterThan(3);
           // Keys and the pointer reach the page without an error, and the game keeps running (Enter
           // may start another scene: the state is empty while it loads).
