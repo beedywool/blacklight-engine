@@ -39,7 +39,12 @@ const KEYRING =
   os === 'linux' ? ['--password-store=basic'] : os === 'mac' ? ['--use-mock-keychain'] : [];
 
 /** Environment that puts the OS data folder (SV-02) in a temporary folder. */
-function sandbox(): { env: Record<string, string>; dataDir: string; dispose(): void } {
+function sandbox(): {
+  dir: string;
+  env: Record<string, string>;
+  dataDir: string;
+  dispose(): void;
+} {
   const dir = mkdtempSync(join(tmpdir(), 'blacklight-desktop-'));
   const env: Record<string, string> = { ...(process.env as Record<string, string>) };
   let dataDir: string;
@@ -55,6 +60,7 @@ function sandbox(): { env: Record<string, string>; dataDir: string; dispose(): v
     dataDir = join(dir, 'Library', 'Application Support', GAME_ID);
   }
   return {
+    dir,
     env,
     dataDir,
     dispose: () => rmSync(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 }),
@@ -379,13 +385,14 @@ function start(
   executable: string,
   args: string[],
   env: Record<string, string>,
+  cwd?: string,
 ): {
   child: ChildProcess;
   output: () => string;
   exit: Promise<number | null>;
   stop: () => Promise<void>;
 } {
-  const child = spawn(executable, args, { env });
+  const child = spawn(executable, args, { env, cwd });
   started.add(child);
   let output = '';
   child.stdout?.on('data', (d: Buffer) => (output += d.toString()));
@@ -531,16 +538,62 @@ test('PF-05: steam target stages steamworks.js and writes depot scripts; upload 
       [0xcffaedfe, 0xcafebabe].includes(readFileSync(f).subarray(0, 4).readUInt32BE(0));
     const addons = filesUnder(unpacked).filter((f) => /\.(node|dylib)$/.test(f) && machO(f));
     expect(addons.some((f) => f.endsWith('sdl.node'))).toBe(true);
+    // Every Mach-O runs on both architectures: either it has both slices (extra ones are fine:
+    // Valve's libsteam_api.dylib also carries i386), or it is one of steamworks.js's per-arch
+    // addons, which its index.js picks by process.arch (checked by launching both slices below).
+    const pair: string[] = [];
     for (const addon of addons) {
       const perArch = /steamworksjs\.darwin-(x64|arm64)\.node$/.exec(addon);
-      const expected = perArch ? [perArch[1] === 'x64' ? 'x86_64' : 'arm64'] : both;
-      expect(machOArches(addon), addon).toEqual(expected);
+      if (perArch) {
+        const arch = perArch[1] === 'x64' ? 'x86_64' : 'arm64';
+        expect(machOArches(addon), addon).toEqual([arch]);
+        pair.push(arch);
+      } else {
+        expect(machOArches(addon), addon).toEqual(expect.arrayContaining(both));
+      }
     }
+    expect(pair.sort()).toEqual(both);
     // Bytecode is per architecture (V8's snapshot checksum differs): both ship, no source.
     const asar = readFileSync(join(contents, 'Resources', 'app.asar')).toString('latin1');
     expect(asar).toContain('blacklight-main.x64.jsc');
     expect(asar).toContain('blacklight-main.arm64.jsc');
     expect(asar).not.toContain('function isGameUrl(');
+
+    // Each slice starts and loads the steamworks.js addon of its architecture (the x64 one under
+    // Rosetta): a wrong-arch addon fails to load and the app logs "steamworks.js is missing".
+    // Without a Steam client the app either restarts through Steam (restartAppIfNecessary: it
+    // quits with 0) or, when steam_appid.txt is found, runs and logs "Steam is not available".
+    // Both prove the addon loaded and was called; the bytecode of that arch ran before it.
+    for (const arch of ['x86_64', 'arm64']) {
+      const box = sandbox();
+      writeFileSync(join(box.dir, 'steam_appid.txt'), '480');
+      const slice = start(
+        'arch',
+        [`-${arch}`, join(contents, 'MacOS', productName), ...KEYRING],
+        { ...box.env, SteamAppId: '480' },
+        box.dir,
+      );
+      const loaded = () =>
+        slice.output().includes('Steam is not available') ||
+        (slice.child.exitCode === 0 && !slice.output().includes('steamworks.js is missing'));
+      const ok = await expect
+        .poll(loaded, { timeout: 60_000 })
+        .toBe(true)
+        .then(
+          () => true,
+          () => false,
+        );
+      await slice.stop();
+      expect(ok, `${arch} slice did not load steamworks.js:\n${slice.output()}`).toBe(true);
+      expect(slice.output(), `${arch} slice`).not.toContain('steamworks.js is missing');
+      test.info().annotations.push({
+        type: `steam ${arch}`,
+        description: slice.output().includes('Steam is not available')
+          ? 'addon loaded, Steam not running'
+          : 'addon loaded, restartAppIfNecessary quit the app',
+      });
+      box.dispose();
+    }
   }
   const manifest = JSON.parse(readFileSync(join(steam, 'app', 'blacklight.json'), 'utf8'));
   expect(manifest.steam).toEqual({ appId: 480 });
