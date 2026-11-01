@@ -32,7 +32,9 @@ async function open(page: Page, errors: string[]): Promise<void> {
   await expect(page.locator('#game')).toHaveAttribute('data-blacklight-state', 'running', {
     timeout: 30_000,
   });
-  await expect(page.locator('.title')).toBeVisible();
+  // The dev server compiles TitleScreen.vue on its first request; on the Windows runner it was
+  // still pending 6 s later (a fresh server per attempt), while the scene was already running.
+  await expect(page.locator('.title')).toBeVisible({ timeout: 30_000 });
 }
 
 const ui = (page: Page) =>

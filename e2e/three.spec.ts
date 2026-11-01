@@ -127,11 +127,12 @@ test.describe('dev server', () => {
     expect(near(grass!, [0x2f, 0x5a, 0x3a], 20)).toBe(true);
     // Red chest, lit: neither the pillar nor the sky.
     expect(chest![0]).toBeGreaterThan(chest![1]! + 60);
-    await expect(page.locator('#game canvas')).toHaveScreenshot([
-      'three',
-      process.platform,
-      'arena.png',
-    ]);
+    // The game is paused: the frame is stable, but one screenshot takes seconds on the Windows
+    // runner's software GPU and a missing reference needs two.
+    await expect(page.locator('#game canvas')).toHaveScreenshot(
+      ['three', process.platform, 'arena.png'],
+      { timeout: 30_000 },
+    );
     expect(errors).toEqual([]);
   });
 
@@ -302,8 +303,11 @@ test.describe('release build', () => {
         // A software GPU stalls the main thread on its own drawing: on GitHub's runners the scene
         // without the models already takes 5–17 ms, so the budget is checked on a hardware GPU
         // (any developer machine, the phones in MANUAL_TESTS.md). Here the models must not cost
-        // more than the rest of the scene: about 1.9× the 2D frame on every runner measured.
-        expect(cpu).toBeLessThan(cpu2d * 2.5);
+        // more than the rest of the scene: about 1.9× the 2D frame on the Linux and macOS
+        // runners. On the Windows runner SwiftShader barely stalls the main thread (2D frame
+        // 1.7–1.9 ms) and the frame stays inside the hardware budget itself (7.7–7.9 ms), which is
+        // the requirement the ratio stands in for.
+        expect(cpu).toBeLessThan(Math.max(cpu2d * 2.5, 8.3));
       }
       expect(errors).toEqual([]);
     } finally {
