@@ -42,6 +42,13 @@ interface PartyWindow {
   };
 }
 
+/**
+ * Time for a scene switch that loads modules and files (the dev server compiles them on first
+ * use). On GitHub's Linux runner Chromium draws in software at about one frame per 1.4 s, and each
+ * awaited module or file waits for the frame in progress: a match took more than 10 s to start.
+ */
+const SWITCH = 30_000;
+
 let stop: (() => void) | undefined;
 test.beforeAll(async () => {
   stop = await serve(template, 'dev', DEV_PORT);
@@ -149,6 +156,9 @@ async function still(page: Page, name: string, options: { banner?: false } = {})
   await expect(page).toHaveScreenshot(['party-game', process.platform, name], {
     maxDiffPixelRatio: 0.03,
     animations: 'disabled',
+    // A new reference takes two page screenshots that must match; on the macOS runner's software
+    // GPU one 1920×1080 screenshot of the match took more than the default 5 s.
+    timeout: 30_000,
   });
   await hidden?.evaluate((tag) => tag.remove());
   if (!wasPaused) await page.evaluate(() => (window as unknown as PartyWindow).blacklight.resume());
@@ -194,7 +204,7 @@ async function joinTwoPlayers(page: Page, screenshot = false): Promise<void> {
   await press(page, 0, A);
   await press(page, 1, A);
   await expect(scene(page)).toHaveAttribute('data-blacklight-scene', 'game-select', {
-    timeout: 10_000,
+    timeout: SWITCH,
   });
 }
 
@@ -223,7 +233,7 @@ async function pick(page: Page, index: number, settings: [number, number], scree
     });
   });
   await press(page, 0, A);
-  await expect(scene(page)).toHaveAttribute('data-blacklight-scene', 'match', { timeout: 10_000 });
+  await expect(scene(page)).toHaveAttribute('data-blacklight-scene', 'match', { timeout: SWITCH });
   await expect
     .poll(() =>
       page.evaluate(() => {
@@ -399,7 +409,7 @@ test.describe('release build', () => {
     await expect(page.locator('.title__logo')).toBeVisible();
     await page.keyboard.press('Enter');
     await expect(scene(page)).toHaveAttribute('data-blacklight-scene', 'player-select', {
-      timeout: 10_000,
+      timeout: SWITCH,
     });
     await expect(page.locator('.slot--joined')).toHaveCount(1);
     expect(errors).toEqual([]);
@@ -445,7 +455,7 @@ test.describe('online', () => {
     await host!.locator('.lobby__start').click();
     for (const page of [host!, guest!]) {
       await expect(scene(page)).toHaveAttribute('data-blacklight-scene', 'match', {
-        timeout: 15_000,
+        timeout: SWITCH,
       });
       await expect(page.locator('.hud .row')).toHaveCount(2);
     }
