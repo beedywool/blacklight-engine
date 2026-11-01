@@ -6,7 +6,7 @@
 // VSCODE_EXECUTABLE=/path/to/code uses an installed VS Code instead of downloading one into
 // .vscode-test/ (about 150 MB).
 import { spawnSync } from 'node:child_process';
-import { cpSync, existsSync, mkdtempSync, rmSync, symlinkSync } from 'node:fs';
+import { cpSync, existsSync, mkdtempSync, realpathSync, rmSync, symlinkSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { runTests } from '@vscode/test-electron';
@@ -39,7 +39,10 @@ for (const [path, hint] of [
   }
 }
 
-const work = mkdtempSync(join(tmpdir(), 'blacklight-vscode-'));
+// The long spelling of the temporary folder: on the Windows runner tmpdir() is C:\Users\RUNNER~1\…,
+// and the dev server started from that spelling could not resolve the fixture's @blacklight/core
+// through the node_modules junction.
+const work = mkdtempSync(join(realpathSync.native(tmpdir()), 'blacklight-vscode-'));
 const workspace = join(work, 'game');
 cpSync(fixture, workspace, {
   recursive: true,
