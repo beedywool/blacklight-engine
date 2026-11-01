@@ -282,6 +282,7 @@ test('PF-02: the window keeps the aspect ratio, goes fullscreen and quits', asyn
         visible: win.isVisible(),
         focused: win.isFocused(),
         fullscreen: win.isFullScreen(),
+        fullscreenable: win.isFullScreenable(),
         workArea: screen.getPrimaryDisplay().workAreaSize,
       });
     });
@@ -304,36 +305,9 @@ test('PF-02: the window keeps the aspect ratio, goes fullscreen and quits', asyn
       return Math.abs(w! / h! - 16 / 9) < 0.02;
     });
     await page.evaluate(() => window.blacklightNative!.invoke('window', 'setFullscreen', [true]));
-    try {
-      await until('fullscreen', () =>
-        page.evaluate(() => window.blacklightNative!.invoke('window', 'isFullscreen', [])),
-      );
-    } catch (error) {
-      // Diagnosis for the macOS runner, where the window stays windowed: does it go fullscreen
-      // once the aspect ratio is off, or in macOS's simple (no Space, no animation) fullscreen?
-      const probe = await electron
-        .evaluate(async ({ BrowserWindow }) => {
-          const win = BrowserWindow.getAllWindows()[0]!;
-          const wait = (ms: number) => new Promise((done) => setTimeout(done, ms));
-          const result: Record<string, unknown> = {
-            fullscreenable: win.isFullScreenable(),
-            kiosk: win.isKiosk(),
-          };
-          win.setAspectRatio(0);
-          win.setFullScreen(true);
-          await wait(8000);
-          result.withoutRatio = win.isFullScreen();
-          if (!result.withoutRatio) {
-            win.setSimpleFullScreen(true);
-            await wait(1000);
-            result.simple = win.isSimpleFullScreen();
-            result.simpleBounds = win.getBounds();
-          }
-          return JSON.stringify(result);
-        })
-        .catch((cause: unknown) => String(cause));
-      throw new Error(`${(error as Error).message}; probe: ${probe}`, { cause: error });
-    }
+    await until('fullscreen', () =>
+      page.evaluate(() => window.blacklightNative!.invoke('window', 'isFullscreen', [])),
+    );
     await page.evaluate(() => window.blacklightNative!.invoke('window', 'setFullscreen', [false]));
     const closed = electron.waitForEvent('close');
     // The fixture calls game.platform.quit() on Escape; the app may close before the key goes up.
