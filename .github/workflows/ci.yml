@@ -85,11 +85,15 @@ jobs:
       # unprivileged user namespaces Chromium's sandbox uses.
       - if: runner.os == 'Linux'
         run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
-      # $SPEC is split into Playwright arguments on purpose.
+      # $SPEC is split on spaces into Playwright arguments.
       - if: runner.os == 'Linux'
-        run: xvfb-run -a pnpm e2e --shard=${{ matrix.shard }}/4 --pass-with-no-tests $SPEC
+        run: |
+          read -ra spec <<< "$SPEC"
+          xvfb-run -a pnpm e2e --shard=${{ matrix.shard }}/4 --pass-with-no-tests "${spec[@]}"
       - if: runner.os != 'Linux'
-        run: pnpm e2e --shard=${{ matrix.shard }}/4 --pass-with-no-tests $SPEC
+        run: |
+          read -ra spec <<< "$SPEC"
+          pnpm e2e --shard=${{ matrix.shard }}/4 --pass-with-no-tests "${spec[@]}"
       - uses: actions/upload-artifact@v5
         if: always()
         with:
@@ -134,9 +138,13 @@ jobs:
         run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
       # The cold-start spec starts the packaged desktop app, which needs a display on Linux.
       - if: runner.os == 'Linux'
-        run: xvfb-run -a pnpm bench --pass-with-no-tests $SPEC
+        run: |
+          read -ra spec <<< "$SPEC"
+          xvfb-run -a pnpm bench --pass-with-no-tests "${spec[@]}"
       - if: runner.os != 'Linux'
-        run: pnpm bench --pass-with-no-tests $SPEC
+        run: |
+          read -ra spec <<< "$SPEC"
+          pnpm bench --pass-with-no-tests "${spec[@]}"
       - uses: actions/upload-artifact@v5
         if: always()
         with:
