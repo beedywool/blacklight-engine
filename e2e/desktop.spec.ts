@@ -371,24 +371,51 @@ function packagedExecutable(): string {
   return join(dir, `${name.productName}.app`, 'Contents', 'MacOS', name.productName);
 }
 
+/** Packaged app processes still running; killed after each test so none outlives it. */
+const started = new Set<ChildProcess>();
+
 function start(
   executable: string,
   args: string[],
   env: Record<string, string>,
-): { child: ChildProcess; output: () => string; exit: Promise<number | null> } {
+): {
+  child: ChildProcess;
+  output: () => string;
+  exit: Promise<number | null>;
+  stop: () => Promise<void>;
+} {
   const child = spawn(executable, args, { env });
+  started.add(child);
   let output = '';
   child.stdout?.on('data', (d: Buffer) => (output += d.toString()));
   child.stderr?.on('data', (d: Buffer) => (output += d.toString()));
+  const exited = new Promise<number | null>((done) =>
+    child.once('exit', (code) => (started.delete(child), done(code))),
+  );
   const exit = new Promise<number | null>((done, fail) => {
-    child.on('exit', (code) => done(code));
+    void exited.then(done);
     setTimeout(
       () => fail(new Error(`${executable} ${args.join(' ')} still runs after 60 s:\n${output}`)),
       60_000,
     ).unref();
   });
-  return { child, output: () => output, exit };
+  exit.catch(() => undefined); // only an awaited `exit` reports the timeout
+  // A running app quits on SIGTERM; SIGKILL after 15 s so a hung quit cannot leave it holding
+  // the single-instance lock for the next launch.
+  const stop = async () => {
+    if (child.exitCode !== null || child.signalCode !== null) return;
+    child.kill();
+    const timer = setTimeout(() => child.kill('SIGKILL'), 15_000);
+    await exited;
+    clearTimeout(timer);
+  };
+  return { child, output: () => output, exit, stop };
 }
+
+test.afterEach(() => {
+  for (const child of started) child.kill('SIGKILL');
+  started.clear();
+});
 
 const listening = (port: number) =>
   new Promise<boolean>((done) => {
@@ -428,8 +455,7 @@ test('SEC-02, SEC-04: packaged app has its fuses set, runs from bytecode and ref
   await expect
     .poll(() => existsSync(join(box.dataDir, 'saves', 'boot.sav')), { timeout: 30_000 })
     .toBe(true);
-  app.child.kill();
-  await app.exit;
+  await app.stop();
 
   // …but not with a remote debugging port or an inspector.
   for (const args of [['--remote-debugging-port=5339'], ['--inspect=5338'], ['--devtools']]) {
@@ -440,14 +466,24 @@ test('SEC-02, SEC-04: packaged app has its fuses set, runs from bytecode and ref
     expect(await listening(5338)).toBe(false);
   }
 
-  // ELECTRON_RUN_AS_NODE is ignored: the binary does not turn into Node.
+  // ELECTRON_RUN_AS_NODE is ignored: the binary does not turn into Node, it starts the game (which
+  // writes the "boot" slot again) and never runs the `-e` script.
+  rmSync(join(box.dataDir, 'saves', 'boot.sav'), { force: true });
   const asNode = start(executable, ['-e', 'console.log("node-mode-" + 6 * 7)'], {
     ...box.env,
     ELECTRON_RUN_AS_NODE: '1',
   });
-  await new Promise((wait) => setTimeout(wait, 3000));
-  asNode.child.kill();
-  await asNode.exit;
+  const booted = await expect
+    .poll(() => existsSync(join(box.dataDir, 'saves', 'boot.sav')), { timeout: 30_000 })
+    .toBe(true)
+    .then(
+      () => true,
+      () => false,
+    );
+  expect(booted, `the game did not start under ELECTRON_RUN_AS_NODE=1:\n${asNode.output()}`).toBe(
+    true,
+  );
+  await asNode.stop();
   expect(asNode.output()).not.toContain('node-mode-42');
   box.dispose();
 });
