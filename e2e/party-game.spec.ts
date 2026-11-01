@@ -424,6 +424,9 @@ test.describe('online', () => {
   test.afterAll(() => relay.close());
 
   test('two browsers play Push-Push online to the end without desync', async () => {
+    // Two browsers draw in software on one runner: every action took 2–5 s on GitHub's Linux
+    // runner, and the lobby alone used 127 s of the default 180 s.
+    test.setTimeout(360_000);
     const browsers = [await chromium.launch(), await chromium.launch()];
     const [host, guest] = await Promise.all(browsers.map((b) => b.newPage()));
     const errors = [...collectErrors(host!), ...collectErrors(guest!)];

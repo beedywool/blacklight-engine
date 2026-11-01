@@ -141,7 +141,10 @@ test.describe('networking', () => {
       const webkitBrowser = await launchWebKit();
       engines.push(typeof webkitBrowser === 'string' ? await chromium.launch() : webkitBrowser);
       const url = `http://localhost:${DEV_PORT}/?relay=ws://127.0.0.1:${RELAY_PORT}&bots`;
-      const host = await engines[0]!.newPage();
+      // Small pages: the test checks the simulation, and on GitHub's Windows runner two software-
+      // rendered 1280×720 pages advanced the match by about 3 steps a second (152 in 60 s).
+      const viewport = { width: 480, height: 270 };
+      const host = await engines[0]!.newPage({ viewport });
       const hostErrors = collectErrors(host);
       await host.goto(`${url}&players=2&name=Host`);
       const code = await host.waitForFunction(
@@ -149,7 +152,7 @@ test.describe('networking', () => {
         null,
         { timeout: 60_000 },
       );
-      const guest = await engines[1]!.newPage();
+      const guest = await engines[1]!.newPage({ viewport });
       const guestErrors = collectErrors(guest);
       await guest.goto(`${url}&room=${String(await code.jsonValue())}&name=Guest`);
       for (const page of [host, guest]) {
