@@ -5,7 +5,6 @@ import { signCommand } from '../src/commands/desktop';
 import {
   OBFUSCATION_LEVELS,
   isGameChunk,
-  obfuscate,
   resolvePixiUnsafeEval,
   withoutEmbindEval,
 } from '../src/security';
@@ -90,7 +89,7 @@ describe('blacklight sign --dry-run (PF-07)', () => {
   });
 });
 
-describe('obfuscation (SEC-03, SEC-10)', () => {
+describe('obfuscation (SEC-03; SEC-10 cost in obfuscation.timing.ts)', () => {
   it('obfuscates game chunks, not engine chunks', () => {
     const root = '/game';
     expect(
@@ -109,119 +108,6 @@ describe('obfuscation (SEC-03, SEC-10)', () => {
     for (const options of Object.values(OBFUSCATION_LEVELS))
       expect(options.debugProtection).toBe(false);
   });
-
-  /**
-   * The reference benchmark: game logic of the kind scenes run every step (300 objects moving,
-   * bouncing, colliding, scoring), plain and obfuscated. SEC-10 allows 10 % at the default level.
-   */
-  const WORKLOAD = `
-    function makeObjects(count) {
-      const objects = [];
-      for (let i = 0; i < count; i++) {
-        objects.push({ id: i, x: (i * 37) % 640, y: (i * 53) % 360, vx: (i % 7) - 3, vy: (i % 5) - 2, hp: 100, score: 0, tag: i % 3 === 0 ? 'enemy' : 'coin' });
-      }
-      return objects;
-    }
-    function step(objects) {
-      for (const o of objects) {
-        o.x += o.vx; o.y += o.vy;
-        if (o.x < 0 || o.x > 640) o.vx = -o.vx;
-        if (o.y < 0 || o.y > 360) o.vy = -o.vy;
-      }
-      const cell = new Map();
-      for (const o of objects) {
-        const key = ((o.x / 32) | 0) + ':' + ((o.y / 32) | 0);
-        let list = cell.get(key);
-        if (!list) cell.set(key, (list = []));
-        list.push(o);
-      }
-      let hits = 0;
-      for (const list of cell.values()) {
-        for (let i = 0; i < list.length; i++) for (let j = i + 1; j < list.length; j++) {
-          const a = list[i], b = list[j];
-          if (Math.abs(a.x - b.x) < 8 && Math.abs(a.y - b.y) < 8) {
-            hits++;
-            if (a.tag === 'enemy') b.hp -= 1; else a.score += 10;
-          }
-        }
-      }
-      return hits;
-    }
-    function run(steps) {
-      const objects = makeObjects(300);
-      let total = 0;
-      for (let s = 0; s < steps; s++) total += step(objects);
-      return total;
-    }
-  `;
-
-  /** The workload's `run`, compiled and warmed up (JIT). */
-  function compile(source: string): (steps: number) => number {
-    const run = new Function(`${source}; return run;`)() as (steps: number) => number;
-    run(200);
-    return run;
-  }
-
-  /**
-   * Median over 15 rounds of `variant` time / `plain` time, both timed back to back in each round
-   * (in alternating order): a busy neighbour (the other test files run in parallel) slows both
-   * sides of a round alike instead of one whole series. The rounds start after both sides have
-   * run for 3 s: V8 optimises hot functions on a background thread, and on a busy CI runner that
-   * thread finishes seconds late, so early rounds time the variant's unoptimised code (×1.27 for
-   * code that costs ×1.02 once optimised, with `--concurrent-recompilation-delay=1500`).
-   */
-  function slowdown(
-    plain: (steps: number) => number,
-    variant: (steps: number) => number,
-  ): { ratio: number; plainMs: number; ratios: number[] } {
-    const time = (run: (steps: number) => number) => {
-      const start = performance.now();
-      run(600);
-      return performance.now() - start;
-    };
-    const warmUpEnd = performance.now() + 3000;
-    for (let i = 0; i < 10 || performance.now() < warmUpEnd; i++) {
-      time(plain);
-      time(variant);
-    }
-    const ratios: number[] = [];
-    const plainTimes: number[] = [];
-    for (let i = 0; i < 15; i++) {
-      let plainMs: number;
-      let variantMs: number;
-      if (i % 2) {
-        variantMs = time(variant);
-        plainMs = time(plain);
-      } else {
-        plainMs = time(plain);
-        variantMs = time(variant);
-      }
-      ratios.push(variantMs / plainMs);
-      plainTimes.push(plainMs);
-    }
-    const median = (values: number[]) => [...values].sort((x, y) => x - y)[values.length >> 1]!;
-    return { ratio: median(ratios), plainMs: median(plainTimes), ratios };
-  }
-
-  it(
-    'costs at most 10 % at the default level (low), same results',
-    { timeout: 120_000 },
-    async () => {
-      const plain = compile(WORKLOAD);
-      const low = compile(await obfuscate(WORKLOAD, 'low'));
-      const medium = compile(await obfuscate(WORKLOAD, 'medium'));
-      expect(low(600)).toBe(plain(600));
-      expect(medium(600)).toBe(plain(600));
-      const { ratio, plainMs, ratios } = slowdown(plain, low);
-      expect(
-        ratio,
-        `per-round ratios ${ratios.map((r) => r.toFixed(2)).join(' ')}`,
-      ).toBeLessThanOrEqual(1.1);
-      console.log(
-        `[SEC-10] plain ${plainMs.toFixed(1)} ms, low ×${ratio.toFixed(2)}, medium ×${slowdown(plain, medium).ratio.toFixed(2)}`,
-      );
-    },
-  );
 });
 
 describe('SEC-07 switch on mobile builds', () => {

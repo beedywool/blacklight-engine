@@ -14,6 +14,17 @@ export default defineConfig({
       'scripts',
       // Template rules and their online variants (headless, no browser).
       'templates/party-game',
+      // SEC-10's CPU-time measurement, alone: group order 1 starts after every other project
+      // (group 0) has finished, so no other test file competes for the runner's CPUs meanwhile.
+      {
+        test: {
+          name: 'cli-timing',
+          root: 'packages/cli',
+          include: ['test/**/*.timing.ts'],
+          environment: 'node',
+          sequence: { groupOrder: 1 },
+        },
+      },
     ],
     // NF-07 gate: `pnpm test:coverage` runs the core, core-browser, net and relay projects (the
     // relay's tests drive net's RelayClient against the real server) with coverage and fails under

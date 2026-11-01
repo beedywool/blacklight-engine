@@ -114,7 +114,7 @@ One line per `SPEC.md` requirement: `- [x] ID · where · test`. A requirement i
 - [x] SEC-07 WebView not inspectable · `security.webview` (core security/config.ts, `resolveSecurity`), applied to `webContentsDebuggingEnabled` by the mobile build (cli targets/mobile-native.ts, 3d) · test: core security.spec.ts, cli desktop.spec.ts "SEC-07 switch", e2e mobile-android.spec.ts (release APK ships `webContentsDebuggingEnabled: false` and a non-debuggable package, and no DevTools socket on user builds, 3d)
 - [x] SEC-08 Strict CSP, no eval · core contentSecurityPolicy, cli hardening plugin (meta tag, pixi.js/unsafe-eval), desktop header · test: core security.spec.ts, e2e security.spec.ts "SEC-08", desktop.spec.ts (EvalError, header)
 - [x] SEC-09 Tamper reaction · `game.on('tamper')`, default restore + log, `onTamper: 'quit'` · test: core security.spec.ts "tamper reaction", e2e security.spec.ts
-- [x] SEC-10 Cost ≤ 10 % · default level `low` (measured ×1.04, `medium` ×1.30); bytecode covers the main process only (no per-frame cost) · test: cli desktop.spec.ts "costs at most 10 %"
+- [x] SEC-10 Cost ≤ 10 % · default level `low` (measured ×1.04, `medium` ×1.30); bytecode covers the main process only (no per-frame cost) · test: cli obfuscation.timing.ts "costs at most 10 %" (CPU time, alone after the other test files)
 
 ## Networking (NET)
 
