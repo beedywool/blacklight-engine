@@ -141,7 +141,7 @@ test.describe('networking', () => {
         process.platform === 'win32',
         'Windows: two software-drawn browsers are too slow on the CI runner. The online check there ' +
           'is servers/relay/test/party-game.spec.ts (two headless games over the real relay, pnpm ' +
-          'test); a full match between two Windows PCs is MANUAL_TESTS party game #6 (DECISIONS ' +
+          'test); a full match between two Windows PCs is MANUAL_TESTS.md "Online play" step 6 (DECISIONS ' +
           '2026-11-01).',
       );
       // The guest runs in WebKit when it can: a live V8 against JavaScriptCore match.

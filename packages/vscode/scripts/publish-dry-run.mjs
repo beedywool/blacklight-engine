@@ -1,6 +1,7 @@
 // Publishing rehearsal without accounts: packages the extension with vsce, lists what the package
 // holds, and uploads it with ovsx to a local stand-in for the Open VSX registry (port 5372). The
-// real publish steps (Marketplace and Open VSX tokens) are in MANUAL_TESTS.md.
+// extension ships as the .vsix of each GitHub release; publishing on the Marketplace or Open VSX
+// is not done for now (DECISIONS.md).
 import { spawn, spawnSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { createServer } from 'node:http';
