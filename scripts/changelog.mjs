@@ -1,7 +1,7 @@
 // Writes CHANGELOG.md from the git history (DOC-07): one section per `v*` tag, newest first,
 // plus "Unreleased" for the commits after the last tag. Commits follow `area: what changed`
-// (CONTRIBUTING.md) and are grouped by area; `area!: …` or a `BREAKING CHANGE:` line in the body
-// lists the commit under "Breaking changes". Merge commits are left out.
+// (CONTRIBUTING.md) and are grouped by area, ignoring case; `area!: …` or a `BREAKING CHANGE:`
+// line in the body lists the commit under "Breaking changes". Merge commits are left out.
 //
 // Run: pnpm changelog (writes CHANGELOG.md; part of the release steps in CONTRIBUTING.md)
 //      pnpm changelog --notes 1.2.0 (prints the section of one release, without the file header:
@@ -23,7 +23,7 @@ export function parseCommit({ hash, subject, body }) {
   const breaking = !!match?.[2] || /^BREAKING CHANGE:/m.test(body);
   return {
     hash: hash.slice(0, 7),
-    area: match ? match[1] : 'other',
+    area: match ? match[1].toLowerCase() : 'other',
     text: match ? match[3] : subject,
     breaking,
   };
