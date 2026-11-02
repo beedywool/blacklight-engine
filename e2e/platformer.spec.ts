@@ -61,6 +61,9 @@ function collectErrors(page: Page): string[] {
   return errors;
 }
 
+const focused = (page: Page) =>
+  page.evaluate(() => document.querySelector('[data-bl-focused]')?.textContent?.trim() ?? '');
+
 /** A standard Xbox pad whose buttons and axes the test sets through `window.__pad`. */
 async function fakeGamepad(page: Page): Promise<void> {
   await page.addInitScript(() => {
@@ -274,9 +277,14 @@ test('pause menu and level screenshot', async ({ page }) => {
   await page.keyboard.press('Escape');
   await expect(page.locator('.pause')).toBeVisible();
   expect(await page.evaluate(() => window.blacklight.paused)).toBe(true);
-  await page.keyboard.press('ArrowDown');
-  await page.keyboard.press('ArrowDown');
-  await page.keyboard.press('ArrowDown');
+  // The UI reads input once per frame and a key tapped several times between two reads counts as
+  // one press, so each tap waits for the focus to move. Back to back, the three taps landed in one
+  // slow frame on the macOS runner (run 41507485089): the focus stopped on RETRY and Enter retried.
+  await expect.poll(() => focused(page)).toBe('RESUME');
+  for (const label of ['RETRY', 'SETTINGS', 'TITLE']) {
+    await page.keyboard.press('ArrowDown');
+    await expect.poll(() => focused(page)).toBe(label);
+  }
   await page.keyboard.press('Enter');
   await expect(page.locator('#game')).toHaveAttribute('data-blacklight-scene', 'title', {
     timeout: 10_000,
