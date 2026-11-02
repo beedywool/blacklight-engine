@@ -91,6 +91,30 @@ describe('security settings', () => {
     expect(ok.steam).toEqual({ appId: 480 });
   });
 
+  it('adds the accounts issuer and server origins to connect-src, from the game config', () => {
+    const modules = {
+      http: {},
+      'accounts-oidc': {
+        issuer: 'https://sso.example.com/realms/game',
+        server: 'https://game.example.com/api',
+        clientId: 'my-game',
+      },
+    };
+    expect(resolveSecurity({ csp: { connect: ['wss:'] } }, true, modules).csp).toEqual({
+      connect: ['wss:', 'https://sso.example.com', 'https://game.example.com'],
+    });
+    // Listed by hand already, off in dev, or without an accounts module: nothing added.
+    expect(
+      resolveSecurity({ csp: { connect: ['https://sso.example.com'] } }, true, {
+        'accounts-oidc': { issuer: 'https://sso.example.com' },
+      }).csp,
+    ).toEqual({ connect: ['https://sso.example.com'] });
+    expect(resolveSecurity({}, false, modules).csp).toBe(false);
+    expect(resolveSecurity({ csp: false }, true, modules).csp).toBe(false);
+    expect(resolveSecurity({}, true, { http: {} }).csp).toEqual({});
+    expect(resolveSecurity({}, true, { 'accounts-oidc': { issuer: 'not a url' } }).csp).toEqual({});
+  });
+
   it('builds a CSP without eval or inline scripts (SEC-08)', () => {
     const csp = contentSecurityPolicy({ connect: ['wss://relay.example.com'] });
     expect(csp).toContain("script-src 'self' 'wasm-unsafe-eval'");

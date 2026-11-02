@@ -429,7 +429,7 @@ function sameBytes(a: Uint8Array, b: Uint8Array): boolean {
  * // game.config.ts
  * modules: {
  *   http: {},
- *   'accounts-oidc': { preset: 'blacklight', clientId: 'my-game', server: 'https://game.example.com' },
+ *   'accounts-oidc': { issuer: 'https://sso.example.com', clientId: 'my-game', server: 'https://game.example.com' },
  *   'cloud-save': { conflict: 'ask' },
  * }
  *

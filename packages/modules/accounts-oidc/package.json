@@ -1,7 +1,7 @@
 {
   "name": "@blacklight/module-accounts-oidc",
   "version": "0.0.0",
-  "description": "Player accounts over OpenID Connect (authorization code + PKCE) for Blacklight Engine games, with a BlackLight SSO preset.",
+  "description": "Player accounts over OpenID Connect (authorization code + PKCE) for Blacklight Engine games, with any provider you configure.",
   "license": "MIT",
   "type": "module",
   "sideEffects": false,

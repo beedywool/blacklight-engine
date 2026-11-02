@@ -104,15 +104,28 @@ describe('accounts-oidc on desktop', () => {
     await expect(accounts.login()).rejects.toThrow('The login was cancelled.');
   });
 
-  it('applies the BlackLight SSO preset and requires an issuer otherwise', async () => {
+  it('requires an issuer, with or without the preset: the engine has no default provider', async () => {
+    await expect(start(desktop(), { clientId: 'x' })).rejects.toThrow(
+      /needs `issuer`, the URL of your OpenID Connect provider.*remove the module/,
+    );
+    await expect(start(desktop(), { preset: 'blacklight', clientId: 'x' })).rejects.toThrow(
+      /`preset: "blacklight"` only sets scopes and the consent prompt; it has no default server/,
+    );
+  });
+
+  it('applies the BlackLight preset to the configured issuer', async () => {
     const platform = desktop();
-    await expect(start(platform, { clientId: 'x' })).rejects.toThrow(/needs `issuer`/);
-    const accounts = await start(desktop(), {
+    const accounts = await start(platform, {
       preset: 'blacklight',
       issuer: provider.issuer,
       clientId: 'test-game',
     });
     expect(accounts.loggedIn).toBe(false);
+    await accounts.login();
+    const authorize = new URL(platform.opened[0]!);
+    expect(authorize.origin).toBe(new URL(provider.issuer).origin);
+    expect(authorize.searchParams.get('prompt')).toBe('consent');
+    expect(authorize.searchParams.get('scope')).toBe('openid profile offline_access');
   });
 });
 

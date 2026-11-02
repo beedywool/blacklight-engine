@@ -329,7 +329,10 @@ export class Game {
     this.time = { step: 0, now: 0, dt: 1 / config.tickRate, scale: 1 };
     this.release = options.release ?? false;
     this.save = new SaveManager(this);
-    this.security = new SecurityRuntime(this, resolveSecurity(config.security, this.release));
+    this.security = new SecurityRuntime(
+      this,
+      resolveSecurity(config.security, this.release, config.modules),
+    );
   }
 
   /**

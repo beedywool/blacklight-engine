@@ -79,6 +79,6 @@ CI (`.github/workflows/ci.yml`) runs lint, type checks, unit tests, the builds a
 - Only Linux ran the gates. Windows, macOS and iOS builds are written and wired into CI but have never run; iOS needs a Mac.
 - Hardware and accounts are checked by hand (`MANUAL_TESTS.md`): real gamepads, phones, the Steam client, Discord, Game Center / Play Games, signing certificates.
 - Controller gyro is not available on desktop (the SDL binding exposes no sensors); Steam leaderboards are missing from steamworks.js.
-- The npm packages are not published and the `@blacklight` npm scope is not yet claimed (`DECISIONS.md`). Default URLs for the module registry and the BlackLight SSO preset are placeholders to confirm.
+- The npm packages are not published and the `@blacklight` npm scope is not yet claimed (`DECISIONS.md`). The default URL of the module registry is a placeholder to confirm; accounts have no default provider (each game sets its own `issuer`).
 - Unit test coverage of core is below the 80 % target of NF-07.
 - The accepted limitations of 1.0 (shaders and HTML UI, float differences on iOS, Steam overlay in Electron, client-side protection) are in `docs/guide/limitations.md`.

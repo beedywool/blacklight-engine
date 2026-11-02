@@ -16,7 +16,7 @@ interface ResolvedSecurityLike {
 }
 
 interface CoreConfigModule {
-  resolveSecurity(security: unknown, release: boolean): ResolvedSecurityLike;
+  resolveSecurity(security: unknown, release: boolean, modules?: unknown): ResolvedSecurityLike;
   contentSecurityPolicy(sources?: Record<string, string[]>): string;
 }
 
@@ -184,8 +184,9 @@ export function hardening(options: { root: string }): Plugin {
       const core = (await import(
         pathToFileURL(require.resolve('@blacklight/core/config')).href
       )) as CoreConfigModule;
-      const config = (await loadGameConfig(root)) as { security?: unknown };
-      settings = core.resolveSecurity(config.security, true);
+      const config = (await loadGameConfig(root)) as { security?: unknown; modules?: unknown };
+      // The accounts issuer and server configured under `modules` join the CSP's connect-src.
+      settings = core.resolveSecurity(config.security, true, config.modules);
       if (settings.csp) {
         policy = core.contentSecurityPolicy(settings.csp);
         // Pixi compiles shader sync code with `new Function` unless this module is loaded; it must

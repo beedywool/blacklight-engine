@@ -1,6 +1,6 @@
 # Accounts
 
-The `accounts-oidc` module signs players in with any OpenID Connect provider, with a preset for BlackLight SSO. The game is a public client: it uses the authorization code flow with PKCE (S256) and never holds a client secret. The provider's own sign-in page opens in the system browser (or the same tab on the web), so passwords, passkeys and two-factor codes never pass through the game. The refresh token stays in the OS keystore, so the player stays signed in across restarts. With `server`, the account is also linked to the [reference server](./server) for cloud saves, achievements and leaderboards.
+The `accounts-oidc` module signs players in with the OpenID Connect provider you choose: a BlackLight SSO you host, Keycloak, Auth0, Microsoft Entra ID, Google or any other. The engine has no built-in provider and no default URL: the game configures its own `issuer`. The game is a public client: it uses the authorization code flow with PKCE (S256) and never holds a client secret. The provider's own sign-in page opens in the system browser (or the same tab on the web), so passwords, passkeys and two-factor codes never pass through the game. The refresh token stays in the OS keystore, so the player stays signed in across restarts. With `server`, the account is also linked to the [reference server](./server) for cloud saves, achievements and leaderboards.
 
 ```sh
 blacklight add accounts-oidc
@@ -11,7 +11,7 @@ blacklight add accounts-oidc
 modules: {
   http: {},
   'accounts-oidc': {
-    preset: 'blacklight',
+    issuer: 'https://sso.example.com', // your provider
     clientId: 'my-game',
     server: 'https://game.example.com',
   },
@@ -30,16 +30,24 @@ await accounts.login();
 
 ## Options
 
-| Option        | Default                                   | Meaning                                                                                                               |
-| ------------- | ----------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
-| `clientId`    | required                                  | Client id registered with the provider.                                                                               |
-| `issuer`      | preset                                    | Issuer URL of the provider; the module reads `<issuer>/.well-known/openid-configuration`. Required without a preset.  |
-| `preset`      | none                                      | `'blacklight'`: issuer `https://sso.beedywool.com` unless `issuer` is set, `prompt: 'consent'` with `offline_access`. |
-| `scopes`      | `['openid', 'profile', 'offline_access']` | Scopes asked for. `offline_access` gives the refresh token; add `email` only if the game needs the address.           |
-| `redirectUri` | see below                                 | Where the provider sends the player back. Must be registered with the provider exactly.                               |
-| `prompt`      | preset                                    | OIDC `prompt` (`login`, `consent`, `select_account`).                                                                 |
-| `server`      | none                                      | Reference server URL: the account is linked there after each sign-in, and `http` requests to it carry the session.    |
-| `timeout`     | `600000`                                  | How long `login()` waits for the browser to come back on desktop and mobile (ms).                                     |
+| Option        | Default                                   | Meaning                                                                                                            |
+| ------------- | ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| `clientId`    | required                                  | Client id registered with the provider.                                                                            |
+| `issuer`      | required                                  | Issuer URL of your provider; the module reads `<issuer>/.well-known/openid-configuration`. Not a secret.           |
+| `preset`      | none                                      | `'blacklight'`: `prompt: 'consent'` with `offline_access`, as a BlackLight SSO server expects. Sets no issuer.     |
+| `scopes`      | `['openid', 'profile', 'offline_access']` | Scopes asked for. `offline_access` gives the refresh token; add `email` only if the game needs the address.        |
+| `redirectUri` | see below                                 | Where the provider sends the player back. Must be registered with the provider exactly.                            |
+| `prompt`      | preset                                    | OIDC `prompt` (`login`, `consent`, `select_account`).                                                              |
+| `server`      | none                                      | Reference server URL: the account is linked there after each sign-in, and `http` requests to it carry the session. |
+| `timeout`     | `600000`                                  | How long `login()` waits for the browser to come back on desktop and mobile (ms).                                  |
+
+## Choosing the provider
+
+The issuer is the only place a provider is named. Write it in `game.config.ts`; it is a public URL, safe to commit. A missing `issuer` stops the game at startup with a message that says what to write, with or without `preset: 'blacklight'`. When the game has no sign-in yet, leave the module out of `modules`: the party-game template does this with an `accountsIssuer` constant at the top of its `game.config.ts`, and hides SIGN IN while it is empty.
+
+`game.config.ts` is bundled into the game, so read the issuer from a constant rather than `process.env`, which does not exist in the browser. A build that must point at another provider (staging, production) changes that constant, or imports it from a small file the build script writes.
+
+Release builds add the origin of `issuer` (and of `server`) to the CSP `connect-src` on their own; there is nothing to repeat under `security.csp.connect`. Providers whose token or userinfo endpoints live on another origin than the issuer (Google: `oauth2.googleapis.com`, `openidconnect.googleapis.com`) need those origins listed in `security.csp.connect`. [Publishing › OpenID Connect provider](../publishing/oidc) goes through registering the game with a provider step by step.
 
 ## How the login works
 
@@ -73,7 +81,7 @@ await accounts.login();
 
 ## BlackLight SSO
 
-Client registrations of BlackLight SSO are configuration-managed (`OIDC_CLIENTS` in its `.env`). Register the game as a public client with every redirect URI it uses, exact match:
+BlackLight SSO is self-hosted: run your own instance (see [Publishing › OpenID Connect provider](../publishing/oidc#self-hosted-blacklight-sso)) and use its `PUBLIC_URL` as `issuer`, with `preset: 'blacklight'`. Client registrations of BlackLight SSO are configuration-managed (`OIDC_CLIENTS` in its `.env`). Register the game as a public client with every redirect URI it uses, exact match:
 
 ```json
 {
@@ -113,3 +121,5 @@ const provider = await startMockProvider({ port: 5352 });
 - On the web the refresh token is protected against copying, not against script running in the page: an XSS in the game can use it. The strict CSP of release builds is the defence.
 - Only the authorization code flow with PKCE is supported: no implicit flow, no client secrets, no device code flow.
 - ID token signatures are not verified on the client (see step 3); anything that grants rights checks the token on a server.
+- One provider per game: `issuer` is a single URL. Several sign-in options (Google, Discord…) go through one provider that federates them, as BlackLight SSO does.
+- Only the issuer's and the server's origins are added to the CSP; endpoints on other origins must be listed by hand (see "Choosing the provider").

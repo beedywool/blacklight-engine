@@ -9,16 +9,20 @@ import {
   useUi,
 } from '@blacklight/ui';
 import { computed, onMounted, onUnmounted, ref, shallowRef } from 'vue';
+import { accountsOf } from '../../../party/accounts';
 
 const game = useGame();
 const ui = useUi();
-const accounts = game.modules['accounts-oidc'];
-const user = shallowRef(accounts.user);
-const stops = [
-  accounts.on('login', (value) => (user.value = value)),
-  accounts.on('logout', () => (user.value = undefined)),
-  accounts.on('error', (error) => toast(error.message, { kind: 'error' })),
-];
+// Without an issuer in game.config.ts there is no accounts module and no SIGN IN entry.
+const accounts = accountsOf(game);
+const user = shallowRef(accounts?.user);
+const stops = accounts
+  ? [
+      accounts.on('login', (value) => (user.value = value)),
+      accounts.on('logout', () => (user.value = undefined)),
+      accounts.on('error', (error) => toast(error.message, { kind: 'error' })),
+    ]
+  : [];
 onUnmounted(() => stops.forEach((stop) => stop()));
 
 const logo = ref<HTMLElement | null>(null);
@@ -33,9 +37,17 @@ const items = computed(() => [
   { label: 'LOCAL PARTY', value: 'local', hint: 'Up to 8 players on this screen' },
   { label: 'ONLINE', value: 'online', hint: 'Play through a relay with a room code' },
   { label: 'SETTINGS', value: 'settings' },
-  user.value
-    ? { label: 'SIGN OUT', value: 'logout', hint: `Signed in as ${user.value.name ?? 'player'}` }
-    : { label: 'SIGN IN', value: 'login', hint: 'BlackLight account (optional)' },
+  ...(!accounts
+    ? []
+    : user.value
+      ? [
+          {
+            label: 'SIGN OUT',
+            value: 'logout',
+            hint: `Signed in as ${user.value.name ?? 'player'}`,
+          },
+        ]
+      : [{ label: 'SIGN IN', value: 'login', hint: 'Account (optional)' }]),
 ]);
 
 async function select(value: string) {
@@ -51,13 +63,13 @@ async function select(value: string) {
       break;
     case 'login':
       try {
-        await accounts.login();
+        await accounts?.login();
       } catch (error) {
         toast(error instanceof Error ? error.message : String(error), { kind: 'error' });
       }
       break;
     case 'logout':
-      await accounts.logout();
+      await accounts?.logout();
       break;
   }
 }
