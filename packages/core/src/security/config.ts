@@ -175,19 +175,46 @@ export function validateSecurityConfig(security: unknown): string[] {
   return issues;
 }
 
+/** Origin of `url` (`https://sso.example.com`), `undefined` when it is not an http(s) URL. */
+function originOf(url: unknown): string | undefined {
+  if (typeof url !== 'string') return undefined;
+  try {
+    const { protocol, origin } = new URL(url);
+    return protocol === 'https:' || protocol === 'http:' ? origin : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+// Servers the configured modules talk to, for the CSP `connect-src`: the OpenID Connect issuer and
+// the reference server of `accounts-oidc`. The game developer configures them once, in `modules`,
+// and does not repeat them under `security.csp.connect`.
+function moduleConnectSources(modules: unknown): string[] {
+  if (!isRecord(modules)) return [];
+  const accounts = modules['accounts-oidc'];
+  if (!isRecord(accounts)) return [];
+  const origins = [originOf(accounts.issuer), originOf(accounts.server)];
+  return [...new Set(origins.filter((origin): origin is string => origin !== undefined))];
+}
+
 /**
  * Applies the defaults: every measure is on in release builds unless turned off, off in dev.
- * The CLI, the desktop app and the mobile build read the same result.
+ * The CLI, the desktop app and the mobile build read the same result. With `modules` (the
+ * `modules` of `game.config.ts`), the origins of the `accounts-oidc` issuer and reference server
+ * join `csp.connect`.
  *
  * @example
  * ```ts
  * resolveSecurity({ obfuscate: false }, true).devtools; // true
  * resolveSecurity({ obfuscate: false }, false).devtools; // false
+ * resolveSecurity({}, true, { 'accounts-oidc': { issuer: 'https://sso.example.com' } }).csp;
+ * // { connect: ['https://sso.example.com'] }
  * ```
  */
 export function resolveSecurity(
   security: SecurityConfig | boolean | undefined,
   release: boolean,
+  modules?: unknown,
 ): ResolvedSecurity {
   const on = release && security !== false;
   const config = isRecord(security) ? (security as SecurityConfig) : {};
@@ -206,9 +233,17 @@ export function resolveSecurity(
     protect: on ? (config.protect ?? []) : [],
     debugger: flag(config.debugger),
     webview: flag(config.webview),
-    csp: !on || config.csp === false ? false : isRecord(config.csp) ? config.csp : {},
+    csp: !on || config.csp === false ? false : withModuleSources(config.csp, modules),
     onTamper: config.onTamper ?? 'restore',
   };
+}
+
+function withModuleSources(csp: SecurityConfig['csp'], modules: unknown): CspSources {
+  const sources: CspSources = isRecord(csp) ? csp : {};
+  const extra = moduleConnectSources(modules).filter(
+    (origin) => !sources.connect?.includes(origin),
+  );
+  return extra.length ? { ...sources, connect: [...(sources.connect ?? []), ...extra] } : sources;
 }
 
 /**

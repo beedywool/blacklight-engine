@@ -34,7 +34,7 @@ const best = await sqlite.query<{ name: string; points: number }>(
 | `http`          | `@blacklight/module-http`          | JSON requests, timeouts, authorization per server, offline queue that replays requests                   | [below](#http)                 |
 | `sqlite`        | `@blacklight/module-sqlite`        | Local SQLite on every platform: better-sqlite3 (desktop), Capacitor SQLite (mobile), sql.js + OPFS (web) | [below](#sqlite)               |
 | `cloud-save`    | `@blacklight/module-cloud-save`    | Uploads save slots to the reference server or Steam Cloud, syncs them at startup, resolves conflicts     | [below](#cloud-save)           |
-| `accounts-oidc` | `@blacklight/module-accounts-oidc` | Player sign-in over OpenID Connect (PKCE) with a BlackLight SSO preset                                   | [Accounts](./accounts)         |
+| `accounts-oidc` | `@blacklight/module-accounts-oidc` | Player sign-in over OpenID Connect (PKCE) with the provider you configure                                | [Accounts](./accounts)         |
 | `achievements`  | `@blacklight/module-achievements`  | Achievements and leaderboards on Steam, Game Center, Google Play Games or the reference server           | [Achievements](./achievements) |
 | `telemetry`     | `@blacklight/module-telemetry`     | Opt-in crash reports and usage events over the Sentry protocol                                           | [Telemetry](./telemetry)       |
 | `discord`       | `@blacklight/module-discord`       | Discord Rich Presence on desktop                                                                         | desktop guide                  |

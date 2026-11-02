@@ -96,7 +96,11 @@ export function appManifest(
   config: ResolvedGameConfig,
   options: { release: boolean; steam?: boolean; devServer?: string; natives?: string[] },
 ): AppManifest {
-  const security: ResolvedSecurity = resolveSecurity(config.security, options.release);
+  const security: ResolvedSecurity = resolveSecurity(
+    config.security,
+    options.release,
+    config.modules,
+  );
   return {
     name: config.name,
     id: config.id,

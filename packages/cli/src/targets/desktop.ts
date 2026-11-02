@@ -54,7 +54,7 @@ async function loadSecurity(
   const core = (await import(
     pathToFileURL(gameRequire(root).resolve('@blacklight/core/config')).href
   )) as typeof CoreConfig;
-  return core.resolveSecurity(config.security, release);
+  return core.resolveSecurity(config.security, release, config.modules);
 }
 
 /**

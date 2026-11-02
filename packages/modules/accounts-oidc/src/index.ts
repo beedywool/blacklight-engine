@@ -23,14 +23,17 @@ import { secureStore } from './secure';
 
 export { OidcError } from './oidc';
 
-/** Issuer of BlackLight SSO, used by `preset: 'blacklight'` unless `issuer` is set. */
-export const BLACKLIGHT_SSO_ISSUER = 'https://sso.beedywool.com';
-
 /** Options of the `accounts-oidc` module in `game.config.ts`, with their defaults applied. */
 export interface AccountsConfig {
-  /** `'blacklight'`: BlackLight SSO issuer, scopes and consent prompt. */
+  /**
+   * `'blacklight'`: the scopes and consent prompt a BlackLight SSO server expects. It sets no
+   * provider: `issuer` is still required.
+   */
   preset: 'blacklight' | undefined;
-  /** Issuer URL of the OpenID Connect provider (required without a preset). */
+  /**
+   * Issuer URL of your OpenID Connect provider, e.g. `https://sso.example.com` (required). The
+   * engine has no default provider. Release builds add its origin to the CSP `connect-src`.
+   */
   issuer: string | undefined;
   /** Client id registered with the provider (a public client: PKCE, no secret). */
   clientId: string;
@@ -55,13 +58,22 @@ export interface AccountsConfig {
   timeout: number;
 }
 
-/** What `game.config.ts` may write under `modules['accounts-oidc']`: `clientId` is required. */
-export type AccountsConfigInput = Partial<Omit<AccountsConfig, 'clientId'>> &
-  Pick<AccountsConfig, 'clientId'>;
+/**
+ * What `game.config.ts` may write under `modules['accounts-oidc']`: `issuer` and `clientId` are
+ * required.
+ */
+export type AccountsConfigInput = Partial<Omit<AccountsConfig, 'clientId' | 'issuer'>> & {
+  /** Issuer URL of your OpenID Connect provider, e.g. `https://sso.example.com`. */
+  issuer: string;
+  /** Client id registered with the provider (a public client: PKCE, no secret). */
+  clientId: string;
+};
 
 const config: Schema<AccountsConfig, AccountsConfigInput> = t.object({
   preset: t.enum(['blacklight']).optional(),
-  issuer: t.string({ url: true }).optional(),
+  // Required in game.config.ts (the input type says so), but a missing one is reported at setup
+  // with a message that shows what to write, rather than the schema's generic line.
+  issuer: t.string({ url: true }).optional() as Schema<string | undefined, string>,
   clientId: t.string({ min: 1 }),
   scopes: t.array(t.string({ min: 1 })).optional(),
   redirectUri: t.string({ min: 1 }).optional(),
@@ -128,10 +140,14 @@ const PENDING_TTL = 10 * 60_000;
 
 function settings(config: AccountsConfig, gameId: string, web: boolean) {
   const blacklight = config.preset === 'blacklight';
-  const issuer = config.issuer ?? (blacklight ? BLACKLIGHT_SSO_ISSUER : undefined);
+  const issuer = config.issuer;
   if (!issuer) {
     throw new Error(
-      'accounts-oidc needs `issuer` (the provider URL) or `preset: "blacklight"` in game.config.ts.',
+      `accounts-oidc needs \`issuer\`, the URL of your OpenID Connect provider, in game.config.ts: \`modules: { 'accounts-oidc': { issuer: 'https://sso.example.com', clientId: '${config.clientId}' } }\`. ` +
+        (blacklight
+          ? '`preset: "blacklight"` only sets scopes and the consent prompt; it has no default server. '
+          : '') +
+        'Without a provider, remove the module from game.config.ts (see the Accounts guide).',
     );
   }
   const scopes = config.scopes ?? ['openid', 'profile', 'offline_access'];
@@ -548,7 +564,7 @@ function createAccounts(context: ModuleContext<AccountsConfig>) {
  * // game.config.ts
  * modules: {
  *   http: {},
- *   'accounts-oidc': { preset: 'blacklight', clientId: 'my-game' },
+ *   'accounts-oidc': { issuer: 'https://sso.example.com', clientId: 'my-game' },
  * }
  *
  * // title scene

@@ -13,7 +13,7 @@ pnpm test    # mini-game rules and online matches, headless
 
 | Where                  | What                                                                                                  |
 | ---------------------- | ----------------------------------------------------------------------------------------------------- |
-| `scenes/title`         | Title menu: local party, online, settings, optional sign-in with BlackLight SSO                       |
+| `scenes/title`         | Title menu: local party, online, settings, optional sign-in (when an issuer is set)                   |
 | `scenes/player-select` | Join screen: up to 8 players, profile or guest, skin, "READY!"                                        |
 | `scenes/game-select`   | Mini-game cards with their player range and two settings each                                         |
 | `scenes/match`         | The shell: player banners and scores, pause menu, the mini-game hosted as a sub-scene, end panel      |
@@ -57,9 +57,12 @@ everybody is ready. Online, each machine has one player.
 
 ## Accounts
 
-`accounts-oidc` with `preset: 'blacklight'` signs players in with BlackLight SSO. Register the game
-(`clientId: 'party-night'` in `game.config.ts`) as a public client with this page as redirect URI;
-see the Accounts guide. Signing in is optional: guests and local profiles play offline.
+Sign-in is off until you choose a provider: set `accountsIssuer` at the top of `game.config.ts` to
+the issuer URL of an OpenID Connect provider (a BlackLight SSO you host, Keycloak, Auth0…), and
+register the game (`clientId: 'party-night'`) there as a public client with this page as redirect
+URI; see the Accounts guide and Publishing › OpenID Connect provider. The engine ships no default
+provider. Without an issuer, the title screen has no SIGN IN entry and guests and local profiles
+play as before. Release builds add the issuer to the CSP on their own.
 
 ## Limits
 

@@ -294,6 +294,33 @@ function patchIos(ios: string, game: MobileGame): void {
   else rmSync(entitlements, { force: true });
 }
 
+/**
+ * Extra `xcodebuild` arguments of iOS release builds. With an App Store Connect API key in the
+ * environment (`APPLE_API_KEY` = path to the `.p8` file, `APPLE_API_KEY_ID`, `APPLE_API_ISSUER`),
+ * Xcode signs in with it and creates or downloads the provisioning profile itself, which is how a
+ * CI runner with no Apple account in Xcode signs. Without the key, the Apple account added in Xcode
+ * (Settings > Accounts) is used.
+ *
+ * @example
+ * ```ts
+ * iosAuthenticationArgs({ APPLE_API_KEY: 'AuthKey.p8', APPLE_API_KEY_ID: 'ABC', APPLE_API_ISSUER: 'id' });
+ * // ['-allowProvisioningUpdates', '-authenticationKeyPath', 'AuthKey.p8', …]
+ * ```
+ */
+export function iosAuthenticationArgs(env: NodeJS.ProcessEnv = process.env): string[] {
+  const { APPLE_API_KEY: key, APPLE_API_KEY_ID: id, APPLE_API_ISSUER: issuer } = env;
+  if (!key || !id || !issuer) return [];
+  return [
+    '-allowProvisioningUpdates',
+    '-authenticationKeyPath',
+    key,
+    '-authenticationKeyID',
+    id,
+    '-authenticationKeyIssuerID',
+    issuer,
+  ];
+}
+
 function output(root: string, target: MobileTarget): string {
   const dir = join(root, 'release', target);
   mkdirSync(dir, { recursive: true });
@@ -401,6 +428,7 @@ export async function buildIos(options: TargetOptions): Promise<string | undefin
     archive,
     'archive',
     `DEVELOPMENT_TEAM=${process.env.APPLE_TEAM_ID ?? ''}`,
+    ...iosAuthenticationArgs(),
   ];
   if (options.dryRun) {
     log(
@@ -437,7 +465,7 @@ export async function buildIos(options: TargetOptions): Promise<string | undefin
   }
   if (!process.env.APPLE_TEAM_ID) {
     throw new Error(
-      'iOS release builds are signed for an Apple developer team: set APPLE_TEAM_ID to your team id (developer.apple.com → Membership), with its certificates in the keychain.',
+      'iOS release builds are signed for your Apple developer team: set APPLE_TEAM_ID to your team id (developer.apple.com → Membership), with an Apple Distribution certificate in the keychain. On a machine without your Apple account in Xcode (CI), also set APPLE_API_KEY, APPLE_API_KEY_ID and APPLE_API_ISSUER (an App Store Connect API key). See Publishing › Apple in the docs.',
     );
   }
   runTool('xcodebuild', archiveArgs, { cwd: dir, what: 'The iOS archive' });
@@ -463,7 +491,7 @@ export async function buildIos(options: TargetOptions): Promise<string | undefin
       exportOptions,
       '-exportPath',
       out,
-      '-allowProvisioningUpdates',
+      ...(iosAuthenticationArgs().length ? iosAuthenticationArgs() : ['-allowProvisioningUpdates']),
     ],
     { cwd: dir, what: 'Exporting the .ipa' },
   );

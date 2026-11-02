@@ -147,6 +147,20 @@ Any other module name goes to a Capacitor plugin of that name in the app, called
 
 `playgames` needs `mobile.playGamesAppId` and the game set up in the Play Console with its achievements; the SDK starts only then, and the first `signIn()` shows Google's sign-in when the player is not signed in already. `progress` sets the steps of an incremental achievement to `current` (the total is the one set in the Play Console). `gamecenter` needs `mobile.gameCenter: true` and the achievements set up in App Store Connect; `progress` reports `current / total` as a percentage. Both reject with an explanation on the other OS.
 
+## What you need to provide
+
+Signing keys and store accounts always come from you, the game developer; the engine ships none and never refers to anyone else's. Without them, Android builds a debug APK (or an unsigned release APK, with a message) and iOS builds for the Simulator.
+
+| Credential                                      | Where to get it                                                                          | Paid or free                    | Environment variable                                                                         |
+| ----------------------------------------------- | ---------------------------------------------------------------------------------------- | ------------------------------- | -------------------------------------------------------------------------------------------- |
+| Android upload keystore                         | [Android](../publishing/android#_1-create-the-upload-key) (`keytool`)                    | free                            | `ANDROID_KEYSTORE`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD` |
+| Google Play developer account, Play App Signing | [Android](../publishing/android#_2-play-app-signing)                                     | paid, one-time registration fee | none (Play Console)                                                                          |
+| Apple Developer Program membership              | [Apple](../publishing/apple#_1-enroll-in-the-apple-developer-program)                    | paid, yearly                    | `APPLE_TEAM_ID`                                                                              |
+| Apple Distribution certificate                  | [Apple](../publishing/apple#_4-ios-app-id-distribution-certificate-provisioning-profile) | included in the membership      | in the login keychain (CI: `IOS_DIST_CERT_P12`, `IOS_DIST_CERT_PASSWORD` secrets)            |
+| Provisioning profile                            | created by Xcode (automatic signing)                                                     | included in the membership      | none                                                                                         |
+| App Store Connect API key (CI only)             | [Apple](../publishing/apple#_3-app-store-connect-api-key-notarization-ios-on-ci)         | included in the membership      | `APPLE_API_KEY`, `APPLE_API_KEY_ID`, `APPLE_API_ISSUER`                                      |
+| CI: the same values as repository secrets       | [GitHub secrets](../publishing/github-secrets)                                           | free                            | secrets of the same names (`ANDROID_KEYSTORE_BASE64` holds the keystore)                     |
+
 ## Signing
 
 Android release builds are signed when these environment variables are set; nothing is written to disk.
@@ -162,7 +176,7 @@ Android release builds are signed when these environment variables are set; noth
 keytool -genkeypair -v -keystore upload.jks -alias upload -keyalg RSA -keysize 2048 -validity 10000
 ```
 
-Without them the release APK is unsigned (the CLI says so) and stores refuse it. Debug builds use the SDK's debug key. iOS release builds archive and export an `.ipa` for App Store Connect with automatic signing for the team in `APPLE_TEAM_ID`; the certificates must be in the login keychain (Xcode → Settings → Accounts).
+Without them the release APK is unsigned (the CLI says so) and stores refuse it. Debug builds use the SDK's debug key. iOS release builds archive and export an `.ipa` for App Store Connect with automatic signing for the team in `APPLE_TEAM_ID`; the Apple Distribution certificate must be in the login keychain, and Xcode fetches the provisioning profile with the Apple account added in Xcode → Settings → Accounts, or with the App Store Connect API key when `APPLE_API_KEY`, `APPLE_API_KEY_ID` and `APPLE_API_ISSUER` are set (CI runners).
 
 ## Release builds
 

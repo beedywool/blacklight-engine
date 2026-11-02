@@ -10,14 +10,15 @@ import {
   type MiniGameSettings,
 } from '../../../party/catalog';
 import { canStart, connect, disconnect, host, roomGame, savedRelay } from '../../../party/online';
+import { accountsOf } from '../../../party/accounts';
 
 type Stage = 'connect' | 'host' | 'room';
 
 const game = useGame();
-const accounts = game.modules['accounts-oidc'];
+const accounts = accountsOf(game);
 const stage = shallowRef<Stage>('connect');
 const address = ref(savedRelay(game));
-const name = ref((accounts.user?.name ?? 'PLAYER').toUpperCase().slice(0, 16));
+const name = ref((accounts?.user?.name ?? 'PLAYER').toUpperCase().slice(0, 16));
 const code = ref('');
 const busy = shallowRef(false);
 const relay = shallowRef<RelayClient>();

@@ -1,5 +1,10 @@
 import { defineConfig } from '@blacklight/core';
 
+// Issuer URL of the OpenID Connect provider players sign in with, e.g. 'https://sso.example.com'
+// (any provider, or a BlackLight SSO you host: see the Accounts guide). Empty: no sign-in on the
+// title screen, and players play as guests or local profiles. It is a public URL, not a secret.
+const accountsIssuer: string = '';
+
 export default defineConfig({
   name: 'Party Night',
   id: 'com.example.partynight',
@@ -17,13 +22,23 @@ export default defineConfig({
   ui: { theme: 'persona' },
   modules: {
     http: {},
-    // Optional BlackLight account shown on the player cards; guests play offline. Register
-    // `party-night` as a public client of BlackLight SSO with this page as redirect URI.
-    'accounts-oidc': { preset: 'blacklight', clientId: 'party-night' },
+    // Optional account shown on the player cards. Register `party-night` as a public client of
+    // the provider with this page as redirect URI. `preset: 'blacklight'` asks for the consent a
+    // BlackLight SSO needs to give a refresh token; drop it for other providers.
+    ...(accountsIssuer
+      ? {
+          'accounts-oidc': {
+            preset: 'blacklight' as const,
+            issuer: accountsIssuer,
+            clientId: 'party-night',
+          },
+        }
+      : {}),
   },
   security: {
-    // Online play talks to the relay the players type in, and the account module to the SSO.
-    csp: { connect: ['https://sso.beedywool.com', 'ws:', 'wss:'] },
+    // Online play talks to the relay the players type in. Release builds add the accounts
+    // issuer to this list themselves.
+    csp: { connect: ['ws:', 'wss:'] },
   },
   // Used only by `blacklight build --target steam`. 480 is Spacewar, Valve's test app: put your
   // own App ID here before uploading.

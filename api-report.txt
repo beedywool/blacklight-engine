@@ -1406,7 +1406,7 @@ function resolveAnimations(file: AnimationFile, sheet: Sheet): Map<string, Resol
 function resolveConfig(input: unknown): ResolvedGameConfig
 function resolveProjectPath(path: string, baseDir?: string): string
 function resolveSaveConfig(save: SaveConfig | undefined, release: boolean): ResolvedSaveConfig
-function resolveSecurity(security: boolean | SecurityConfig | undefined, release: boolean): ResolvedSecurity
+function resolveSecurity(security: boolean | SecurityConfig | undefined, release: boolean, modules?: unknown): ResolvedSecurity
 function scenesFromGlob(modules: Record<string, () => Promise<unknown>>): Record<string, SceneLoader>
 function screenSlots(save: SaveManager, options?: ScreenSlotsOptions): ScreenSlots
 function shapeBounds(shape: WorldShape): Rect
@@ -2655,6 +2655,11 @@ interface AppManifest
   steam?: { appId: number }
   version: string
   window: WindowConfig
+interface AzureSigning
+  account: string
+  endpoint: string
+  profile: string
+  publisher: string
 interface PackageOptions
   appDir: string
   arch?: string[]
@@ -2668,6 +2673,7 @@ interface PackageOptions
   sign?: boolean
   unpackedOnly?: boolean
 interface SigningPlan
+  azure?: AzureSigning
   missing: string[]
   notarize: boolean
   os: DesktopOs
@@ -3051,9 +3057,8 @@ interface ServerAccount
   id: string
   identities: ({ issuer: string; subject: string })[]
   name: string
-type AccountsConfigInput = Partial<Omit<AccountsConfig, "clientId">> & Pick<AccountsConfig, "clientId">
+type AccountsConfigInput = Partial<Omit<AccountsConfig, "clientId" | "issuer">> & { clientId: string; issuer: string }
 const accountsOidc: _blacklight_core.ModuleDefinition<"accounts-oidc", AccountsConfig, Accounts, AccountsConfigInput, readonly _blacklight_core.PlatformName[]>
-const BLACKLIGHT_SSO_ISSUER: "https://sso.beedywool.com"
 
 ## @blacklight/module-accounts-oidc/testing
 

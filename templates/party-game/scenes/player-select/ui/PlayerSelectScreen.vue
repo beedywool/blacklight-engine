@@ -2,6 +2,7 @@
 import { InputPrompt, onUiStep, useGame, useUi, useUiRuntime } from '@blacklight/ui';
 import { computed, reactive, shallowRef } from 'vue';
 import SkinBadge from '@ui/SkinBadge.vue';
+import { accountsOf } from '../../../party/accounts';
 import { SKINS } from '../../../party/skins';
 import {
   addProfile,
@@ -29,7 +30,7 @@ interface Slot {
 const game = useGame();
 const ui = useUi();
 const runtime = useUiRuntime();
-const accounts = game.modules['accounts-oidc'];
+const accounts = accountsOf(game);
 
 // Coming back from the game select screen keeps the party as it was.
 const slots = reactive<Slot[]>(
@@ -50,7 +51,7 @@ type Choice = Identity | { kind: 'new' };
 const choices = computed<Choice[]>(() => [
   { kind: 'guest' },
   ...profileList.value.map((p) => ({ kind: 'profile' as const, name: p.name })),
-  ...(accounts.user
+  ...(accounts?.user
     ? [{ kind: 'account' as const, name: (accounts.user.name ?? 'ACCOUNT').toUpperCase() }]
     : []),
   { kind: 'new' },
@@ -105,7 +106,7 @@ function label(index: number): string {
 
 function stats(index: number): string {
   const choice = identityOf(index);
-  if (choice.kind === 'account') return 'BLACKLIGHT ACCOUNT';
+  if (choice.kind === 'account') return 'SIGNED-IN ACCOUNT';
   if (choice.kind !== 'profile')
     return choice.kind === 'new' ? 'CONFIRM TO NAME IT' : 'NO STATS KEPT';
   const profile = profileList.value.find((p) => p.name === choice.name);
