@@ -10,7 +10,7 @@
   "icon": "media/icon.png",
   "repository": {
     "type": "git",
-    "url": "https://github.com/blacklight-engine/blacklight-engine"
+    "url": "https://github.com/beedywool/blacklight-engine"
   },
   "engines": {
     "vscode": "^1.125.0"

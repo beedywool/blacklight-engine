@@ -1,6 +1,6 @@
 # Blacklight Engine for VS Code
 
-Tools for games made with [Blacklight Engine](https://github.com/blacklight-engine/blacklight-engine). The extension activates in folders that contain a `game.config.ts`. Everything it edits stays plain TypeScript or JSON that you can also edit by hand.
+Tools for games made with [Blacklight Engine](https://github.com/beedywool/blacklight-engine). The extension activates in folders that contain a `game.config.ts`. Everything it edits stays plain TypeScript or JSON that you can also edit by hand.
 
 | Feature                       | How to open it                                                                                 |
 | ----------------------------- | ---------------------------------------------------------------------------------------------- |
@@ -17,4 +17,4 @@ Tools for games made with [Blacklight Engine](https://github.com/blacklight-engi
 
 `.anim.json`, `.layout.json` and `.timeline.json` files are validated against the engine's JSON Schemas.
 
-The live features (UI preview, Live Objects, Play in game) talk to the game through the dev server started by `blacklight dev`; they do nothing in release builds. See the [tooling guide](https://github.com/blacklight-engine/blacklight-engine/blob/main/docs/guide/vscode.md).
+The live features (UI preview, Live Objects, Play in game) talk to the game through the dev server started by `blacklight dev`; they do nothing in release builds. See the [tooling guide](https://github.com/beedywool/blacklight-engine/blob/main/docs/guide/vscode.md).
