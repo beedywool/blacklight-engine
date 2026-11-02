@@ -1,17 +1,29 @@
 name: CI
 
+# Two tiers.
+# - Fast (every push and pull request, must stay green): lint, type checks, unit tests with the
+#   coverage gate, api:check and the docs build on Linux; unit tests and the VS Code extension
+#   tests on Windows and macOS; the e2e suite on Linux, without the tests tagged @flaky; the
+#   desktop packages of the three systems.
+# - Full (nightly, and workflow_dispatch): also e2e on macOS with one more retry for the specs that
+#   draw a lot (e2e/tiers.ts) and the @flaky tests, the benchmarks on Linux and macOS (absolute
+#   limits only), the Android emulator and the iOS Simulator. It never blocks a push.
+# Windows e2e and benchmarks run on a real Windows machine (CONTRIBUTING.md): GitHub's Windows
+# runners have no GPU and their software rendering made those tests fail at random.
 on:
   push:
     branches: [main]
   pull_request:
-  # A partial run to iterate on one failure. Pushes and pull requests always run everything.
+  schedule:
+    - cron: '30 2 * * *'
+  # A full-tier run, or part of one to iterate on a failure.
   workflow_dispatch:
     inputs:
       jobs:
         description: 'Jobs to run, comma-separated: check, e2e, bench, android, ios, desktop-packages'
         default: 'check,e2e,bench,android,ios,desktop-packages'
       os:
-        description: 'Operating systems of the check, e2e, bench and desktop-packages jobs (JSON list)'
+        description: 'Operating systems of the check and desktop-packages jobs, and of e2e and bench except Windows (JSON list)'
         default: '["ubuntu-latest","windows-latest","macos-latest"]'
       spec:
         description: 'Playwright arguments for the e2e and bench jobs, split on spaces (e2e/ui.spec.ts --grep=Survival); empty runs all'
@@ -34,43 +46,56 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm build
-      - run: pnpm lint
-      - run: pnpm typecheck
+      # The sources are the same on every OS: the static checks run on Linux.
+      - if: runner.os == 'Linux'
+        run: pnpm lint
+      - if: runner.os == 'Linux'
+        run: pnpm typecheck
       # Before the unit tests: the core-browser Vitest project runs in Chromium.
       - run: pnpm exec playwright install --with-deps chromium
+      # Unit tests on every OS, including the relay's Node test of two headless party-game
+      # instances playing online (servers/relay/test).
       - run: pnpm test
       # NF-07: unit coverage of core and net (Node and Chromium runs merged) at or above the
-      # thresholds in vitest.config.ts, or the job fails. The sources are the same on every OS.
+      # thresholds in vitest.config.ts, or the job fails.
       - if: runner.os == 'Linux'
         run: pnpm test:coverage
       # NF-06: public API documented, typed and recorded in api-report.txt.
-      - run: pnpm api:check
+      - if: runner.os == 'Linux'
+        run: pnpm api:check
       # PF-09: the build workflow create-blacklight writes into every game (and this file).
       - if: runner.os == 'Linux'
         run: |
           bash <(curl -sSfL https://raw.githubusercontent.com/rhysd/actionlint/v1.7.12/scripts/download-actionlint.bash) 1.7.12
           ./actionlint -color packages/create/shared/_github/workflows/build.yml .github/workflows/ci.yml
-      - run: pnpm --filter blacklight-template-empty build
-      - run: pnpm --filter blacklight-template-persona-menu typecheck
-      - run: pnpm docs:build
+      - if: runner.os == 'Linux'
+        run: pnpm --filter blacklight-template-empty build
+      - if: runner.os == 'Linux'
+        run: pnpm --filter blacklight-template-persona-menu typecheck
+      - if: runner.os == 'Linux'
+        run: pnpm docs:build
       - run: pnpm --filter blacklight-vscode test:integration
 
-  # Playwright specs (`pnpm e2e`) in four shards on runners of their own. Each runs one test file
+  # Playwright specs (`pnpm e2e`) in eight shards on runners of their own. Each runs one test file
   # at a time (playwright.config.ts): specs side by side fight over the runner's few CPUs, and the
-  # hosted runners' software GPU turns that into timeouts.
+  # hosted runners' software GPU turns that into timeouts. Fast tier: Linux, without @flaky
+  # tests. Full tier: Linux and macOS (or the systems asked for), every test.
   e2e:
     if: github.event_name != 'workflow_dispatch' || contains(inputs.jobs, 'e2e')
     strategy:
       fail-fast: false
       matrix:
-        os: ${{ fromJSON(inputs.os || '["ubuntu-latest","windows-latest","macos-latest"]') }}
-        shard: [1, 2, 3, 4]
+        os: ${{ fromJSON((github.event_name == 'push' || github.event_name == 'pull_request') && '["ubuntu-latest"]' || inputs.os || '["ubuntu-latest","macos-latest"]') }}
+        shard: [1, 2, 3, 4, 5, 6, 7, 8]
+        exclude:
+          - os: windows-latest
     runs-on: ${{ matrix.os }}
     defaults:
       run:
         shell: bash
     env:
       SPEC: ${{ inputs.spec }}
+      BLACKLIGHT_CI_TIER: ${{ (github.event_name == 'push' || github.event_name == 'pull_request') && 'fast' || 'full' }}
     steps:
       - uses: actions/checkout@v5
       - uses: pnpm/action-setup@v4
@@ -85,15 +110,18 @@ jobs:
       # unprivileged user namespaces Chromium's sandbox uses.
       - if: runner.os == 'Linux'
         run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
-      # $SPEC is split on spaces into Playwright arguments.
+      # $SPEC is split on spaces into Playwright arguments. The fast tier leaves out the tests
+      # tagged @flaky (CONTRIBUTING.md, "Known flaky tests").
       - if: runner.os == 'Linux'
         run: |
           read -ra spec <<< "$SPEC"
-          xvfb-run -a pnpm e2e --shard=${{ matrix.shard }}/4 --pass-with-no-tests "${spec[@]}"
+          if [ "$BLACKLIGHT_CI_TIER" = fast ]; then spec+=(--grep-invert=@flaky); fi
+          xvfb-run -a pnpm e2e --shard=${{ matrix.shard }}/8 --pass-with-no-tests "${spec[@]}"
       - if: runner.os != 'Linux'
         run: |
           read -ra spec <<< "$SPEC"
-          pnpm e2e --shard=${{ matrix.shard }}/4 --pass-with-no-tests "${spec[@]}"
+          if [ "$BLACKLIGHT_CI_TIER" = fast ]; then spec+=(--grep-invert=@flaky); fi
+          pnpm e2e --shard=${{ matrix.shard }}/8 --pass-with-no-tests "${spec[@]}"
       - uses: actions/upload-artifact@v5
         if: always()
         with:
@@ -107,16 +135,18 @@ jobs:
           path: playwright-report/
           retention-days: 7
 
-  # NF-01 and NF-02 benchmarks on a runner of their own, so nothing else competes for it.
-  # Baselines are per runner (e2e/bench-baseline.json); a runner without one records its results
-  # and passes. Copy them from the bench-results-<os> artifact of a green main run:
-  # node scripts/bench.mjs update.
+  # Full tier. NF-01 and NF-02 benchmarks on a runner of their own, so nothing else competes for
+  # it. CI checks the spec's absolute limits only (BLACKLIGHT_BENCH_LIMITS_ONLY): shared runners
+  # vary by more than 10 %, so the regression gate against e2e/bench-baseline.json runs locally
+  # with `pnpm bench` on a stable machine. The results are uploaded (bench-results-<os>).
   bench:
-    if: github.event_name != 'workflow_dispatch' || contains(inputs.jobs, 'bench')
+    if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && contains(inputs.jobs, 'bench'))
     strategy:
       fail-fast: false
       matrix:
-        os: ${{ fromJSON(inputs.os || '["ubuntu-latest","windows-latest","macos-latest"]') }}
+        os: ${{ fromJSON(inputs.os || '["ubuntu-latest","macos-latest"]') }}
+        exclude:
+          - os: windows-latest
     runs-on: ${{ matrix.os }}
     defaults:
       run:
@@ -124,6 +154,7 @@ jobs:
     env:
       SPEC: ${{ inputs.spec }}
       BLACKLIGHT_BENCH_RUNNER: github-${{ matrix.os }}
+      BLACKLIGHT_BENCH_LIMITS_ONLY: '1'
     steps:
       - uses: actions/checkout@v5
       - uses: pnpm/action-setup@v4
@@ -159,13 +190,15 @@ jobs:
           path: playwright-report/
           retention-days: 7
 
-  # Phase 3d gate: the mobile fixture and a template on an Android emulator (e2e/mobile-android.spec.ts),
-  # then the Android benchmarks (NF-01, NF-02 mobile, NF-03: e2e/bench-android.spec.ts) against the
-  # `github-android-emulator` baseline; without one they record their results and check the limits.
+  # Full tier. Phase 3d gate: the mobile fixture and a template on an Android emulator
+  # (e2e/mobile-android.spec.ts), then the Android benchmarks (NF-01, NF-02 mobile, NF-03:
+  # e2e/bench-android.spec.ts), absolute limits only as in the bench job.
   android:
-    if: github.event_name != 'workflow_dispatch' || contains(inputs.jobs, 'android')
+    if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && contains(inputs.jobs, 'android'))
     runs-on: ubuntu-latest
     timeout-minutes: 100
+    env:
+      BLACKLIGHT_BENCH_LIMITS_ONLY: '1'
     steps:
       - uses: actions/checkout@v5
       - uses: pnpm/action-setup@v4
@@ -215,9 +248,9 @@ jobs:
             e2e/fixtures/mobile/release/android/
           retention-days: 7
 
-  # Phase 3d gate: the mobile fixture on the iOS Simulator (e2e/mobile-ios.spec.ts).
+  # Full tier. Phase 3d gate: the mobile fixture on the iOS Simulator (e2e/mobile-ios.spec.ts).
   ios:
-    if: github.event_name != 'workflow_dispatch' || contains(inputs.jobs, 'ios')
+    if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && contains(inputs.jobs, 'ios'))
     runs-on: macos-26
     timeout-minutes: 60
     steps:
