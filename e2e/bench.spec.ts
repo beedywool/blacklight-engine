@@ -85,7 +85,11 @@ test.afterAll(async () => {
 
 /** One benchmark run in a fresh context: the scene's own result plus main-thread time from CDP. */
 async function measure(profile: BrowserContextOptions, query = ''): Promise<Run> {
-  const context = await browser.newContext(profile);
+  // No service worker: the build's PWA worker precaches every built file (about 370, mostly
+  // input glyphs) on each fresh context, during the measured window and through the route below.
+  // On the Windows runner those requests queued for up to 50 s behind the software-drawn frames
+  // until one was refused and the run failed (run 41507485089); the benchmark measures frames.
+  const context = await browser.newContext({ ...profile, serviceWorkers: 'block' });
   try {
     // Cross-origin isolation: performance.now() gets 5 µs resolution instead of 100 µs (a median of
     // 1 ms frames would move by 10 % steps otherwise), and measureUserAgentSpecificMemory() works.
