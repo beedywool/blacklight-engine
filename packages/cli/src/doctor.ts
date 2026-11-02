@@ -170,7 +170,10 @@ const macSigning: DoctorCheck = {
   run: ({ platform, exec, env }) => {
     if (platform !== 'darwin') return { ok: false, detail: 'needs macOS', fix: 'Use a Mac.' };
     const found = identities(exec, /^Developer ID Application/);
-    const notarize = env.APPLE_ID && env.APPLE_APP_SPECIFIC_PASSWORD && env.APPLE_TEAM_ID;
+    // Same rule as the signing plan: an App Store Connect API key, or an Apple ID.
+    const notarize =
+      (env.APPLE_API_KEY && env.APPLE_API_KEY_ID && env.APPLE_API_ISSUER) ||
+      (env.APPLE_ID && env.APPLE_APP_SPECIFIC_PASSWORD && env.APPLE_TEAM_ID);
     if (found.length === 0)
       return {
         ok: false,
@@ -181,7 +184,7 @@ const macSigning: DoctorCheck = {
       return {
         ok: false,
         detail: `${found[0]}; notarization not configured`,
-        fix: 'Set APPLE_ID, APPLE_APP_SPECIFIC_PASSWORD and APPLE_TEAM_ID.',
+        fix: 'Set APPLE_API_KEY, APPLE_API_KEY_ID and APPLE_API_ISSUER (an App Store Connect API key), or APPLE_ID, APPLE_APP_SPECIFIC_PASSWORD and APPLE_TEAM_ID.',
       };
     return { ok: true, detail: found[0]! };
   },

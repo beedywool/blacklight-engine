@@ -75,8 +75,39 @@ describe('build workflow', () => {
   it('keeps secrets out of the file', () => {
     const text = readFileSync(workflowFile, 'utf8');
     for (const match of text.matchAll(/(\w+): \$\{\{ (.+?) \}\}/g)) {
-      if (match[2]!.startsWith('secrets.')) expect(match[2]).toBe(`secrets.${match[1]}`);
+      for (const secret of match[2]!.matchAll(/secrets\.(\w+)/g)) expect(secret[1]).toBe(match[1]);
     }
+  });
+
+  it('lists every secret it reads in its header, and signs only with the developer secrets', () => {
+    const text = readFileSync(workflowFile, 'utf8');
+    const header = text.slice(0, text.indexOf('\nname:'));
+    const used = new Set([...text.matchAll(/secrets\.(\w+)/g)].map((m) => m[1]!));
+    const listed = new Set(
+      [...header.matchAll(/^#\s+([A-Z][A-Z0-9_]+)\s{2,}/gm)].map((m) => m[1]!),
+    );
+    expect([...used].sort()).toEqual([...listed].sort());
+    // Nothing else signs: no certificate, key or Apple team is written in the file.
+    expect(text).not.toMatch(/-----BEGIN|DEVELOPMENT_TEAM=|teamID/);
+  });
+
+  it('keeps each desktop certificate on its own OS and skips signing with a notice', () => {
+    const desktop = workflow.jobs.desktop as Job & { env: Record<string, string> };
+    for (const [name, value] of Object.entries(desktop.env)) {
+      const os = name.startsWith('WIN_') ? 'win' : 'mac';
+      expect(value, name).toBe(`\${{ matrix.target == '${os}' && secrets.${name} || '' }}`);
+    }
+    const notices = desktop.steps.filter((s) => s.run?.includes('::notice::'));
+    expect(notices.map((s) => s.if)).toEqual([
+      "matrix.target == 'win' && (env.WIN_CSC_LINK == '' || env.WIN_CSC_KEY_PASSWORD == '')",
+      "matrix.target == 'mac' && (env.CSC_LINK == '' || env.CSC_KEY_PASSWORD == '')",
+    ]);
+    expect(runs(workflow.jobs.android!)).toContain('::notice::Android debug build only');
+    const ios = workflow.jobs.ios!.steps;
+    const signed = ios.find((s) => s.run?.includes('--target ios --release'));
+    const unsigned = ios.find((s) => s.run?.includes('::notice::iOS Simulator build only'));
+    expect(signed?.if).toContain("env.IOS_DIST_CERT_P12 != ''");
+    expect(unsigned?.if).toContain("env.IOS_DIST_CERT_P12 == ''");
   });
 
   // actionlint is a Go binary: checked when the developer has it installed (CI installs it).

@@ -3,7 +3,12 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { parse } from 'plist';
 import { afterEach, describe, expect, it } from 'vitest';
-import { ENGINE_PLUGINS, SQLITE_PLUGIN, pluginList } from '../src/targets/mobile';
+import {
+  ENGINE_PLUGINS,
+  SQLITE_PLUGIN,
+  iosAuthenticationArgs,
+  pluginList,
+} from '../src/targets/mobile';
 import { runners } from '../src/targets/runners';
 import {
   androidEngineValues,
@@ -250,5 +255,27 @@ describe('run', () => {
   it('registers the android and ios runners of `blacklight run`', () => {
     expect(typeof runners.android).toBe('function');
     expect(typeof runners.ios).toBe('function');
+  });
+});
+
+describe('iOS release signing', () => {
+  it('signs in to Xcode with the developer App Store Connect API key when all three are set', () => {
+    const env = {
+      APPLE_API_KEY: '/tmp/AuthKey_ABC123.p8',
+      APPLE_API_KEY_ID: 'ABC123',
+      APPLE_API_ISSUER: '00000000-0000-0000-0000-000000000000',
+    };
+    expect(iosAuthenticationArgs(env)).toEqual([
+      '-allowProvisioningUpdates',
+      '-authenticationKeyPath',
+      '/tmp/AuthKey_ABC123.p8',
+      '-authenticationKeyID',
+      'ABC123',
+      '-authenticationKeyIssuerID',
+      '00000000-0000-0000-0000-000000000000',
+    ]);
+    // Nothing of the engine's own: without the developer's key, Xcode's signed-in account signs.
+    expect(iosAuthenticationArgs({})).toEqual([]);
+    expect(iosAuthenticationArgs({ ...env, APPLE_API_ISSUER: '' })).toEqual([]);
   });
 });
