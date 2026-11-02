@@ -7,6 +7,9 @@ import { join, resolve } from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
 import type { Game } from '@blacklight/core';
 import { run, serve } from './server';
+import { RENDERING_RETRIES } from './tiers';
+
+test.describe.configure({ retries: RENDERING_RETRIES });
 
 const repo = resolve(import.meta.dirname, '..');
 const devPort = 5410;

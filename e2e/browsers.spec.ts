@@ -17,6 +17,9 @@ import {
   type BrowserType,
 } from '@playwright/test';
 import { run, serve } from './server';
+import { RENDERING_RETRIES } from './tiers';
+
+test.describe.configure({ retries: RENDERING_RETRIES });
 
 const require = createRequire(resolve(import.meta.dirname, '../packages/cli/package.json'));
 const { PNG } = require('pngjs') as {

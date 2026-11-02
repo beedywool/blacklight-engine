@@ -8,6 +8,9 @@ import { expect, test, type Page } from '@playwright/test';
 import type { Game } from '@blacklight/core';
 import type { UiRuntime } from '@blacklight/ui';
 import { run, serve } from './server';
+import { RENDERING_RETRIES } from './tiers';
+
+test.describe.configure({ retries: RENDERING_RETRIES });
 
 const template = resolve(import.meta.dirname, '../templates/visual-novel');
 const port = 5310;

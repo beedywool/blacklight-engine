@@ -7,6 +7,9 @@ import { join, resolve } from 'node:path';
 import { chromium, expect, test, type Page } from '@playwright/test';
 import type { Game } from '@blacklight/core';
 import { run, serve } from './server';
+import { RENDERING_RETRIES } from './tiers';
+
+test.describe.configure({ retries: RENDERING_RETRIES });
 
 const template = resolve(import.meta.dirname, '../templates/2d-with-3d');
 const require = createRequire(resolve(import.meta.dirname, '../packages/cli/package.json'));

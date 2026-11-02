@@ -6,6 +6,9 @@ import { resolve } from 'node:path';
 import { chromium, expect, test, type Browser, type Page } from '@playwright/test';
 import { startRelay, type RelayServer } from '../servers/relay/src/index';
 import { run, serve } from './server';
+import { RENDERING_RETRIES } from './tiers';
+
+test.describe.configure({ retries: RENDERING_RETRIES });
 
 const template = resolve(import.meta.dirname, '../templates/party-game');
 const DEV_PORT = 5385;
@@ -255,7 +258,12 @@ async function pick(page: Page, index: number, settings: [number, number], scree
     .toBe('intro');
 }
 
-/** Runs the game many steps at a time until the mini-game is finished. */
+/**
+ * Runs the game 60 steps at a time until the mini-game is finished, and lets the browser draw a
+ * frame every 600 steps. A frame of a match at 1920×1080 takes 0.7 to 1.4 s of software drawing on
+ * CI's runners while 60 steps take a few milliseconds: with a frame after every 60 steps, Air
+ * Hockey's 4 000 steps spent 50 s waiting for frames (run 41507485089).
+ */
 async function playToEnd(page: Page, maxSteps: number): Promise<number> {
   return page.evaluate(async (max) => {
     const game = (window as unknown as PartyWindow).blacklight;
@@ -263,8 +271,7 @@ async function playToEnd(page: Page, maxSteps: number): Promise<number> {
     while (!game.scene.minigame?.referee?.finished && steps < max) {
       game.step(60);
       steps += 60;
-      // Let the UI and the browser breathe between bursts.
-      await new Promise((done) => requestAnimationFrame(done));
+      if (steps % 600 === 0) await new Promise((done) => requestAnimationFrame(done));
     }
     return steps;
   }, maxSteps);

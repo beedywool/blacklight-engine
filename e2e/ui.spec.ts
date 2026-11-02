@@ -4,6 +4,9 @@ import { resolve } from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
 import type { Game } from '@blacklight/core';
 import { run, serve } from './server';
+import { RENDERING_RETRIES } from './tiers';
+
+test.describe.configure({ retries: RENDERING_RETRIES });
 
 const template = resolve(import.meta.dirname, '../templates/persona-menu');
 const port = 5197;

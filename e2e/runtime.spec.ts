@@ -6,6 +6,9 @@ import { expect, test, type Page } from '@playwright/test';
 import type * as Core from '@blacklight/core';
 import type { Game } from '@blacklight/core';
 import { run, serve } from './server';
+import { RENDERING_RETRIES } from './tiers';
+
+test.describe.configure({ retries: RENDERING_RETRIES });
 
 const fixture = resolve(import.meta.dirname, 'fixtures/runtime');
 

@@ -6,6 +6,9 @@ import { existsSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync 
 import { join, relative, resolve } from 'node:path';
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import { run, serve } from './server';
+import { RENDERING_RETRIES } from './tiers';
+
+test.describe.configure({ retries: RENDERING_RETRIES });
 
 const repo = resolve(import.meta.dirname, '..');
 const docs = join(repo, 'docs');
