@@ -67,7 +67,7 @@ jobs:
       - if: runner.os == 'Linux'
         run: |
           bash <(curl -sSfL https://raw.githubusercontent.com/rhysd/actionlint/v1.7.12/scripts/download-actionlint.bash) 1.7.12
-          ./actionlint -color packages/create/shared/_github/workflows/build.yml .github/workflows/ci.yml
+          ./actionlint -color packages/create/shared/_github/workflows/build.yml .github/workflows/ci.yml .github/workflows/release.yml
       - if: runner.os == 'Linux'
         run: pnpm --filter blacklight-template-empty build
       - if: runner.os == 'Linux'

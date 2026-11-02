@@ -4,6 +4,8 @@
 // lists the commit under "Breaking changes". Merge commits are left out.
 //
 // Run: pnpm changelog (writes CHANGELOG.md; part of the release steps in CONTRIBUTING.md)
+//      pnpm changelog --notes 1.2.0 (prints the section of one release, without the file header:
+//      the body of the GitHub release; `--notes Unreleased` for the commits after the last tag)
 import { execFileSync } from 'node:child_process';
 import { writeFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -60,6 +62,26 @@ export function renderChangelog(releases) {
   return `${lines.join('\n')}\n`;
 }
 
+/**
+ * Markdown of one release's section, headings one level up (`## area`), for a release page.
+ * Empty when the release has no commits.
+ * @param {Parameters<typeof renderChangelog>[0]} releases
+ * @param {string} name Version without `v`, or `Unreleased`.
+ */
+export function renderNotes(releases, name) {
+  const release = releases.find((r) => r.name === name.replace(/^v/, ''));
+  if (!release)
+    throw new Error(`No release ${name} in the history: tag it first (git tag v${name}).`);
+  const text = renderChangelog([release]);
+  const start = text.indexOf('\n### ');
+  return start < 0
+    ? ''
+    : `${text
+        .slice(start + 1)
+        .replaceAll(/^### /gm, '## ')
+        .trimEnd()}\n`;
+}
+
 function git(cwd, args) {
   return execFileSync('git', args, { cwd, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
 }
@@ -96,7 +118,12 @@ export function readReleases(cwd) {
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const root = join(fileURLToPath(new URL('.', import.meta.url)), '..');
-  const file = join(root, 'CHANGELOG.md');
-  writeFileSync(file, renderChangelog(readReleases(root)));
-  console.log(`Wrote ${file}`);
+  const notes = process.argv.indexOf('--notes');
+  if (notes > 0) {
+    process.stdout.write(renderNotes(readReleases(root), process.argv[notes + 1] ?? 'Unreleased'));
+  } else {
+    const file = join(root, 'CHANGELOG.md');
+    writeFileSync(file, renderChangelog(readReleases(root)));
+    console.log(`Wrote ${file}`);
+  }
 }

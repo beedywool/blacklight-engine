@@ -4,7 +4,7 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { parseCommit, readReleases, renderChangelog } from './changelog.mjs';
+import { parseCommit, readReleases, renderChangelog, renderNotes } from './changelog.mjs';
 
 describe('parseCommit', () => {
   it('reads the area, the text and breaking changes', () => {
@@ -117,5 +117,9 @@ describe('readReleases', () => {
       ['Unreleased', undefined, ['cli: third', 'ui: second']],
       ['1.0.0', '2026-11-01', ['core: first']],
     ]);
+    // The body of a GitHub release: one section, headings one level up.
+    expect(renderNotes(releases, 'v1.0.0')).toMatch(/^## core\n\n- first \([0-9a-f]{7}\)\n$/);
+    expect(renderNotes(releases, 'Unreleased')).toContain('## cli\n\n- third');
+    expect(() => renderNotes(releases, '9.9.9')).toThrow(/git tag v9.9.9/);
   });
 });
