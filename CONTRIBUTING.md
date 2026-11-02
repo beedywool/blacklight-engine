@@ -86,21 +86,21 @@ None at the moment. The last intermittent failures had a cause that was fixed: t
 
 ## Layout
 
-| Folder                             | Content                                                                                                                                |
-| ---------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
-| `packages/core`                    | `@blacklight/core`: the runtime                                                                                                        |
-| `packages/ui`                      | `@blacklight/ui`: Vue UI layer (`prompts/` holds Kenney's CC0 glyphs; `node scripts/prompt-urls.mjs` regenerates `src/prompt-urls.js`) |
-| `packages/three`, `physics`, `net` | optional runtime packages: 3D, rigid bodies, online play                                                                               |
-| `packages/native`, `mobile`        | desktop (Electron) and mobile (Capacitor) platforms                                                                                    |
-| `packages/modules/*`, `registry`   | official modules and the module registry                                                                                               |
-| `packages/eslint-plugin`           | `eslint-plugin-blacklight` (deterministic simulation code)                                                                             |
-| `packages/cli`                     | `@blacklight/cli`: the `blacklight` command, its Vite configuration, build targets and runners                                         |
-| `packages/create`                  | `create-blacklight`: the project scaffolder                                                                                            |
-| `packages/vscode`                  | VS Code extension (`pnpm --filter blacklight-vscode test:integration` runs its integration tests under Xvfb)                           |
-| `servers/`                         | relay and reference server (Docker)                                                                                                    |
-| `templates/`                       | project templates, copied by `create-blacklight`                                                                                       |
-| `docs/`                            | VitePress documentation site                                                                                                           |
-| `e2e/`                             | Playwright tests, including the phase gates; `e2e/fixtures/` holds test games (generators for their art and media sit next to them)    |
+| Folder                             | Content                                                                                                                                                 |
+| ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `packages/core`                    | `@blacklight/core`: the runtime                                                                                                                         |
+| `packages/ui`                      | `@blacklight/ui`: Vue UI layer (`prompts/` holds Kenney's CC0 glyphs; its build runs `scripts/prompt-urls.mjs`, which regenerates `src/prompt-urls.js`) |
+| `packages/three`, `physics`, `net` | optional runtime packages: 3D, rigid bodies, online play                                                                                                |
+| `packages/native`, `mobile`        | desktop (Electron) and mobile (Capacitor) platforms                                                                                                     |
+| `packages/modules/*`, `registry`   | official modules and the module registry                                                                                                                |
+| `packages/eslint-plugin`           | `eslint-plugin-blacklight` (deterministic simulation code)                                                                                              |
+| `packages/cli`                     | `@blacklight/cli`: the `blacklight` command, its Vite configuration, build targets and runners                                                          |
+| `packages/create`                  | `create-blacklight`: the project scaffolder                                                                                                             |
+| `packages/vscode`                  | VS Code extension (`pnpm --filter blacklight-vscode test:integration` runs its integration tests under Xvfb)                                            |
+| `servers/`                         | relay and reference server (Docker)                                                                                                                     |
+| `templates/`                       | project templates, copied by `create-blacklight`                                                                                                        |
+| `docs/`                            | VitePress documentation site                                                                                                                            |
+| `e2e/`                             | Playwright tests, including the phase gates; `e2e/fixtures/` holds test games (generators for their art and media sit next to them)                     |
 
 ## Rules
 
@@ -160,14 +160,14 @@ Before 1.0, minor versions may break.
 
 Releases are published on GitHub only: no npm, no VS Code Marketplace for now (both may come later). `.github/workflows/release.yml` runs on every `v*` tag:
 
-1. `pack` sets every package to the tag's version, builds them, packs each published package with `scripts/release-pack.mjs` (all of `packages/`, `packages/modules/` and the relay; each `workspace:` engine dependency becomes the URL of the same release's asset, `https://github.com/beedywool/blacklight-engine/releases/download/v<version>/<package>-<version>.tgz`), adds `create-blacklight.tgz` (the scaffolder under a name `releases/latest/download/` can point at), packages the extension as `blacklight-vscode-<version>.vsix`, builds the module registry with the official modules pointing at the release's tarballs, and writes the release notes with `pnpm changelog --notes <version>`;
+1. `pack` sets every package to the tag's version, builds them, packs each published package with `scripts/release-pack.mjs` (all of `packages/`, `packages/modules/` and the relay; each `workspace:` engine dependency becomes the URL of the same release's asset, `https://github.com/beedywool/blacklight-engine/releases/download/v<version>/<package>-<version>.tgz`), adds `create-blacklight.tgz` (the scaffolder under a name `releases/latest/download/` can point at), packages the extension as `blacklight-vscode-<version>.vsix`, builds the module registry with the official modules pointing at the release's tarballs, and writes the release notes with `pnpm changelog --notes <version>`, after the summary in `docs/release-notes-<major>.<minor>.md` for a `x.y.0` release that has one (`docs/release-notes-1.0.md`: what the version delivers, what is checked by hand, the accepted limitations);
 2. `release` creates the GitHub Release of the tag with every file attached (a version with `-` is a prerelease);
 3. `registry` deploys the registry to GitHub Pages (`https://beedywool.github.io/blacklight-engine/registry`).
 
 To cut a release, from a clean `main` with CI green:
 
 ```sh
-pnpm -r --filter "./packages/**" --filter "./servers/relay" exec npm pkg set version=1.1.0   # one version everywhere
+pnpm -r --filter "./packages/**" --filter "./servers/*" exec npm pkg set version=1.1.0   # one version everywhere
 git commit -am "release: 1.1.0"
 git tag v1.1.0
 pnpm changelog                    # rewrites CHANGELOG.md from the git history, 1.1.0 included

@@ -74,7 +74,15 @@ jobs:
           VERSION: ${{ steps.version.outputs.version }}
         run: |
           if git rev-parse -q --verify "refs/tags/v$VERSION" >/dev/null; then section="$VERSION"; else section=Unreleased; fi
-          node scripts/changelog.mjs --notes "$section" > notes.md
+          # A minor or major release (x.y.0) opens with its summary when docs/release-notes-x.y.md
+          # exists: what it contains, what is checked by hand, the accepted limitations.
+          summary="docs/release-notes-${VERSION%.*}.md"
+          if [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.0$ && -f "$summary" ]]; then
+            { sed '1{/^# /d}' "$summary"; printf '\n## Changes by area\n\n'; } > notes.md
+            node scripts/changelog.mjs --notes "$section" | sed 's/^## /### /' >> notes.md
+          else
+            node scripts/changelog.mjs --notes "$section" > notes.md
+          fi
           {
             echo
             echo "Create a game: \`pnpm dlx https://github.com/${GITHUB_REPOSITORY}/releases/download/v$VERSION/create-blacklight-$VERSION.tgz my-game\`."
