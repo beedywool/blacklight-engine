@@ -1,6 +1,30 @@
 # Blacklight Engine
 
-An open-source (MIT) TypeScript game framework for web developers. Games are scenes and object-oriented game objects written as plain classes with ES imports; rendering is PixiJS v8, light 3D comes from Three.js inside 2D scenes, and menus are Vue 3 components over the canvas, built for Persona-style UI. One project exports to web/PWA, Windows, macOS, Linux, Android, iOS and Steam and plays offline. The engine is in development towards 1.0: `SPEC.md` is the full scope, `PROGRESS.md` what works today.
+An open-source (MIT) TypeScript game framework for web developers. Games are scenes and object-oriented game objects written as plain classes with ES imports; rendering is PixiJS v8, light 3D comes from Three.js inside 2D scenes, and menus are Vue 3 components over the canvas, built for Persona-style UI. One project exports to web/PWA, Windows, macOS, Linux, Android, iOS and Steam and plays offline. `SPEC.md` is the full scope, `PROGRESS.md` lists each requirement with the test that covers it.
+
+## What 1.0 contains
+
+- **Runtime** (`@blacklight/core`): fixed-step loop, scenes loaded on demand with transitions and overlays, game objects (sprites, animated sprites from `.anim.json`, text, tilemaps with Tiled import, particles, video), 19 behaviors, collisions, input with actions over keyboard, pointer, touch and gamepads (SDL_GameControllerDB), audio, camera, tweens, encrypted saves with backups, typed asset and scene names, a debug overlay. 59.6 KB gzip without Pixi, Vue and Three.
+- **UI** (`@blacklight/ui`): Vue 3 screens with spatial focus, Kenney input prompts that follow the last device, widgets, scene and screen transitions, rich text, Ink dialogue with backlog, an FX layer, localization with CJK line breaking and right-to-left layout, accessibility settings, video cutscenes with subtitles.
+- **Light 3D** (`@blacklight/three`): glTF models (Draco, KTX2) between 2D layers and inside menus through render to texture. **Physics** (`@blacklight/physics`): Rapier 2D.
+- **Online play** (`@blacklight/net`, `servers/relay`): rollback and lockstep sessions over a WebSocket relay, deterministic math and an ESLint rule that keeps simulation code deterministic, a network test harness.
+- **Platforms**: web with PWA, Electron desktop apps (sandboxed renderer, IPC allowlist, fuses, V8 bytecode, installers for the three systems, signing and notarization from your credentials), Android and iOS through Capacitor, Steam (achievements, Cloud, rich presence, depots and upload), Discord presence. Updates go through stores only.
+- **Modules and services**: http, sqlite, cloud-save, accounts-oidc (any OIDC provider), achievements (Steam, Game Center, Play Games or the reference server), telemetry with consent; a module registry; a reference server for accounts, saves, achievements and scores (`servers/reference`, Docker).
+- **Tooling**: the `blacklight` CLI (create, dev with hot reload that keeps state, build every target, run, doctor, add, upgrade, sign, upload) and a VS Code extension (sprite sheet slicer, animation, layout, timeline and configuration editors, UI preview, live objects, asset browser, browser debugging).
+- **Docs**: a VitePress site with guides, tutorials, a page and a live example per behavior, widget and transition, a playground, the API reference, and publishing guides per store.
+
+## Templates
+
+| Template       | What it is                                                                                                                              |
+| -------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| `empty`        | The smallest project: one scene, one screen, a name on black. The default.                                                              |
+| `2d-with-3d`   | glTF models between two 2D layers, a portrait rendered to a texture, a menu showing a turning model, and a benchmark scene.             |
+| `platformer`   | One side-scrolling level made in Tiled: a hero that runs and jumps, coins, slimes, a checkpoint, a goal, and touch controls for phones. |
+| `persona-menu` | A title screen, a walkable field and a Persona-style pause menu with items, party and settings with rebinding.                          |
+| `visual-novel` | An Ink story with portraits, choices and saves, a gallery and an intro cutscene, in English, Japanese and Arabic.                       |
+| `party-game`   | Six mini-games for 1 to 8 local players, or online through a relay with rollback, with player profiles and optional accounts.           |
+
+Each one runs as it is and builds for every target. `docs/guide/templates.md` describes them.
 
 ## Make a game
 
@@ -19,7 +43,7 @@ pnpm blacklight upgrade  # move the game to the latest engine release
 
 The VS Code extension is `blacklight-vscode-<version>.vsix` in the same release: `code --install-extension blacklight-vscode-<version>.vsix`, or **Install from VSIX...** in the Extensions view. Publishing the packages on npm and the extension on the Marketplace may come later.
 
-A scene is a class in `scenes/<name>/<name>.scene.ts`; the first one is `entry` in `game.config.ts`. Each scene is loaded on demand as its own chunk. The configuration is checked at startup and every invalid field is shown on the page with the fix. Templates: `empty`, `persona-menu`, `visual-novel`, `2d-with-3d` (`pnpm dlx https://github.com/beedywool/blacklight-engine/releases/latest/download/create-blacklight.tgz my-game --template visual-novel`). The documentation in `docs/` (run `pnpm docs:dev` in this repository) has a guide per subsystem.
+A scene is a class in `scenes/<name>/<name>.scene.ts`; the first one is `entry` in `game.config.ts`. Each scene is loaded on demand as its own chunk. The configuration is checked at startup and every invalid field is shown on the page with the fix. `--template <name>` starts from one of the templates above (`pnpm dlx https://github.com/beedywool/blacklight-engine/releases/latest/download/create-blacklight.tgz my-game --template party-game`).
 
 To work on the engine itself, create games from a checkout with `node packages/create/dist/index.js my-game --link <checkout>` (see `CONTRIBUTING.md`).
 
@@ -41,7 +65,7 @@ To work on the engine itself, create games from a checkout with `node packages/c
 | `packages/create`        | `create-blacklight`: the project scaffolder, run with `pnpm dlx <release>/create-blacklight.tgz`                                                                             |
 | `packages/vscode`        | Blacklight Engine VS Code extension (editors, completion, asset browser, live debugging)                                                                                     |
 | `servers/`               | relay (online play) and reference server (cloud saves, achievements, accounts); `servers/docker-compose.yml` runs both                                                       |
-| `templates/`             | `empty`, `persona-menu`, `visual-novel`, `2d-with-3d`; `party-game` and `platformer` come with phase 4                                                                       |
+| `templates/`             | the six templates: `empty`, `2d-with-3d`, `platformer`, `persona-menu`, `visual-novel`, `party-game`                                                                         |
 | `docs/`                  | VitePress site in the BlackLight style                                                                                                                                       |
 | `e2e/`                   | Playwright tests (phase gates) and `fixtures/`, small test games                                                                                                             |
 
@@ -49,7 +73,7 @@ To work on the engine itself, create games from a checkout with `node packages/c
 pnpm install && pnpm build
 pnpm test && pnpm lint && pnpm typecheck
 pnpm e2e                 # first run: pnpm exec playwright install chromium
-pnpm bench               # NF-01 benchmark (docs/benchmarks.md)
+pnpm bench               # NF-01 to NF-03 benchmarks (docs/benchmarks.md)
 ```
 
 ## Documentation
@@ -68,9 +92,13 @@ pnpm docs:build          # also runs pnpm api:check; fails on dead links
 pnpm --filter blacklight-docs preview
 ```
 
+Start with `docs/guide/getting-started.md` (a controllable animated character and a menu, tested end to end in CI). Publishing a game: `docs/guide/deploy-web.md`, `docs/guide/desktop.md`, `docs/guide/mobile.md`, and one step-by-step guide per provider in `docs/publishing/` (Apple, Windows code signing, Android keystore and Play App Signing, Steamworks, an OIDC issuer, GitHub repository secrets for the game's build workflow). Performance numbers are in `docs/benchmarks.md`, the accepted limitations in `docs/guide/limitations.md`.
+
 `pnpm docs:screenshots` regenerates the pictures of the getting-started guide (it drives VS Code and a browser; Linux only). Deployment is in `docs/guide/deploy-docs.md`.
 
-CI (`.github/workflows/ci.yml`) has two tiers. The fast tier runs on every push and pull request and must stay green: lint, type checks, unit tests with the coverage gate, `api:check` and the docs build on Linux, unit tests and the VS Code extension tests on Windows and macOS, the e2e suite (browsers and Electron) on Linux, and the desktop installers of the three systems. The full tier runs every night and on demand without blocking pushes: the e2e suite on macOS as well, the benchmarks on Linux and macOS against the spec's absolute limits, the Android emulator and the iOS Simulator. The Windows e2e suite and benchmarks run on a real Windows machine (CONTRIBUTING.md), since GitHub's Windows runners have no GPU, and the 10 % benchmark regression gate runs locally with `pnpm bench`.
+## CI
+
+CI (`.github/workflows/ci.yml`) has two tiers. The fast tier runs on every push and pull request and must stay green: lint, type checks, unit tests with the coverage gate, `api:check` and the docs build on Linux, unit tests and the VS Code extension tests on Windows and macOS, the e2e suite (browsers and Electron) on Linux, and the desktop installers of the three systems. The full tier runs every night and on demand without blocking pushes: the e2e suite on macOS as well, the benchmarks on Linux and macOS against the spec's absolute limits, the Android emulator and the iOS Simulator. The Windows e2e suite and benchmarks run on a real Windows machine (CONTRIBUTING.md), since GitHub's Windows runners have no GPU, and the 10 % benchmark regression gate runs locally with `pnpm bench`. A run by hand can pick jobs and systems: `gh workflow run ci.yml --ref main -f jobs=bench -f os='["macos-latest"]'`. Releases come from `.github/workflows/release.yml` on a `v*` tag (CONTRIBUTING.md, "Versions and releases").
 
 ## How the work is organized
 
@@ -78,10 +106,11 @@ CI (`.github/workflows/ci.yml`) has two tiers. The fast tier runs on every push 
 
 ## Current limits
 
-- Phases 0 to 3 are done (see `PROGRESS.md`); phase 4 (docs site with live examples and playground, `party-game` and `platformer` templates, PWA) and phase 5 (release) remain.
-- On Windows, CI runs the unit tests and builds the installer; the e2e suite and the benchmarks run on a real Windows machine (CONTRIBUTING.md, MANUAL_TESTS.md).
-- Hardware and accounts are checked by hand (`MANUAL_TESTS.md`): real gamepads, phones, the Steam client, Discord, Game Center / Play Games, signing certificates.
-- Controller gyro is not available on desktop (the SDL binding exposes no sensors); Steam leaderboards are missing from steamworks.js.
-- The packages are not on npm and the extension is not on the VS Code Marketplace or Open VSX; everything installs from GitHub releases (`DECISIONS.md`). The module registry is served by GitHub Pages (`https://beedywool.github.io/blacklight-engine/registry`) from the first release on; accounts have no default provider (each game sets its own `issuer`).
-- Unit test coverage of core is below the 80 % target of NF-07.
-- The accepted limitations of 1.0 (shaders and HTML UI, float differences on iOS, Steam overlay in Electron, client-side protection) are in `docs/guide/limitations.md`.
+- Hardware, accounts and the release itself are checked by hand before each release, with the steps and expected results in `MANUAL_TESTS.md`: real gamepads on each OS, rumble and light bar, real Android phones and iPhones, NF-01 to NF-03 on the reference phones (Galaxy A54, iPhone 12), the Steam client and overlay, Discord, signing and notarization with real credentials, Game Center and Play Games, online matches between machines, Rosetta on Apple silicon, the GitHub release and a game created from it on a clean machine.
+- NF-01 (60 fps), NF-02 (start time) and NF-03 (memory) are measured on this repository's desktop, on an Android emulator and on CI runners (`docs/benchmarks.md`); the reference phones have not been measured yet. CI runners have no real GPU, so CI checks the absolute limits and records its numbers, and the 10 % regression gate runs locally with `pnpm bench` (deviation from SPEC §11.1, `DECISIONS.md`).
+- On Windows, CI runs the unit tests, the VS Code extension tests and the installer build; the e2e suite and the benchmarks run on a real Windows machine (CONTRIBUTING.md, MANUAL_TESTS.md).
+- CI runs GitHub's current runner images (`ubuntu-latest`, `macos-latest`, `windows-latest`, an API 35 Android emulator, the iOS Simulator of `macos-26`); the oldest supported versions of NF-05 (Windows 10, macOS 12, Ubuntu 22.04, Android 8, iOS 15) and the previous version of each browser are checked by hand.
+- No controller gyroscope or accelerometer (the SDL binding exposes no sensors), no Steam leaderboards (steamworks.js does not expose them; scores go to the reference server).
+- Everything installs from GitHub releases: the packages are not on npm and the extension is not on the VS Code Marketplace or Open VSX (`DECISIONS.md`). The module registry is served by GitHub Pages (`https://beedywool.github.io/blacklight-engine/registry`) from the first release on. The documentation site is built locally (`pnpm docs:dev`) or deployed by you (`docs/guide/deploy-docs.md`); it is not hosted by the project.
+- Accounts have no default provider: each game sets its own OIDC `issuer` (`docs/publishing/oidc.md`).
+- The accepted limitations of 1.0 (shaders cannot read the HTML UI, float differences between V8 and JavaScriptCore, the Steam overlay in Electron, client-side protection, bytecode per Electron version, controller sensors, Steam leaderboards) are in `docs/guide/limitations.md`.
