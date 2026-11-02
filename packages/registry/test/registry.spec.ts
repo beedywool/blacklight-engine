@@ -9,6 +9,7 @@ import {
   localPackuments,
   moduleNameOf,
   npmPackuments,
+  releaseTarballs,
   validateIndex,
   validateManifest,
   validatePackage,
@@ -240,6 +241,23 @@ describe('index', () => {
       'telemetry',
     ]);
     expect(index.modules.every((m) => m.official)).toBe(true);
+    expect(index.modules.every((m) => m.tarball === undefined)).toBe(true);
+  });
+
+  it('points modules at release tarballs', async () => {
+    const modules = resolve(import.meta.dirname, '../../modules');
+    const out = temp();
+    const base = 'https://github.com/beedywool/blacklight-engine/releases/download/v1.2.0/';
+    const index = await buildIndex(resolve(import.meta.dirname, '../index/entries'), out, {
+      packument: localPackuments([modules]),
+      tarball: releaseTarballs(base, (name) => name !== '@blacklight/module-telemetry'),
+    });
+    const http = index.modules.find((m) => m.name === 'http')!;
+    expect(http.tarball).toBe(`${base}blacklight-module-http-${http.version}.tgz`);
+    expect(index.modules.find((m) => m.name === 'telemetry')!.tarball).toBeUndefined();
+    const detail = JSON.parse(readFileSync(join(out, 'v1/modules/http.json'), 'utf8'));
+    expect(detail.tarball).toBe(http.tarball);
+    expect(detail.versions[http.version].tarball).toBe(http.tarball);
   });
 
   it('asks npm for scoped packages with an encoded slash', async () => {

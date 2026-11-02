@@ -72,6 +72,11 @@ export interface ModuleSummary {
   repository?: string;
   /** SPDX license expression of the package. */
   license: string;
+  /**
+   * URL of the package tarball of `version`, when the module is installed from a release asset
+   * instead of npm (the official modules, from the engine's GitHub release).
+   */
+  tarball?: string;
 }
 
 /** What a module declares for one published version. */
@@ -84,6 +89,37 @@ export interface VersionManifest {
   permissions: ModulePermission[];
   /** Other modules it needs. */
   dependencies: string[];
+  /** URL of this version's package tarball, when it is not installed from npm. */
+  tarball?: string;
+}
+
+/**
+ * Returns the tarball URL of a package version, or `undefined` to install it from npm. See
+ * {@link releaseTarballs}.
+ */
+export type TarballSource = (packageName: string, version: string) => string | undefined;
+
+/**
+ * Tarball URLs in a release folder, named as `pnpm pack` names them
+ * (`<baseUrl>/blacklight-module-http-1.2.0.tgz`). With `only`, other packages stay on npm.
+ *
+ * @example
+ * ```ts
+ * buildIndex('entries', 'public', {
+ *   packument: localPackuments(['packages/modules']),
+ *   tarball: releaseTarballs('https://github.com/me/engine/releases/download/v1.2.0'),
+ * });
+ * ```
+ */
+export function releaseTarballs(
+  baseUrl: string,
+  only: (packageName: string) => boolean = () => true,
+): TarballSource {
+  const base = baseUrl.replace(/\/+$/, '');
+  return (packageName, version) =>
+    only(packageName)
+      ? `${base}/${packageName.replace(/^@/, '').replace('/', '-')}-${version}.tgz`
+      : undefined;
 }
 
 /** `v1/modules/<name>.json`. */
@@ -282,6 +318,7 @@ interface Loaded {
 async function load(
   entriesDir: string,
   packument: PackumentSource,
+  tarball: TarballSource = () => undefined,
 ): Promise<{ loaded: Loaded[]; issues: string[] }> {
   const { entries, issues } = readEntries(entriesDir);
   const loaded: Loaded[] = [];
@@ -313,11 +350,13 @@ async function load(
     for (const [version, pkg] of Object.entries(doc.versions ?? {})) {
       if (validatePackage(pkg).length > 0 || manifestOf(pkg).module !== entry.name) continue;
       const manifest = manifestOf(pkg);
+      const url = tarball(entry.package, version);
       versions[version] = {
         engine: manifest.engine,
         platforms: manifest.platforms,
         permissions: manifest.permissions,
         dependencies: manifest.dependencies ?? [],
+        ...(url ? { tarball: url } : {}),
       };
     }
     const tagged = doc['dist-tags']?.latest;
@@ -357,6 +396,7 @@ async function load(
         official: entry.official === true,
         ...(repositoryOf(latestPkg, entry) ? { repository: repositoryOf(latestPkg, entry) } : {}),
         license: latestPkg.license ?? '',
+        ...(tarball(entry.package, latest) ? { tarball: tarball(entry.package, latest) } : {}),
         versions,
       },
     });
@@ -400,7 +440,8 @@ function summary(detail: ModuleDetail): ModuleSummary {
 /**
  * Validates the index repository and writes the static API into `outDir`: `v1/index.json` (every
  * module, sorted by name) and `v1/modules/<name>.json` (one module with all its versions). The
- * files can be served by any static host; packages stay on npm.
+ * files can be served by any static host; packages stay on npm, or on release assets with
+ * `tarball` ({@link releaseTarballs}).
  *
  * @throws {@link RegistryError} listing every problem when the index is invalid.
  *
@@ -412,9 +453,13 @@ function summary(detail: ModuleDetail): ModuleSummary {
 export async function buildIndex(
   entriesDir: string,
   outDir: string,
-  options: { packument?: PackumentSource; now?: Date } = {},
+  options: { packument?: PackumentSource; now?: Date; tarball?: TarballSource } = {},
 ): Promise<RegistryIndex> {
-  const { loaded, issues } = await load(entriesDir, options.packument ?? npmPackuments());
+  const { loaded, issues } = await load(
+    entriesDir,
+    options.packument ?? npmPackuments(),
+    options.tarball,
+  );
   if (issues.length > 0) throw new RegistryError(issues);
   const details = loaded.map((l) => l.detail).sort((a, b) => a.name.localeCompare(b.name));
   const index: RegistryIndex = {

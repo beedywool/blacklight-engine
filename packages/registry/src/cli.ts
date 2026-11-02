@@ -2,15 +2,24 @@
 // `blacklight-registry validate|build`: run by the index repository's CI.
 import { join, resolve } from 'node:path';
 import { parseArgs } from 'node:util';
-import { RegistryError, buildIndex, localPackuments, npmPackuments, validateIndex } from './build';
+import {
+  RegistryError,
+  buildIndex,
+  localPackuments,
+  npmPackuments,
+  releaseTarballs,
+  validateIndex,
+} from './build';
 
 const USAGE = `Usage:
   blacklight-registry validate [dir] [--local <folder>...]
-  blacklight-registry build [dir] --out <dir> [--local <folder>...]
+  blacklight-registry build [dir] --out <dir> [--local <folder>...] [--release-url <url>]
 
 [dir] is the index repository (holding entries/), default ".".
 --local reads packages from local folders instead of npm (a package folder, or a folder of
-package folders such as packages/modules).`;
+package folders such as packages/modules).
+--release-url points the official modules at the tarballs of a release folder
+(<url>/blacklight-module-<name>-<version>.tgz) instead of npm.`;
 
 async function main(): Promise<void> {
   const { values, positionals } = parseArgs({
@@ -18,6 +27,7 @@ async function main(): Promise<void> {
     options: {
       out: { type: 'string' },
       local: { type: 'string', multiple: true },
+      'release-url': { type: 'string' },
       help: { type: 'boolean', short: 'h' },
     },
   });
@@ -38,7 +48,13 @@ async function main(): Promise<void> {
   } else if (command === 'build') {
     if (!values.out)
       throw new Error('`build` needs --out <dir>, the folder to write the static API to.');
-    const index = await buildIndex(entries, resolve(values.out), { packument });
+    const release = values['release-url'];
+    const index = await buildIndex(entries, resolve(values.out), {
+      packument,
+      tarball: release
+        ? releaseTarballs(release, (name) => name.startsWith('@blacklight/module-'))
+        : undefined,
+    });
     console.log(`Wrote ${index.modules.length} modules to ${resolve(values.out)}/v1/.`);
   } else {
     throw new Error(`Unknown command "${command}".\n\n${USAGE}`);

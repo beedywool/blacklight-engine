@@ -20,6 +20,7 @@ export {
   localPackuments,
   npmPackuments,
   readEntries,
+  releaseTarballs,
   validateIndex,
   type IndexEntry,
   type ModuleDetail,
@@ -27,5 +28,6 @@ export {
   type Packument,
   type PackumentSource,
   type RegistryIndex,
+  type TarballSource,
   type VersionManifest,
 } from './build';
