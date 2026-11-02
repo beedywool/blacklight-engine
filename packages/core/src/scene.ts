@@ -283,7 +283,7 @@ export abstract class Scene<P = void> {
   get ui(): SceneUi {
     if (!this.game.ui) {
       throw new Error(
-        'No UI layer: add @blacklight/ui to the game (`pnpm add @blacklight/ui vue`).',
+        'No UI layer: add @blacklight/ui to the game (`pnpm blacklight add @blacklight/ui`, then `pnpm add vue`).',
       );
     }
     return this.game.ui.forScene(this as Scene<never>);

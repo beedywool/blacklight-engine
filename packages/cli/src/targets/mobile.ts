@@ -86,7 +86,7 @@ export function mobilePackageDir(root: string): string {
   const dir = packageDir('@blacklight/mobile', root) ?? packageDir('@blacklight/mobile', cliDir);
   if (!dir) {
     throw new Error(
-      'Cannot find @blacklight/mobile. Reinstall @blacklight/cli, or add it to the game: pnpm add @blacklight/mobile',
+      'Cannot find @blacklight/mobile. Reinstall @blacklight/cli, or add it to the game: pnpm blacklight add @blacklight/mobile',
     );
   }
   return dir;

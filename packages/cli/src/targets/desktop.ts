@@ -39,7 +39,7 @@ export async function loadNative(root: string): Promise<{ build: Native; index: 
     buildPath = require.resolve('@blacklight/native/build');
   } catch {
     throw new Error(
-      `Desktop targets need @blacklight/native in the game: run \`pnpm add @blacklight/native\` in ${root}, then build again.`,
+      `Desktop targets need @blacklight/native in the game: run \`pnpm blacklight add @blacklight/native\` in ${root}, then build again.`,
     );
   }
   const index = require.resolve('@blacklight/native');

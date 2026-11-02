@@ -28,7 +28,7 @@ export function gameRoot(uri?: vscode.Uri): string {
     }
   }
   throw new Error(
-    'No Blacklight game here: open a folder with a game.config.ts (create one with `pnpm create blacklight`).',
+    'No Blacklight game here: open a folder with a game.config.ts (create one with `pnpm dlx https://github.com/beedywool/blacklight-engine/releases/latest/download/create-blacklight.tgz my-game`).',
   );
 }
 

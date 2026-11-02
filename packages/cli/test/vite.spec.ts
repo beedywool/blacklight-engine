@@ -25,7 +25,7 @@ describe('prepareProject', () => {
 
   it('explains what to do outside a game folder', () => {
     dir = mkdtempSync(join(tmpdir(), 'blacklight-cli-'));
-    expect(() => prepareProject(dir)).toThrow(/pnpm create blacklight/);
+    expect(() => prepareProject(dir)).toThrow(/create-blacklight\.tgz my-game/);
   });
 });
 

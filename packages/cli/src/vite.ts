@@ -140,7 +140,7 @@ function writeIfChanged(file: string, content: string): void {
 export function prepareProject(root: string): string {
   if (!CONFIG_FILES.some((file) => existsSync(join(root, file)))) {
     throw new Error(
-      `No game.config.ts in ${root}. Run the command from your game's folder, or create a game with \`pnpm create blacklight\`.`,
+      `No game.config.ts in ${root}. Run the command from your game's folder, or create a game with \`pnpm dlx https://github.com/beedywool/blacklight-engine/releases/latest/download/create-blacklight.tgz my-game\`.`,
     );
   }
   const dir = join(root, GENERATED_DIR);

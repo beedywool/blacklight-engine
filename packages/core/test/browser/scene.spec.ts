@@ -105,7 +105,7 @@ describe('Scene with a renderer', () => {
     const game = await startGame({ scenes: scenes({ main: Arena }) });
     const scene = game.scene!;
     expect(() => scene.ui).toThrow(
-      'No UI layer: add @blacklight/ui to the game (`pnpm add @blacklight/ui vue`).',
+      'No UI layer: add @blacklight/ui to the game (`pnpm blacklight add @blacklight/ui`, then `pnpm add vue`).',
     );
     expect(() => scene.layer('bakc')).toThrow(
       /Unknown layer "bakc". Did you mean "back"\?.*`static layers`/,

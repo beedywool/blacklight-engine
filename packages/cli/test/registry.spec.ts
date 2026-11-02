@@ -3,9 +3,10 @@ import { createServer, type Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { buildIndex, localPackuments } from '@blacklight/registry';
+import { buildIndex, localPackuments, releaseTarballs } from '@blacklight/registry';
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 import {
+  addEnginePackage,
   addModule,
   addToConfig,
   formatModules,
@@ -16,6 +17,10 @@ import {
 const dirs: string[] = [];
 let server: Server;
 let registry: string;
+/** The same modules, installed from release tarballs instead of npm. */
+let tarballRegistry: string;
+/** A host without a registry: every file is a 404. */
+let noRegistry: string;
 let checkout: string;
 
 function temp(): string {
@@ -79,16 +84,23 @@ beforeAll(async () => {
   await buildIndex(entries, site, {
     packument: localPackuments([join(checkout, 'packages/modules')]),
   });
+  await buildIndex(entries, join(checkout, 'site-tarballs'), {
+    packument: localPackuments([join(checkout, 'packages/modules')]),
+    tarball: releaseTarballs('https://example.com/rel/v1.2.0'),
+  });
   server = createServer((req, res) => {
     try {
-      const body = readFileSync(join(site, decodeURIComponent(req.url ?? '/')));
+      const body = readFileSync(join(checkout, decodeURIComponent(req.url ?? '/')));
       res.writeHead(200, { 'content-type': 'application/json' }).end(body);
     } catch {
       res.writeHead(404).end();
     }
   });
   await new Promise<void>((resolve) => server.listen(0, resolve));
-  registry = `http://localhost:${(server.address() as AddressInfo).port}`;
+  const host = `http://localhost:${(server.address() as AddressInfo).port}`;
+  registry = `${host}/site`;
+  tarballRegistry = `${host}/site-tarballs`;
+  noRegistry = `${host}/nothing`;
 });
 
 afterAll(async () => {
@@ -112,13 +124,17 @@ export default defineConfig({
 `;
 
 /** A game; `linked` uses the fake checkout like `create-blacklight --link`. */
-function game({ linked = true, core = '1.4.0' } = {}): string {
+function game({ linked = true, core = '1.4.0', release = '' } = {}): string {
   const root = temp();
   writeFileSync(join(root, 'game.config.ts'), CONFIG);
   writeJson(join(root, 'package.json'), {
     name: 'my-game',
     dependencies: {
-      '@blacklight/core': linked ? `link:${join(checkout, 'packages', 'core')}` : `^${core}`,
+      '@blacklight/core': release
+        ? `${release}/blacklight-core-${core}.tgz`
+        : linked
+          ? `link:${join(checkout, 'packages', 'core')}`
+          : `^${core}`,
     },
   });
   writeFileSync(join(root, 'pnpm-lock.yaml'), '');
@@ -196,6 +212,82 @@ describe('blacklight add', () => {
     expect(runs).toEqual([['pnpm', 'add', '@blacklight/module-sqlite@1.2.0']]);
   });
 
+  it('installs official modules from the engine release of the game', async () => {
+    const release = 'https://github.com/beedywool/blacklight-engine/releases/download/v1.4.0';
+    const root = game({ release });
+    const runs: string[][] = [];
+    await addModule({
+      root,
+      name: 'cloud-save',
+      registry,
+      run: (c, a) => void runs.push([c, ...a]),
+    });
+    expect(runs).toEqual([
+      [
+        'pnpm',
+        'add',
+        `@blacklight/module-http@${release}/blacklight-module-http-1.4.0.tgz`,
+        `@blacklight/module-cloud-save@${release}/blacklight-module-cloud-save-1.4.0.tgz`,
+      ],
+    ]);
+  });
+
+  it('installs the tarball a registry entry points at', async () => {
+    const root = game({ linked: false });
+    const runs: string[][] = [];
+    await addModule({
+      root,
+      name: 'sqlite',
+      registry: tarballRegistry,
+      run: (c, a) => void runs.push([c, ...a]),
+    });
+    expect(runs).toEqual([
+      [
+        'pnpm',
+        'add',
+        '@blacklight/module-sqlite@https://example.com/rel/v1.2.0/blacklight-module-sqlite-1.2.0.tgz',
+      ],
+    ]);
+  });
+
+  it('adds engine packages from the release or the checkout of the game', () => {
+    const release = 'https://github.com/beedywool/blacklight-engine/releases/download/v1.4.0';
+    const runs: string[][] = [];
+    const run = (c: string, a: string[]) => void runs.push([c, ...a]);
+    addEnginePackage({ root: game({ release }), name: '@blacklight/ui', run });
+    addEnginePackage({ root: game(), name: 'three', run });
+    expect(runs).toEqual([
+      ['pnpm', 'add', `@blacklight/ui@${release}/blacklight-ui-1.4.0.tgz`],
+      [
+        'pnpm',
+        'add',
+        `@blacklight/three@link:${join(checkout, 'packages/three').replaceAll('\\', '/')}`,
+      ],
+    ]);
+    expect(() => addEnginePackage({ root: game(), name: '@blacklight/nope', run })).toThrow(
+      /not an engine package/,
+    );
+    expect(() =>
+      addEnginePackage({ root: game({ linked: false }), name: '@blacklight/ui', run }),
+    ).toThrow(/neither from an engine release nor from a checkout/);
+  });
+
+  it('tells which configuration fields a module needs', async () => {
+    const lines: string[] = [];
+    const result = await addModule({
+      root: game({ linked: false }),
+      name: 'accounts-oidc',
+      registry: noRegistry,
+      install: false,
+      log: (line) => lines.push(line),
+    });
+    expect(result.configured).toEqual(['http', 'accounts-oidc']);
+    expect(lines[0]).toMatch(/has no module registry/);
+    expect(lines.at(-1)).toContain(
+      "add `issuer: 'https://your-provider', clientId: 'your-client-id'` to modules['accounts-oidc'] in game.config.ts",
+    );
+  });
+
   it('refuses an incompatible engine unless forced', async () => {
     const root = game();
     await expect(addModule({ root, name: 'future', registry, install: false })).rejects.toThrow(
@@ -235,7 +327,7 @@ describe('blacklight add', () => {
   it('explains what to do outside a game folder', async () => {
     await expect(
       addModule({ root: temp(), name: 'http', registry, install: false }),
-    ).rejects.toThrow(/No game.config.ts.*pnpm create blacklight/);
+    ).rejects.toThrow(/No game.config.ts.*create-blacklight\.tgz my-game/);
   });
 });
 

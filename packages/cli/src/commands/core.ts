@@ -17,7 +17,7 @@ interface ServeOptions {
 /** create, dev, build, preview, types. */
 export function registerCoreCommands(cli: CAC): void {
   cli
-    .command('create [dir]', 'Create a new game (same as `pnpm create blacklight`)')
+    .command('create [dir]', 'Create a new game (runs create-blacklight)')
     .allowUnknownOptions()
     .action(() => {
       const require = createRequire(import.meta.url);

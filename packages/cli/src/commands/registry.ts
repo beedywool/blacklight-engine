@@ -13,18 +13,29 @@ import {
   type RegistryIndex,
 } from '@blacklight/registry';
 import type { CAC } from 'cac';
+import { releaseAssetName } from 'create-blacklight';
 import semver from 'semver';
 import { generateTypes } from '../vite';
 
-/** Registry used when neither `--registry` nor `BLACKLIGHT_REGISTRY` is set. */
-export const DEFAULT_REGISTRY = 'https://registry.blacklight.beedywool.com';
+/**
+ * Registry used when neither `--registry` nor `BLACKLIGHT_REGISTRY` is set: the engine's GitHub
+ * Pages site, rebuilt by each release (`.github/workflows/release.yml`).
+ */
+export const DEFAULT_REGISTRY = 'https://beedywool.github.io/blacklight-engine/registry';
 
-/** Modules maintained with the engine: `blacklight add` knows them even without the registry. */
-export const OFFICIAL_MODULES: Record<string, { dependencies: string[] }> = {
+/**
+ * Modules maintained with the engine: `blacklight add` knows them even without the registry.
+ * `required` is what `add` prints when the module's configuration has fields without a default.
+ */
+export const OFFICIAL_MODULES: Record<string, { dependencies: string[]; required?: string }> = {
   http: { dependencies: [] },
   sqlite: { dependencies: [] },
   'cloud-save': { dependencies: ['http'] },
-  'accounts-oidc': { dependencies: ['http'] },
+  'accounts-oidc': {
+    dependencies: ['http'],
+    required:
+      "accounts-oidc needs your OpenID Connect provider: add `issuer: 'https://your-provider', clientId: 'your-client-id'` to modules['accounts-oidc'] in game.config.ts (the type check fails until you do). See Publishing > OpenID Connect provider in the docs (docs/publishing/oidc.md).",
+  },
   achievements: { dependencies: ['http'] },
   telemetry: { dependencies: [] },
 };
@@ -120,6 +131,19 @@ export function linkedCheckout(root: string): string | undefined {
   return match ? resolve(root, match[1]!) : undefined;
 }
 
+/**
+ * The engine release a game installs from, read from its `@blacklight/core` tarball URL
+ * (`<base>/blacklight-core-<version>.tgz`); `undefined` for a linked or npm game.
+ */
+export function gameRelease(root: string): { base: string; version: string } | undefined {
+  const manifest = readJson<PackageJson>(join(root, 'package.json'));
+  const core = (manifest?.dependencies as Record<string, string> | undefined)?.['@blacklight/core'];
+  const match =
+    core &&
+    /^(https?:\/\/.+)\/blacklight-core-(\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?)\.tgz$/.exec(core);
+  return match ? { base: match[1]!, version: match[2]! } : undefined;
+}
+
 /** Package manager of a game, from its lock file. */
 export function packageManager(root: string): { command: string; add: string[] } {
   if (existsSync(join(root, 'pnpm-lock.yaml'))) return { command: 'pnpm', add: ['add'] };
@@ -154,9 +178,14 @@ async function lookup(name: string, options: AddOptions, root: string): Promise<
     );
     detail = data;
     if (!detail) {
-      const { data: index } = await getJson<RegistryIndex>(`${registry}/v1/index.json`, get).catch(
-        () => ({ data: undefined }),
-      );
+      const { status, data: index } = await getJson<RegistryIndex>(
+        `${registry}/v1/index.json`,
+        get,
+      ).catch(() => ({ status: 0, data: undefined }));
+      // No index at all (a host without a registry yet): same as unreachable for official modules.
+      if (status === 404 && OFFICIAL_MODULES[name]) {
+        throw new RegistryUnreachable(`${registry} has no module registry (v1/index.json is 404).`);
+      }
       const close = suggestNames(
         name,
         new Set([...(index?.modules.map((m) => m.name) ?? []), ...Object.keys(OFFICIAL_MODULES)]),
@@ -187,11 +216,22 @@ async function lookup(name: string, options: AddOptions, root: string): Promise<
       };
     }
   }
+  // Official modules come from the game's own engine release, so they match its engine version.
+  const release = gameRelease(root);
+  if (release && OFFICIAL_MODULES[name] && packageName === `@blacklight/module-${name}`) {
+    return {
+      name,
+      package: packageName,
+      spec: `${release.base}/${releaseAssetName(packageName, release.version)}`,
+      manifest: detail?.versions[release.version] ?? detail,
+      version: release.version,
+    };
+  }
   if (detail) {
     return {
       name,
       package: packageName,
-      spec: `${packageName}@${detail.version}`,
+      spec: detail.tarball ?? `${packageName}@${detail.version}`,
       manifest: detail,
       version: detail.version,
     };
@@ -230,7 +270,7 @@ function configFile(root: string): string {
   const file = CONFIG_FILES.map((f) => join(root, f)).find((f) => existsSync(f));
   if (!file) {
     throw new Error(
-      `No game.config.ts in ${root}. Run the command from your game's folder, or create a game with \`pnpm create blacklight\`.`,
+      `No game.config.ts in ${root}. Run the command from your game's folder, or create a game with \`pnpm dlx https://github.com/beedywool/blacklight-engine/releases/latest/download/create-blacklight.tgz my-game\`.`,
     );
   }
   return file;
@@ -395,6 +435,11 @@ export async function addModule(options: AddOptions): Promise<AddResult> {
       `Warning: types not regenerated: ${error instanceof Error ? error.message : String(error)}`,
     );
   }
+  // Last, so it is what the developer reads: the config does not type-check without these fields.
+  for (const name of result.configured) {
+    const required = OFFICIAL_MODULES[name]?.required;
+    if (required) log(required);
+  }
   return result;
 }
 
@@ -521,12 +566,64 @@ export async function publishModule(
   return { entry, command };
 }
 
+/** Engine packages a game adds when it needs them, by `blacklight add @blacklight/<name>`. */
+export const ENGINE_PACKAGES = ['ui', 'three', 'physics', 'net', 'native', 'mobile', 'relay'];
+
+/**
+ * `blacklight add @blacklight/ui`: installs an engine package from the same place as the game's
+ * `@blacklight/core`: the same release's tarball, or the same checkout with `--link`.
+ *
+ * @throws Error for an unknown package, or when core comes from neither a release nor a checkout.
+ *
+ * @example
+ * ```ts
+ * addEnginePackage({ root: process.cwd(), name: '@blacklight/ui' });
+ * ```
+ */
+export function addEnginePackage(
+  options: Pick<AddOptions, 'root' | 'install' | 'run' | 'log'> & { name: string },
+): { spec: string; command?: string[] } {
+  const root = resolve(options.root);
+  const short = options.name.replace(/^@blacklight\//, '');
+  if (!ENGINE_PACKAGES.includes(short)) {
+    throw new Error(
+      `${options.name} is not an engine package. Engine packages: ${ENGINE_PACKAGES.map((p) => `@blacklight/${p}`).join(', ')}; modules are added by name (\`blacklight add sqlite\`).`,
+    );
+  }
+  const name = `@blacklight/${short}`;
+  const checkout = linkedCheckout(root);
+  const release = gameRelease(root);
+  let spec: string;
+  if (checkout) {
+    const folder = join(checkout, short === 'relay' ? 'servers' : 'packages', short);
+    spec = `link:${folder.replaceAll('\\', '/')}`;
+  } else if (release) {
+    spec = `${release.base}/${releaseAssetName(name, release.version)}`;
+  } else {
+    throw new Error(
+      `@blacklight/core in ${join(root, 'package.json')} comes neither from an engine release nor from a checkout: add ${name} with your package manager at the same version.`,
+    );
+  }
+  const result: { spec: string; command?: string[] } = { spec };
+  if (options.install !== false) {
+    const pm = packageManager(root);
+    const args = [...pm.add, `${name}@${spec}`];
+    result.command = [pm.command, ...args];
+    (options.run ?? defaultRun)(pm.command, args, root);
+  }
+  options.log?.(`Added ${name} from ${spec}.`);
+  return result;
+}
+
 /** add, search, publish (MOD-05). */
 export function registerRegistryCommands(cli: CAC): void {
   const print = (line: string) => console.log(line);
 
   cli
-    .command('add <module>', 'Install a module from the registry and list it in game.config.ts')
+    .command(
+      'add <module>',
+      'Install a module from the registry and list it in game.config.ts, or an engine package (@blacklight/ui) from the release of the game',
+    )
     .option(
       '--registry <url>',
       `Module registry (default: BLACKLIGHT_REGISTRY or ${DEFAULT_REGISTRY})`,
@@ -535,6 +632,10 @@ export function registerRegistryCommands(cli: CAC): void {
     .option('--force', 'Install even when the module declares another engine version')
     .action(
       async (name: string, options: { registry?: string; install?: boolean; force?: boolean }) => {
+        if (name.startsWith('@blacklight/') && !name.startsWith('@blacklight/module-')) {
+          addEnginePackage({ root: process.cwd(), name, install: options.install, log: print });
+          return;
+        }
         await addModule({
           root: process.cwd(),
           name: moduleNameOf(name) ?? name,

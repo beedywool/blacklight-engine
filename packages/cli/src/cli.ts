@@ -5,6 +5,7 @@ import { registerCoreCommands } from './commands/core';
 import { registerDesktopCommands } from './commands/desktop';
 import { registerRegistryCommands } from './commands/registry';
 import { registerToolCommands } from './commands/tools';
+import { registerUpgradeCommand } from './commands/upgrade';
 
 const cli = cac('blacklight');
 
@@ -13,6 +14,7 @@ registerCoreCommands(cli);
 registerDesktopCommands(cli);
 registerRegistryCommands(cli);
 registerToolCommands(cli);
+registerUpgradeCommand(cli);
 
 cli.help();
 cli.version(pkg.version);
