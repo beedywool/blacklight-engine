@@ -14,6 +14,14 @@ Chrome, Electron and Android run V8; iOS and Safari run JavaScriptCore. `Math.si
 
 Steam draws its overlay by hooking the graphics API, which Electron's renderer does not always allow. The engine applies the known workarounds; when they fail the overlay is missing. Achievements, Steam Cloud and rich presence work either way.
 
+## Controller motion sensors are not read
+
+The desktop apps read gamepads through SDL in the main process, and the SDL binding the engine uses (@kmamal/sdl 0.11) does not expose SDL's controller sensors, so `gamepad(game, i).hasGyro` is `false` and no gyroscope or accelerometer data reaches the game. Browsers and the mobile WebViews have no standard API for them either. Rumble, trigger rumble and the light bar work. See [Desktop](./desktop).
+
+## No Steam leaderboards
+
+steamworks.js 0.4.0, the Steamworks binding of the desktop apps, does not expose leaderboards. On the Steam backend of the achievements module, scores and `leaderboard()` fail with a message that says so; a game that needs scores on Steam uses the `server` backend and the [reference server](./server). Steam achievements, Cloud and rich presence work.
+
 ## Client-side protection deters, it does not guarantee
 
 Encrypted saves, obfuscation, bytecode and blocked developer tools stop casual cheating (console, save editors, memory scanners). A determined attacker with a debugger on their own machine can still win. Anything that must be fair between players is checked by a server.
