@@ -13,6 +13,13 @@ const examples = join(docs, 'examples');
 const port = 5380;
 const site = `http://localhost:${port}`;
 let stop: (() => void) | undefined;
+/**
+ * First appearance of the code editor: CodeMirror is a chunk loaded when an editor mounts, and
+ * `vitepress preview` brotli-compresses every response on the fly at the highest quality. On the
+ * Windows runner, with the previews' software WebGL keeping the CPUs busy, that one response took
+ * 5–8 s (and more than 13 s once), past the 5 s default of an expect.
+ */
+const EDITOR = 30_000;
 
 /** Markdown files under `dir`, without the generated API reference. */
 function pages(dir = docs): string[] {
@@ -128,12 +135,14 @@ function watchConsole(page: Page): string[] {
 
 /**
  * Opens the code of a live example in its full-screen dialog. The dialog mirrors the example's
- * `data-*` state, so it can stand in for the example in the checks below.
+ * `data-*` state, so it can stand in for the example in the checks below. Returns once its editor
+ * is there.
  */
 async function openCode(page: Page, live: Locator): Promise<Locator> {
   const dialog = page.locator('.bl-dialog');
   if (!(await dialog.isVisible())) await live.locator('.bl-live__open').click();
   await expect(dialog).toBeVisible();
+  await expect(dialog.locator('.cm-content')).toBeVisible({ timeout: EDITOR });
   return dialog;
 }
 
@@ -484,6 +493,10 @@ test('the playground runs a project and restores it from its share URL', async (
   const link = await playground.getByLabel('Link to this project').inputValue();
   expect(link).toBe(page.url());
   expect(link).toContain('#project=');
+  // Done with the first page: its game would keep rendering next to the copy's (software WebGL on
+  // the Windows runner, where two running previews starve each other and closing a context then
+  // waited minutes).
+  await page.goto('about:blank');
 
   // Open the link in a fresh browser context: same files, same game.
   const other = await browser.newContext();
@@ -493,7 +506,9 @@ test('the playground runs a project and restores it from its share URL', async (
   const restored = copy.locator('.bl-play');
   await expect(restored).toHaveAttribute('data-status', 'running', { timeout: 45_000 });
   await restored.getByRole('button', { name: 'scenes/main/main.scene.ts', exact: true }).click();
-  await expect(restored.locator('.cm-content')).toContainText('// shared from the e2e test');
+  await expect(restored.locator('.cm-content')).toContainText('// shared from the e2e test', {
+    timeout: EDITOR,
+  });
   await expect(copy.frameLocator('.bl-play iframe').getByText('/ 3')).toBeVisible();
 
   // A damaged link says so and falls back to the starting project.
@@ -503,6 +518,8 @@ test('the playground runs a project and restores it from its share URL', async (
     timeout: 15_000,
   });
   await expect(restored).toHaveAttribute('data-status', 'running', { timeout: 45_000 });
+  // The game stops with the page before the context closes.
+  await copy.goto('about:blank');
   await other.close();
 
   expect(consoleErrors).toEqual([]);
