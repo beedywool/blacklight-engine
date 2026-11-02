@@ -6,6 +6,7 @@ import { createRequire } from 'node:module';
 import { join, resolve } from 'node:path';
 import { chromium, expect, test, type Page } from '@playwright/test';
 import type { Game } from '@blacklight/core';
+import { isHardwareGpu } from '../scripts/bench.mjs';
 import { run, serve } from './server';
 import { RENDERING_RETRIES } from './tiers';
 
@@ -296,14 +297,14 @@ test.describe('release build', () => {
       const cpu = Number(bench.benchCpuMs);
       const cpuP95 = Number(bench.benchCpuP95Ms);
       const cpu2d = Number(results['bench-2d']!.benchCpuMs);
-      if (!/SwiftShader|llvmpipe|Software/i.test(gpu)) {
+      if (isHardwareGpu(gpu)) {
         // A 60 Hz frame is 16.7 ms; the main thread must leave half of it to the GPU and
         // compositor.
         expect(cpu).toBeLessThan(8.3);
         expect(cpuP95).toBeLessThan(16.7);
         expect(Number(bench.benchFps)).toBeGreaterThanOrEqual(57);
       } else {
-        // A software GPU stalls the main thread on its own drawing: on GitHub's runners the scene
+        // A software or virtual GPU stalls the main thread on its own drawing: on GitHub's runners the scene
         // without the models already takes 5–17 ms, so the budget is checked on a hardware GPU
         // (any developer machine, the phones in MANUAL_TESTS.md). Here the models must not cost
         // more than the rest of the scene: about 1.9× the 2D frame on the Linux and macOS

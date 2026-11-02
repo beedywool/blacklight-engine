@@ -38,7 +38,7 @@ import {
   type BrowserContextOptions,
   type TestInfo,
 } from '@playwright/test';
-import { best, compare, formatComparison, summarize } from '../scripts/bench.mjs';
+import { best, compare, formatComparison, isHardwareGpu, summarize } from '../scripts/bench.mjs';
 import {
   CHROMIUM_ARGS,
   RUNS,
@@ -51,7 +51,6 @@ import { run, serve } from './server';
 
 const fixture = resolve(import.meta.dirname, 'fixtures/bench');
 const port = 5440;
-const SOFTWARE_GPU = /SwiftShader|llvmpipe|Software/i;
 
 const PROFILES: Record<string, BrowserContextOptions> = {
   desktop: { viewport: { width: 1920, height: 1080 }, deviceScaleFactor: 1 },
@@ -165,9 +164,10 @@ for (const [name, profile] of Object.entries(PROFILES)) {
       more: () => measureRuns(profile, RUNS),
       testInfo,
     });
-    // NF-01's limit, 60 fps, on a hardware GPU only: a software GPU (CI) measures its own
-    // drawing. 57 leaves room for a missed vsync in a 5 s window.
-    if (!SOFTWARE_GPU.test(gpu)) {
+    // NF-01's limit, 60 fps, on a hardware GPU only: a software or virtual adapter (CI runners,
+    // virtual machines) measures its own drawing or the host's. 57 leaves room for a missed vsync
+    // in a 5 s window.
+    if (isHardwareGpu(gpu)) {
       expect
         .soft(Number(best(runs).fps), `fps of the best run on ${gpu} (NF-01: 60 fps)`)
         .toBeGreaterThanOrEqual(57);

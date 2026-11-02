@@ -4,7 +4,15 @@ import { mkdtempSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { best, compare, gatedValues, median, summarize, updateBaseline } from './bench.mjs';
+import {
+  best,
+  compare,
+  gatedValues,
+  isHardwareGpu,
+  median,
+  summarize,
+  updateBaseline,
+} from './bench.mjs';
 
 const baseline = { fps: 60, low1Fps: 58, stepRelative: 0.2, heapMb: 10 };
 const regressed = (current) =>
@@ -102,5 +110,36 @@ describe('benchmark regression check', () => {
     expect(Object.keys(stored)).toEqual(['github-ubuntu-latest', 'local']);
     expect(stored['github-ubuntu-latest'].desktop.best.fps).toBe(31);
     expect(stored['github-ubuntu-latest'].phone.median.fps).toBe(28);
+  });
+
+  it('tells hardware GPUs from software and virtual adapters', () => {
+    const hardware = [
+      'ANGLE (NVIDIA, NVIDIA GeForce RTX 3070 (0x00002484) Direct3D11 vs_5_0 ps_5_0, D3D11)',
+      'ANGLE (AMD, Vulkan 1.3.287 (AMD Radeon RX 7800 XT (RADV NAVI32) (0x0000747E)), radv)',
+      'ANGLE (Apple, ANGLE Metal Renderer: Apple M1, Unspecified Version)',
+      'ANGLE (Intel, Mesa Intel(R) UHD Graphics 620 (KBL GT2), OpenGL 4.6)',
+      'Adreno (TM) 642L',
+      'Mali-G68',
+      'Apple GPU',
+    ];
+    const notHardware = [
+      'ANGLE (Apple, ANGLE Metal Renderer: Apple Paravirtual device, Unspecified Version)',
+      'ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)',
+      'ANGLE (Mesa, llvmpipe (LLVM 17.0.6, 256 bits), OpenGL 4.5)',
+      'ANGLE (Mesa, Vulkan 1.3 (llvmpipe (LLVM 15.0.7, 256 bits)), lavapipe)',
+      'softpipe',
+      'ANGLE (Microsoft, Microsoft Basic Render Driver (0x0000008C) Direct3D11 vs_5_0 ps_5_0, D3D11)',
+      'ANGLE (VMware, Inc., SVGA3D; build: RELEASE; LLVM;, OpenGL 4.1)',
+      'ANGLE (VMware, VMware SVGA 3D (0x00000405) Direct3D11 vs_5_0 ps_5_0, D3D11)',
+      'ANGLE (Oracle, VirtualBox Graphics Adapter (WDDM), D3D11)',
+      'ANGLE (Parallels, Parallels Display Adapter (WDDM), D3D11)',
+      'ANGLE (Microsoft, Microsoft Hyper-V Video, D3D11)',
+      'virgl (ANGLE (NVIDIA, NVIDIA GeForce GTX 1080))',
+      'Apple Software Renderer',
+      'unknown',
+      '',
+    ];
+    expect(hardware.filter((name) => !isHardwareGpu(name))).toEqual([]);
+    expect(notHardware.filter((name) => isHardwareGpu(name))).toEqual([]);
   });
 });

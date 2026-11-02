@@ -39,6 +39,28 @@ export const DISPLAY_BOUND_FPS = 55;
 const FRAME_RATES = new Set(['fps', 'low1Fps']);
 
 /**
+ * WebGL renderer strings of adapters that are not a real GPU: software rasterizers (SwiftShader,
+ * Mesa's llvmpipe/lavapipe/softpipe, Windows' Basic Render Driver and WARP, Apple's software
+ * renderer) and the virtual adapters of hypervisors (the GitHub macOS runner's "Apple
+ * Paravirtual device", VMware SVGA, VirtualBox, Parallels, Hyper-V, QEMU virgl/virtio, QXL).
+ * Their frame rate is the host's or the CPU's, not the engine's, so NF-01's absolute 60 fps is
+ * checked on a real GPU only.
+ */
+const NOT_A_GPU =
+  /SwiftShader|llvmpipe|lavapipe|softpipe|Software|Basic Render|WARP|GDI Generic|Paravirtual|VMware|SVGA|VirtualBox|Parallels|Hyper-V|virgl|virtio|QXL/i;
+
+/**
+ * Whether a WebGL renderer string (`UNMASKED_RENDERER_WEBGL`) names a hardware GPU. An empty or
+ * `unknown` renderer counts as no GPU: the absolute limits are only applied where the adapter is
+ * known.
+ * @param {string} renderer
+ */
+export function isHardwareGpu(renderer) {
+  const name = renderer.trim();
+  return name !== '' && name.toLowerCase() !== 'unknown' && !NOT_A_GPU.test(name);
+}
+
+/**
  * Gated metrics judged on the median run instead of the best one. Cold starts on a desktop come in
  * two modes (about 20 % of launches are 20 % faster, the CPU's state at that moment), so the best
  * of five depends on whether a fast launch happened; the median stays within a few percent. PSS
