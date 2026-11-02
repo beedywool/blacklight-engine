@@ -125,7 +125,21 @@ export function builderConfig(options: PackageOptions): Configuration {
     publish: null,
     ...(options.fuses ? { electronFuses: RELEASE_FUSES } : {}),
     ...(options.icon && existsSync(options.icon) ? { icon: options.icon } : {}),
-    win: { target: targets },
+    win: {
+      target: targets,
+      // Azure Trusted Signing: electron-builder signs every executable through the developer's
+      // account (credentials in AZURE_TENANT_ID, AZURE_CLIENT_ID, AZURE_CLIENT_SECRET).
+      ...(sign && plan.azure
+        ? {
+            azureSignOptions: {
+              publisherName: plan.azure.publisher,
+              endpoint: plan.azure.endpoint,
+              codeSigningAccountName: plan.azure.account,
+              certificateProfileName: plan.azure.profile,
+            },
+          }
+        : {}),
+    },
     nsis: { oneClick: false, allowToChangeInstallationDirectory: true, perMachine: false },
     portable: { artifactName: '${productName}-${version}-portable.${ext}' },
     mac: {

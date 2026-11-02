@@ -94,12 +94,12 @@ describe('build workflow', () => {
   it('keeps each desktop certificate on its own OS and skips signing with a notice', () => {
     const desktop = workflow.jobs.desktop as Job & { env: Record<string, string> };
     for (const [name, value] of Object.entries(desktop.env)) {
-      const os = name.startsWith('WIN_') ? 'win' : 'mac';
+      const os = /^(WIN|AZURE)_/.test(name) ? 'win' : 'mac';
       expect(value, name).toBe(`\${{ matrix.target == '${os}' && secrets.${name} || '' }}`);
     }
     const notices = desktop.steps.filter((s) => s.run?.includes('::notice::'));
     expect(notices.map((s) => s.if)).toEqual([
-      "matrix.target == 'win' && (env.WIN_CSC_LINK == '' || env.WIN_CSC_KEY_PASSWORD == '')",
+      "matrix.target == 'win' && (env.WIN_CSC_LINK == '' || env.WIN_CSC_KEY_PASSWORD == '') && (env.AZURE_SIGNING_ACCOUNT == '' || env.AZURE_CLIENT_SECRET == '')",
       "matrix.target == 'mac' && (env.CSC_LINK == '' || env.CSC_KEY_PASSWORD == '')",
     ]);
     expect(runs(workflow.jobs.android!)).toContain('::notice::Android debug build only');

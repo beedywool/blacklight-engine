@@ -360,6 +360,28 @@ describe('builds (PF-03, PF-05, PF-07)', () => {
       env: {},
     };
     const win = builderConfig({ ...base, os: 'win' });
+    const azureWin = builderConfig({
+      ...base,
+      os: 'win',
+      env: {
+        AZURE_SIGNING_ENDPOINT: 'https://eus.codesigning.azure.net',
+        AZURE_SIGNING_ACCOUNT: 'studio',
+        AZURE_SIGNING_PROFILE: 'public',
+        AZURE_SIGNING_PUBLISHER: 'Studio Ltd',
+        AZURE_TENANT_ID: 'tenant',
+        AZURE_CLIENT_ID: 'client',
+        AZURE_CLIENT_SECRET: 'client-secret',
+      },
+    });
+    expect(azureWin.win).toMatchObject({
+      azureSignOptions: {
+        publisherName: 'Studio Ltd',
+        endpoint: 'https://eus.codesigning.azure.net',
+        codeSigningAccountName: 'studio',
+        certificateProfileName: 'public',
+      },
+    });
+    expect(win.win).not.toHaveProperty('azureSignOptions');
     expect(win.win).toMatchObject({ target: DESKTOP_TARGETS.win });
     expect(DESKTOP_TARGETS.win.map((t) => t.target)).toEqual(['nsis', 'portable']);
     expect(DESKTOP_TARGETS.mac).toEqual([
@@ -437,6 +459,28 @@ describe('builds (PF-03, PF-05, PF-07)', () => {
     expect(win.sign).toBe(true);
     expect(win.steps[0]).toContain('signtool sign /f "C:\\cert.pfx" /p ******');
     expect(win.steps.join('\n')).not.toContain('secret');
+    const azureEnv = {
+      AZURE_SIGNING_ENDPOINT: 'https://eus.codesigning.azure.net',
+      AZURE_SIGNING_ACCOUNT: 'studio',
+      AZURE_SIGNING_PROFILE: 'public',
+      AZURE_SIGNING_PUBLISHER: 'Studio Ltd',
+      AZURE_TENANT_ID: 'tenant',
+      AZURE_CLIENT_ID: 'client',
+      AZURE_CLIENT_SECRET: 'client-secret',
+    };
+    const azure = signingPlan('win', azureEnv, 'Game.exe');
+    expect(azure).toMatchObject({
+      sign: true,
+      azure: { account: 'studio', profile: 'public', publisher: 'Studio Ltd' },
+    });
+    expect(azure.steps[0]).toContain(
+      'Invoke-TrustedSigning -Endpoint https://eus.codesigning.azure.net',
+    );
+    expect(azure.steps.join('\n')).not.toContain('client-secret');
+    // A partial Azure setup signs nothing and names what is missing.
+    const partial = signingPlan('win', { ...azureEnv, AZURE_CLIENT_SECRET: '' });
+    expect(partial.sign).toBe(false);
+    expect(partial.missing.join(' ')).toContain('AZURE_CLIENT_SECRET');
     const mac = signingPlan(
       'mac',
       {

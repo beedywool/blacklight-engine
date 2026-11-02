@@ -25,6 +25,12 @@ export {
   sdlPrebuildUrl,
   universalElectrons,
 } from './universal';
-export { MAC_ENTITLEMENTS, signingPlan, type DesktopOs, type SigningPlan } from './sign';
+export {
+  MAC_ENTITLEMENTS,
+  signingPlan,
+  type AzureSigning,
+  type DesktopOs,
+  type SigningPlan,
+} from './sign';
 export { depotId, steamUploadCommand, writeSteamScripts, type SteamUploadOptions } from './steam';
 export type { AppManifest } from '../main/manifest';

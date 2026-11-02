@@ -107,13 +107,21 @@ const windowsSigning: DoctorCheck = {
   optional: true,
   run: ({ env }) => {
     const link = env.WIN_CSC_LINK ?? env.CSC_LINK;
-    return link
-      ? { ok: true, detail: `certificate from ${env.WIN_CSC_LINK ? 'WIN_CSC_LINK' : 'CSC_LINK'}` }
-      : {
-          ok: false,
-          detail: 'no certificate configured (builds are unsigned)',
-          fix: 'Set WIN_CSC_LINK to the .pfx file (or base64) and WIN_CSC_KEY_PASSWORD to its password.',
-        };
+    if (link)
+      return {
+        ok: true,
+        detail: `certificate from ${env.WIN_CSC_LINK ? 'WIN_CSC_LINK' : 'CSC_LINK'}`,
+      };
+    if (env.AZURE_SIGNING_ACCOUNT && env.AZURE_SIGNING_PROFILE && env.AZURE_CLIENT_ID)
+      return {
+        ok: true,
+        detail: `Azure Trusted Signing (${env.AZURE_SIGNING_ACCOUNT}/${env.AZURE_SIGNING_PROFILE})`,
+      };
+    return {
+      ok: false,
+      detail: 'no certificate configured (builds are unsigned)',
+      fix: 'Set WIN_CSC_LINK to the .pfx file (or base64) and WIN_CSC_KEY_PASSWORD to its password, or the AZURE_SIGNING_* and AZURE_* variables of Azure Trusted Signing (see Publishing › Windows code signing).',
+    };
   },
 };
 

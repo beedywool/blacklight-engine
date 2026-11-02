@@ -16,17 +16,50 @@ export interface SigningPlan {
   steps: string[];
   /** Variables to set to sign (or notarize), when something is missing. */
   missing: string[];
+  /**
+   * Windows: Azure Trusted Signing settings, when the build is signed through it rather than
+   * with a .pfx file.
+   */
+  azure?: AzureSigning;
   /** Short status for the CLI. */
   summary: string;
+}
+
+/** Azure Trusted Signing account of the game developer (Windows). */
+export interface AzureSigning {
+  /** Regional endpoint of the account, `AZURE_SIGNING_ENDPOINT` (`https://eus.codesigning.azure.net`). */
+  endpoint: string;
+  /** Trusted Signing account name, `AZURE_SIGNING_ACCOUNT`. */
+  account: string;
+  /** Certificate profile name, `AZURE_SIGNING_PROFILE`. */
+  profile: string;
+  /** Publisher name exactly as in the certificate's subject (CN), `AZURE_SIGNING_PUBLISHER`. */
+  publisher: string;
 }
 
 const has = (env: NodeJS.ProcessEnv, ...names: string[]) => names.every((name) => !!env[name]);
 
 /**
+ * Variables of Azure Trusted Signing: the account, and the Microsoft Entra app registration that
+ * may sign with it (`AZURE_TENANT_ID`, `AZURE_CLIENT_ID`, `AZURE_CLIENT_SECRET`).
+ */
+const AZURE_VARIABLES = [
+  'AZURE_SIGNING_ENDPOINT',
+  'AZURE_SIGNING_ACCOUNT',
+  'AZURE_SIGNING_PROFILE',
+  'AZURE_SIGNING_PUBLISHER',
+  'AZURE_TENANT_ID',
+  'AZURE_CLIENT_ID',
+  'AZURE_CLIENT_SECRET',
+];
+
+/**
  * Reads the signing credentials of `os` from the environment:
  *
  * - Windows: `WIN_CSC_LINK` (or `CSC_LINK`), a .pfx file path or base64, and its password
- *   `WIN_CSC_KEY_PASSWORD` (or `CSC_KEY_PASSWORD`).
+ *   `WIN_CSC_KEY_PASSWORD` (or `CSC_KEY_PASSWORD`); or Azure Trusted Signing with
+ *   `AZURE_SIGNING_ENDPOINT`, `AZURE_SIGNING_ACCOUNT`, `AZURE_SIGNING_PROFILE`,
+ *   `AZURE_SIGNING_PUBLISHER`, `AZURE_TENANT_ID`, `AZURE_CLIENT_ID` and `AZURE_CLIENT_SECRET`.
  * - macOS: `CSC_LINK` + `CSC_KEY_PASSWORD` (a Developer ID Application .p12) or `CSC_NAME` (a
  *   certificate in the keychain); notarization with `APPLE_API_KEY` + `APPLE_API_KEY_ID` +
  *   `APPLE_API_ISSUER`, or `APPLE_ID` + `APPLE_APP_SPECIFIC_PASSWORD` + `APPLE_TEAM_ID`.
@@ -55,7 +88,28 @@ export function signingPlan(
   if (os === 'win') {
     const link = env.WIN_CSC_LINK || env.CSC_LINK;
     const password = env.WIN_CSC_KEY_PASSWORD || env.CSC_KEY_PASSWORD;
-    const sign = !!link && !!password;
+    const pfx = !!link && !!password;
+    if (!pfx && has(env, ...AZURE_VARIABLES)) {
+      const azure: AzureSigning = {
+        endpoint: env.AZURE_SIGNING_ENDPOINT!,
+        account: env.AZURE_SIGNING_ACCOUNT!,
+        profile: env.AZURE_SIGNING_PROFILE!,
+        publisher: env.AZURE_SIGNING_PUBLISHER!,
+      };
+      return {
+        os,
+        sign: true,
+        notarize: false,
+        azure,
+        steps: [
+          `Invoke-TrustedSigning -Endpoint ${azure.endpoint} -CodeSigningAccountName ${azure.account} -CertificateProfileName ${azure.profile} -FileDigest SHA256 -TimestampRfc3161 http://timestamp.acs.microsoft.com -TimestampDigest SHA256 -Files "${artifact}"`,
+          `signtool verify /pa "${artifact}"`,
+        ],
+        missing: [],
+        summary: `Windows: signed with Azure Trusted Signing (account ${azure.account}, profile ${azure.profile}).`,
+      };
+    }
+    const sign = pfx;
     return {
       os,
       sign,
@@ -68,10 +122,13 @@ export function signingPlan(
         : [],
       missing: sign
         ? []
-        : ['WIN_CSC_LINK (or CSC_LINK)', 'WIN_CSC_KEY_PASSWORD (or CSC_KEY_PASSWORD)'],
+        : [
+            'WIN_CSC_LINK (or CSC_LINK) + WIN_CSC_KEY_PASSWORD (or CSC_KEY_PASSWORD), or the Azure Trusted Signing variables ' +
+              AZURE_VARIABLES.join(', '),
+          ],
       summary: sign
         ? 'Windows: signed with the configured certificate (SHA-256, RFC 3161 timestamp).'
-        : 'Windows: unsigned (set WIN_CSC_LINK and WIN_CSC_KEY_PASSWORD to sign). SmartScreen will warn players.',
+        : 'Windows: unsigned (set WIN_CSC_LINK and WIN_CSC_KEY_PASSWORD, or the AZURE_SIGNING_* and AZURE_* variables, to sign). SmartScreen will warn players.',
     };
   }
   const sign = has(env, 'CSC_LINK', 'CSC_KEY_PASSWORD') || has(env, 'CSC_NAME');
