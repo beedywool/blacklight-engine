@@ -17,7 +17,7 @@ pnpm typecheck
 pnpm api:check      # public API documented and typed, api-report.txt up to date (after pnpm build)
 pnpm e2e            # browser tests (Playwright)
 pnpm e2e --update-snapshots   # after an intended visual change, then review the new images
-pnpm bench          # NF-01 benchmark, alone on an idle machine; fails on a regression > 10 %
+pnpm bench          # NF-01/NF-02 benchmarks, alone on an idle machine; fails on a regression > 10 %
 BLACKLIGHT_BENCH_UPDATE=1 pnpm bench   # after an intended performance change: new baseline
 pnpm docs:dev       # documentation on http://localhost:5173
 pnpm docs:screenshots   # retake the pictures of the installation and getting-started guides
@@ -46,6 +46,43 @@ pnpm test:coverage                                     # core, core-browser, net
 ```
 
 `pnpm test:coverage` merges the Node and Chromium runs, prints a summary, writes `coverage/index.html`, and fails when `packages/core/src` or `packages/net/src` drops below 80 % of statements, lines, functions or branches (NF-07; CI runs it on Linux). Run it through the script: with other `--project` filters the report covers other files, and without any the include pattern matches nothing. When a change lowers coverage, add a test of the behaviour you changed, not a call that only touches lines. Only generated data is excluded (`coverage.exclude`, each entry with the reason); code that needs hardware is tested against a fake of the browser API and listed in `MANUAL_TESTS.md`.
+
+## CI
+
+`.github/workflows/ci.yml` runs in two tiers.
+
+- **Fast tier**, on every push and pull request, and it must stay green (about 15 minutes): lint, type checks, unit tests, the coverage gate, `api:check`, the docs build and two template builds on Linux; `pnpm test` (unit tests, including the relay's Node test of two headless party-game instances playing online) and the VS Code extension tests on Windows and macOS; the e2e suite on Linux in eight shards, without the tests tagged `@flaky`; the desktop installers of the three systems.
+- **Full tier**, every night and on `workflow_dispatch`, never blocking a push: everything above, the e2e suite on macOS too, every `@flaky` test, one more retry for the specs that draw a lot (`e2e/tiers.ts`), the benchmarks on Linux and macOS, the Android emulator and the iOS Simulator. The dispatch inputs `jobs`, `os` and `spec` pick part of it, e.g. `gh workflow run ci.yml --ref main -f jobs=e2e -f os='["macos-latest"]' -f spec="e2e/ui.spec.ts"`.
+
+In CI the benchmarks check the spec's absolute limits only (`BLACKLIGHT_BENCH_LIMITS_ONLY=1`): NF-01 60 fps where the runner has a hardware GPU, NF-02 under 3 s on desktop and 5 s on mobile, NF-03 under 300 MB. Shared runners vary from one run to the next by more than 10 %, so the regression gate against `e2e/bench-baseline.json` runs locally with `pnpm bench` on a stable machine.
+
+GitHub's Windows runners have no GPU, and their software rendering made the Windows e2e tests and benchmarks fail at random, so CI runs neither on Windows. Run them on a real Windows machine before a release and after changes to the desktop platform, input, rendering or the CLI (next section).
+
+### e2e tests and benchmarks on Windows
+
+Prerequisites: Windows 10 or 11 with a GPU and its vendor driver, Node.js 24+, pnpm 12+, Git for Windows, and about 15 GB free on the system drive (the template tests install and package six games in `%TEMP%`). The tests start dev servers on ports 5190 to 5500; let Node.js through the firewall on private networks when Windows asks, and leave the machine alone while the benchmarks run.
+
+```sh
+pnpm install
+pnpm build
+pnpm exec playwright install chromium firefox webkit
+pnpm e2e                    # an hour or more; e2e/desktop.spec.ts packages and starts the Electron app
+pnpm e2e e2e/party-game.spec.ts --grep "AIR HOCKEY"   # one spec or test
+pnpm bench                  # NF-01 and NF-02, compared with this machine's baseline
+```
+
+What to look at:
+
+- `pnpm e2e` ends with a summary; a failure leaves a report (`pnpm exec playwright show-report`) with the trace of each failed test. Windows has its own screenshot references (`e2e/__screenshots__/**/win32/`, and the party-game ones per platform): a missing reference is written and the test passes, so review new images under `e2e/__screenshots__/` with `git status` before committing them.
+- Tests skipped on Windows say why in the report (the two-browser online matches, WebKit without Web Audio); the relay test covers online play there.
+- The first `pnpm bench` on a machine has no baseline: it writes `bench-results/*.json` and passes. Store the results as this machine's baseline with `BLACKLIGHT_BENCH_UPDATE=1 pnpm bench` and commit `e2e/bench-baseline.json`. Later runs print one `[bench]` line per metric with its change from the baseline and fail on a regression above 10 %; NF-02 also fails when the median start reaches 3 s.
+- Note the results of a release check in `docs/benchmarks.md` (machine, GPU, Windows version, date).
+
+### Known flaky tests
+
+A test that fails now and then without a known cause gets `@flaky` at the end of its title, e.g. `test('pause menu and level screenshot @flaky', …)`, and a line here with the failing run. The fast tier leaves it out (`--grep-invert=@flaky`); the full tier still runs it. Remove the tag and the line once the cause is fixed.
+
+None at the moment. The last intermittent failures had a cause that was fixed: the platformer pause test (three key presses within one frame counted as one) and the NF-01 benchmark on Windows (the PWA service worker precaching the whole build during the measure); the Air Hockey timeout happened on GitHub's Windows runners only, which no longer run the e2e suite.
 
 ## Layout
 

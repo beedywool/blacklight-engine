@@ -67,7 +67,7 @@ pnpm --filter blacklight-docs preview
 
 `pnpm docs:screenshots` regenerates the pictures of the getting-started guide (it drives VS Code and a browser; Linux only). Deployment is in `docs/guide/deploy-docs.md`.
 
-CI (`.github/workflows/ci.yml`) runs lint, type checks, unit tests, the builds and the browser tests on Linux, Windows and macOS, Electron end-to-end tests on the three systems, the Android emulator and the iOS Simulator, and the VS Code extension tests. The repository has no remote yet, so CI has not run: every gate so far passed on Linux only.
+CI (`.github/workflows/ci.yml`) has two tiers. The fast tier runs on every push and pull request and must stay green: lint, type checks, unit tests with the coverage gate, `api:check` and the docs build on Linux, unit tests and the VS Code extension tests on Windows and macOS, the e2e suite (browsers and Electron) on Linux, and the desktop installers of the three systems. The full tier runs every night and on demand without blocking pushes: the e2e suite on macOS as well, the benchmarks on Linux and macOS against the spec's absolute limits, the Android emulator and the iOS Simulator. The Windows e2e suite and benchmarks run on a real Windows machine (CONTRIBUTING.md), since GitHub's Windows runners have no GPU, and the 10 % benchmark regression gate runs locally with `pnpm bench`.
 
 ## How the work is organized
 
@@ -76,7 +76,7 @@ CI (`.github/workflows/ci.yml`) runs lint, type checks, unit tests, the builds a
 ## Current limits
 
 - Phases 0 to 3 are done (see `PROGRESS.md`); phase 4 (docs site with live examples and playground, `party-game` and `platformer` templates, PWA) and phase 5 (release) remain.
-- Only Linux ran the gates. Windows, macOS and iOS builds are written and wired into CI but have never run; iOS needs a Mac.
+- On Windows, CI runs the unit tests and builds the installer; the e2e suite and the benchmarks run on a real Windows machine (CONTRIBUTING.md, MANUAL_TESTS.md).
 - Hardware and accounts are checked by hand (`MANUAL_TESTS.md`): real gamepads, phones, the Steam client, Discord, Game Center / Play Games, signing certificates.
 - Controller gyro is not available on desktop (the SDL binding exposes no sensors); Steam leaderboards are missing from steamworks.js.
 - The npm packages are not published and the `@blacklight` npm scope is not yet claimed (`DECISIONS.md`). Default URLs for the module registry and the BlackLight SSO preset are placeholders to confirm.
