@@ -129,8 +129,10 @@ export async function upgradeEngine(options: UpgradeOptions): Promise<UpgradeRes
   const result: UpgradeResult = { version, changes };
   if (options.install !== false) {
     const { command } = packageManager(root);
-    result.command = [command, 'install'];
-    (options.run ?? defaultRun)(command, ['install'], root);
+    // The lock file must follow the new URLs: pnpm installs with a frozen lock file on CI.
+    const args = command === 'pnpm' ? ['install', '--no-frozen-lockfile'] : ['install'];
+    result.command = [command, ...args];
+    (options.run ?? defaultRun)(command, args, root);
   }
   log(`Upgraded the engine to ${version}. Read the changelog of the release for breaking changes.`);
   return result;

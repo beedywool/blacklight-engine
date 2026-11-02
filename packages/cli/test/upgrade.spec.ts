@@ -49,7 +49,7 @@ describe('blacklight upgrade', () => {
       },
       devDependencies: { '@blacklight/cli': `${NEW}/blacklight-cli-1.1.0.tgz` },
     });
-    expect(runs).toEqual([['pnpm', 'install', root]]);
+    expect(runs).toEqual([['pnpm', 'install', '--no-frozen-lockfile', root]]);
   });
 
   it('asks GitHub for the latest release and honours BLACKLIGHT_RELEASE_URL', async () => {
