@@ -1,7 +1,7 @@
 {
   "name": "create-blacklight",
   "version": "0.0.0",
-  "description": "Create a Blacklight Engine game: `pnpm create blacklight`.",
+  "description": "Create a Blacklight Engine game from a GitHub release of the engine.",
   "license": "MIT",
   "type": "module",
   "bin": {

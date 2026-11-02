@@ -2819,19 +2819,28 @@ function usesUi(root: string): boolean
 
 ## create-blacklight
 
+interface ReleaseChange
+  from: string
+  name: string
+  to: string
 interface ScaffoldOptions
   dir: string
   engineVersion: string
   force?: boolean
   link?: string
   packageManager?: string
+  releaseUrl?: string
   sharedDir?: string
   template: string
   templatesDir: string
 const DEFAULT_PACKAGE_MANAGER: "pnpm@12.16.1"
+const RELEASE_REPOSITORY: "beedywool/blacklight-engine"
 function listTemplates(templatesDir: string): string[]
 function packageManagerFromAgent(agent: string | undefined): string | undefined
 function packageName(dir: string): string
+function releaseAssetName(packageName: string, version: string): string
+function releaseBaseUrl(version: string, env?: Record<string, string | undefined>): string
+function retargetRelease(manifest: { dependencies?: Record<string, string>; devDependencies?: Record<string, string>; optionalDependencies?: Record<string, string> }, version: string, baseUrl: string): ReleaseChange[]
 function scaffold(options: ScaffoldOptions): string
 
 ## @blacklight/registry
@@ -2864,6 +2873,7 @@ interface ModuleSummary
   permissions: ("network" | "storage" | "native" | "accounts" | "telemetry")[]
   platforms: ("desktop" | "android" | "web" | "ios")[]
   repository?: string
+  tarball?: string
   version: string
 interface PackageJson
   [key: string]: unknown
@@ -2888,19 +2898,22 @@ interface VersionManifest
   engine: string
   permissions: ("network" | "storage" | "native" | "accounts" | "telemetry")[]
   platforms: ("desktop" | "android" | "web" | "ios")[]
+  tarball?: string
 type ModulePermission = typeof PERMISSIONS[number]
 type ModulePlatform = typeof PLATFORMS[number]
 type PackumentSource = (packageName: string) => Promise<Packument | undefined>
+type TarballSource = (packageName: string, version: string) => string | undefined
 const ALLOWED_LICENSES: readonly ["MIT", "ISC", "BSD-2-Clause", "BSD-3-Clause", "Apache-2.0", "Zlib", "0BSD", "CC0-1.0"]
 const MODULE_NAME: RegExp
 const PERMISSIONS: readonly ["network", "storage", "native", "accounts", "telemetry"]
 const PLATFORMS: readonly ["web", "desktop", "android", "ios"]
-function buildIndex(entriesDir: string, outDir: string, options?: { now?: Date; packument?: PackumentSource }): Promise<RegistryIndex>
+function buildIndex(entriesDir: string, outDir: string, options?: { now?: Date; packument?: PackumentSource; tarball?: TarballSource }): Promise<RegistryIndex>
 function isLicenseAllowed(expression: string): boolean
 function localPackuments(dirs: string[]): PackumentSource
 function moduleNameOf(packageName: string): string | undefined
 function npmPackuments(options?: { fetch?: { (input: RequestInfo | URL, init?: RequestInit): Promise<Response>; (input: string | Request | URL, init?: RequestInit): Promise<Response> }; registry?: string }): PackumentSource
 function readEntries(entriesDir: string): { entries: IndexEntry[]; issues: string[] }
+function releaseTarballs(baseUrl: string, only?: (packageName: string) => boolean): TarballSource
 function suggestNames(name: string, candidates: Iterable<string>, max?: number): string[]
 function validateIndex(entriesDir: string, options?: { packument?: PackumentSource }): Promise<string[]>
 function validateManifest(manifest: unknown): string[]

@@ -17,8 +17,13 @@ export interface ScaffoldOptions {
   template: string;
   /** Folder holding the templates. */
   templatesDir: string;
-  /** Version written for engine dependencies (`^version`). */
+  /** Engine release the project depends on: its tarballs are `<releaseUrl>/<package>-<version>.tgz`. */
   engineVersion: string;
+  /**
+   * Folder URL of the release assets. @defaultValue {@link releaseBaseUrl}(`engineVersion`), the
+   * GitHub release `v<engineVersion>`
+   */
+  releaseUrl?: string;
   /**
    * Path to a local engine checkout. Engine dependencies become `link:` dependencies to its
    * packages, to try unpublished changes.
@@ -35,6 +40,105 @@ export interface ScaffoldOptions {
   packageManager?: string;
 }
 
+/** GitHub repository whose releases hold the engine tarballs. */
+export const RELEASE_REPOSITORY = 'beedywool/blacklight-engine';
+
+/**
+ * Folder URL of the assets of an engine release on GitHub, where every package is a `.tgz`.
+ * The `BLACKLIGHT_RELEASE_URL` environment variable replaces it (a local copy of a release, for
+ * tests); `create-blacklight` and `blacklight upgrade` read it.
+ *
+ * @param version - Engine version, with or without its `v`.
+ * @param env - Environment to read `BLACKLIGHT_RELEASE_URL` from; `{}` ignores it.
+ *
+ * @example
+ * ```ts
+ * import { releaseBaseUrl } from 'create-blacklight';
+ *
+ * releaseBaseUrl('1.2.0'); // 'https://github.com/beedywool/blacklight-engine/releases/download/v1.2.0'
+ * ```
+ */
+export function releaseBaseUrl(
+  version: string,
+  env: Record<string, string | undefined> = process.env,
+): string {
+  const override = env.BLACKLIGHT_RELEASE_URL?.trim();
+  if (override) return override.replace(/\/+$/, '');
+  return `https://github.com/${RELEASE_REPOSITORY}/releases/download/v${version.replace(/^v/, '')}`;
+}
+
+/**
+ * File name of a package in a release, as `pnpm pack` names it.
+ *
+ * @example
+ * ```ts
+ * import { releaseAssetName } from 'create-blacklight';
+ *
+ * releaseAssetName('@blacklight/core', '1.2.0'); // 'blacklight-core-1.2.0.tgz'
+ * ```
+ */
+export function releaseAssetName(packageName: string, version: string): string {
+  return `${packageName.replace(/^@/, '').replace('/', '-')}-${version.replace(/^v/, '')}.tgz`;
+}
+
+/** One dependency moved to another release by {@link retargetRelease}. */
+export interface ReleaseChange {
+  /** Package name, such as `@blacklight/core`. */
+  name: string;
+  /** The tarball URL before. */
+  from: string;
+  /** The tarball URL after. */
+  to: string;
+}
+
+/**
+ * Rewrites the engine dependencies of a `package.json` that point at release tarballs
+ * (`…/<package>-<version>.tgz`) to another release, in place. `link:` and registry versions are left
+ * alone. `blacklight upgrade` runs it.
+ *
+ * @param baseUrl - Folder URL of the new release's assets ({@link releaseBaseUrl}).
+ * @returns One entry per rewritten dependency.
+ *
+ * @example
+ * ```ts
+ * import { releaseBaseUrl, retargetRelease } from 'create-blacklight';
+ *
+ * const changes = retargetRelease(manifest, '1.3.0', releaseBaseUrl('1.3.0'));
+ * ```
+ */
+export function retargetRelease(
+  manifest: {
+    dependencies?: Record<string, string>;
+    devDependencies?: Record<string, string>;
+    optionalDependencies?: Record<string, string>;
+  },
+  version: string,
+  baseUrl: string,
+): ReleaseChange[] {
+  const changes: ReleaseChange[] = [];
+  const base = baseUrl.replace(/\/+$/, '');
+  for (const deps of [
+    manifest.dependencies,
+    manifest.devDependencies,
+    manifest.optionalDependencies,
+  ]) {
+    for (const [name, spec] of Object.entries(deps ?? {})) {
+      const prefix = releaseAssetName(name, '').slice(0, -'.tgz'.length);
+      const file = spec.slice(spec.lastIndexOf('/') + 1);
+      const isRelease =
+        /^https?:\/\//.test(spec) &&
+        file.startsWith(prefix) &&
+        /^\d+\.\d+\.\d+(-[0-9A-Za-z.-]+)?\.tgz$/.test(file.slice(prefix.length));
+      if (!isRelease) continue;
+      const to = `${base}/${releaseAssetName(name, version)}`;
+      if (to === spec) continue;
+      deps![name] = to;
+      changes.push({ name, from: spec, to });
+    }
+  }
+  return changes;
+}
+
 /** pnpm version written into new projects when the scaffolder does not run under pnpm. */
 export const DEFAULT_PACKAGE_MANAGER = 'pnpm@12.16.1';
 
@@ -45,7 +149,7 @@ export const DEFAULT_PACKAGE_MANAGER = 'pnpm@12.16.1';
 const DOTTED = ['gitignore', 'github'];
 
 /**
- * The pnpm version running the scaffolder (`pnpm create blacklight`), read from npm's user agent
+ * The pnpm version running the scaffolder (`pnpm dlx …/create-blacklight.tgz`), read from npm's user agent
  * (`npm_config_user_agent`), so the new project pins the pnpm its author already has. Returns
  * `undefined` under another package manager.
  *
@@ -108,14 +212,19 @@ function engineDependency(name: string, options: ScaffoldOptions): string {
     // Forward slashes on every OS: pnpm reads them on Windows too, and package.json stays the same.
     return `link:${join(resolve(options.link), 'packages', folder).replaceAll('\\', '/')}`;
   }
-  return `^${options.engineVersion}`;
+  const base = (options.releaseUrl ?? releaseBaseUrl(options.engineVersion, {})).replace(
+    /\/+$/,
+    '',
+  );
+  return `${base}/${releaseAssetName(name, options.engineVersion)}`;
 }
 
 /**
  * Copies a template into `dir` and turns it into a standalone project: shared files added, `_`
  * names renamed to their dotted form (`_gitignore` → `.gitignore`), the package renamed after the
  * folder, `packageManager` pinned, and `workspace:` engine dependencies replaced by
- * `^<engineVersion>` (or `link:` paths with `link`). This is what `pnpm create blacklight` runs.
+ * the URLs of the release's tarballs (`<releaseUrl>/blacklight-core-<engineVersion>.tgz`, or `link:`
+ * paths with `link`), so `pnpm install` fetches the engine from the GitHub release. This is what `create-blacklight` runs.
  *
  * @returns The absolute path of the created project.
  * @throws Error when the template does not exist or `dir` is not empty (without `force`).

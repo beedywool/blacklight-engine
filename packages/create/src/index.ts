@@ -4,7 +4,7 @@ import { relative } from 'node:path';
 import { createInterface } from 'node:readline/promises';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
-import { listTemplates, packageManagerFromAgent, scaffold } from './scaffold';
+import { listTemplates, packageManagerFromAgent, releaseBaseUrl, scaffold } from './scaffold';
 
 const templatesDir = fileURLToPath(new URL('../templates', import.meta.url));
 const sharedDir = fileURLToPath(new URL('../shared', import.meta.url));
@@ -14,13 +14,17 @@ const { version } = JSON.parse(
   version: string;
 };
 
-const USAGE = `Usage: pnpm create blacklight [dir] [options]
+const USAGE = `Usage: create-blacklight [dir] [options]
 
 Options:
-  -t, --template <name>  Template to start from (default: empty)
-      --link <path>      Link the engine packages of a local checkout instead of npm versions
-      --force            Write into a folder that is not empty
-  -h, --help             Show this help
+  -t, --template <name>      Template to start from (default: empty)
+      --engine-version <v>   Engine release to depend on (default: ${version}, this scaffolder's)
+      --link <path>          Link the engine packages of a local checkout instead of a release
+      --force                Write into a folder that is not empty
+  -h, --help                 Show this help
+
+The engine packages come from the GitHub release's tarballs; BLACKLIGHT_RELEASE_URL replaces the
+folder URL of that release (a local copy, for tests).
 
 Templates: ${listTemplates(templatesDir).join(', ')}`;
 
@@ -30,6 +34,7 @@ async function main(): Promise<void> {
     options: {
       template: { type: 'string', short: 't', default: 'empty' },
       link: { type: 'string' },
+      'engine-version': { type: 'string' },
       force: { type: 'boolean', default: false },
       help: { type: 'boolean', short: 'h', default: false },
     },
@@ -46,11 +51,18 @@ async function main(): Promise<void> {
     rl.close();
   }
 
+  const engineVersion = (values['engine-version'] ?? version).replace(/^v/, '');
+  if (!/^\d+\.\d+\.\d+(-[0-9A-Za-z.-]+)?$/.test(engineVersion)) {
+    throw new Error(
+      `--engine-version ${values['engine-version']} is not a version; pass one such as 1.2.0 (the release tag without its v).`,
+    );
+  }
   const target = scaffold({
     dir,
     template: values.template,
     templatesDir,
-    engineVersion: version,
+    engineVersion,
+    releaseUrl: releaseBaseUrl(engineVersion),
     link: values.link,
     force: values.force,
     sharedDir,
