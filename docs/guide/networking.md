@@ -3,7 +3,7 @@
 `@blacklight/net` adds online play: rooms on a relay server, rollback for action games, lockstep for turn-based games. It is optional; games without it ship none of it.
 
 ```sh
-pnpm add @blacklight/net
+pnpm blacklight add @blacklight/net
 ```
 
 Online play has three parts:

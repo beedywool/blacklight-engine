@@ -1,6 +1,6 @@
 # Deploy the module registry
 
-The module registry is a set of static JSON files that `blacklight add` and `blacklight search` read. `packages/registry` (`@blacklight/registry`) holds the validator and the generator, `blacklight-registry`; the index itself is a Git repository with one `entries/<name>.json` file per module, and `packages/registry/index/` is the official copy and the template for it. The generator asks npm for every listed package, checks the manifests and writes the API. Packages and their tarballs stay on npm: the registry host serves JSON only, has no server code and no database. What the files contain and how a module author publishes is in [Module registry](/guide/modules-registry); this page covers building and hosting the index.
+The module registry is a set of static JSON files that `blacklight add` and `blacklight search` read. `packages/registry` (`@blacklight/registry`) holds the validator and the generator, `blacklight-registry`; the index itself is a Git repository with one `entries/<name>.json` file per module, and `packages/registry/index/` is the official copy and the template for it. The generator asks npm (or local package folders) for every listed package, checks the manifests and writes the API. Package tarballs stay on npm or on the engine's GitHub releases: the registry host serves JSON only, has no server code and no database. What the files contain and how a module author publishes is in [Module registry](/guide/modules-registry); this page covers building and hosting the index.
 
 ## What gets served
 
@@ -21,7 +21,28 @@ The CLI requests two URLs, relative to the registry base URL:
 | `GET <base>/v1/modules/<name>.json` | `blacklight add <name>`                        | no such module; the CLI then reads `index.json` to suggest close names |
 | `GET <base>/v1/index.json`          | `blacklight search`, and `add` for suggestions | not a Blacklight registry                                              |
 
-The base URL is, in order: the `--registry <url>` option of `add`, `search` or `publish`, then the `BLACKLIGHT_REGISTRY` environment variable, then the default `https://registry.blacklight.beedywool.com` (`DEFAULT_REGISTRY` in `packages/cli/src/commands/registry.ts`). Trailing slashes are removed. The base is the folder that holds `v1/`, so a registry under a path works (`https://example.com/modules`).
+The base URL is, in order: the `--registry <url>` option of `add`, `search` or `publish`, then the `BLACKLIGHT_REGISTRY` environment variable, then the default `https://beedywool.github.io/blacklight-engine/registry` (`DEFAULT_REGISTRY` in `packages/cli/src/commands/registry.ts`), the official registry described below. Trailing slashes are removed. The base is the folder that holds `v1/`, so a registry under a path works (`https://example.com/modules`).
+
+## The official registry
+
+The engine's own index, `packages/registry/index/`, is built and deployed by the release workflow (`.github/workflows/release.yml`) on every release tag, to GitHub Pages:
+
+| URL                                                                             | Content                      |
+| ------------------------------------------------------------------------------- | ---------------------------- |
+| `https://beedywool.github.io/blacklight-engine/registry/v1/index.json`          | every official module        |
+| `https://beedywool.github.io/blacklight-engine/registry/v1/modules/<name>.json` | one module with its versions |
+
+The workflow builds it from the checkout of the tag, not from npm, and points each official module at the release's tarball:
+
+```sh
+node packages/registry/dist/cli.js build packages/registry/index --out site/registry \
+  --local packages/modules \
+  --release-url https://github.com/beedywool/blacklight-engine/releases/download/v1.2.0
+```
+
+`--release-url <folder>` adds `tarball` to the `@blacklight/module-*` entries (`<folder>/blacklight-module-sqlite-1.2.0.tgz`), and `blacklight add` installs that URL. The Pages site holds the registry under `registry/` so that the documentation can share the site later; the deploy replaces the whole site, so a docs deployment to the same Pages site must come from the same workflow. GitHub Pages must be enabled with "GitHub Actions" as the source (repository Settings > Pages). Until the first release is deployed the URL answers 404, and `blacklight add` falls back to its built-in list of official modules.
+
+Each release replaces the index: `versions` lists the release's version only, since `--local` reads one version per package. Games on an older release are not affected: `blacklight add` installs official modules from the game's own release, whatever the registry's `version` says.
 
 ## Build
 
@@ -146,7 +167,7 @@ New versions need no pull request. Removing a module is a pull request that dele
 
 ## Limits
 
-- `@blacklight/registry` is not published on npm yet (version `0.0.0` in the workspace), so the template workflow's `npx -p @blacklight/registry@1` step fails until it is; run the tool from the engine checkout as shown in [Build](#build) meanwhile. Likewise, validating the official index against npm fails until the `@blacklight/module-*` packages are published; `--local packages/modules` builds it from the checkout.
+- `@blacklight/registry` is not published on npm (engine packages are GitHub release assets), so the template workflow's `npx -p @blacklight/registry@1` step fails; replace it with the release tarball (`npx --yes -p https://github.com/beedywool/blacklight-engine/releases/download/v1.2.0/blacklight-registry-1.2.0.tgz blacklight-registry validate .`) or run the tool from the engine checkout as shown in [Build](#build). Validating the official index against npm fails for the same reason; `--local packages/modules` builds it from the checkout, as the release workflow does.
 - The registry is rebuilt on a schedule, not on npm events: a new version appears after the next build (at most a day with the template workflow, plus the cache lifetime).
 - The build reads every listed package from npm one after another; a large index takes as long as that many requests, and an npm outage fails the build (the previous deployment stays online).
 - The index checks names, manifests and licenses, not code, and does not mirror tarballs: a package removed from npm cannot be installed, whatever the index says.

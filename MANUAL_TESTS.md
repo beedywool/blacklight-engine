@@ -4,7 +4,7 @@ What CI cannot check (SPEC §11.3). Run before each release; every step says wha
 
 ## Any desktop browser
 
-1. `pnpm create blacklight my-game && cd my-game && pnpm install && pnpm dev`, open the printed URL. Expected: black page, white dot pulsing, "My Game" and the edit hint centered.
+1. `pnpm dlx https://github.com/beedywool/blacklight-engine/releases/latest/download/create-blacklight.tgz my-game && cd my-game && pnpm install && pnpm dev`, open the printed URL. Expected: black page, white dot pulsing, "My Game" and the edit hint centered.
 2. Resize the window to very wide, then very tall. Expected: the content stays centered and fully visible, never stretched.
 
 3. Older browser versions (NF-05: the last two versions of Chrome, Firefox and Safari; CI runs one build of each engine). In the previous major version of each browser, open the release build of `party-game` and `visual-novel` (`pnpm build && pnpm preview` in the template). Expected: the title screen appears, keys and the mouse work, no error in the console.
@@ -214,6 +214,8 @@ Build first: `pnpm build`, then install the extension: `pnpm --filter blacklight
 
 ## Publishing the VS Code extension (owner accounts)
 
+Not done for now: the extension ships as the `.vsix` of each GitHub release ("Engine release on GitHub" below). Keep these steps for when the Marketplace and Open VSX are used.
+
 1. `pnpm --filter blacklight-vscode publish:dry-run`. Expected: `dist/blacklight.vsix` is built, its file list printed, and the local stand-in registry accepts it.
 2. Set the version in `packages/vscode/package.json` (it is `0.0.0` while unreleased) and the `publisher` to the Marketplace publisher id of BlackLight.
 3. Marketplace: `pnpm --filter blacklight-vscode exec vsce publish --no-dependencies -p <Azure DevOps PAT with Marketplace (Manage) scope>`. Expected: the extension page shows the README, icon and categories; installing it in a clean VS Code works offline.
@@ -293,7 +295,7 @@ With an Xbox Series, a DualSense, a Switch Pro and a generic USB pad, in the des
 
 ## Platformer template (any desktop browser, a gamepad, a phone)
 
-Create it with `pnpm create blacklight jumper --template platformer`, then `pnpm install && pnpm dev`.
+Create it with `pnpm dlx https://github.com/beedywool/blacklight-engine/releases/latest/download/create-blacklight.tgz jumper --template platformer`, then `pnpm install && pnpm dev`.
 
 1. Title screen, Enter. Expected: the level fades in; the HUD shows `0 / 30` coins and the jump and pause prompts with keyboard keys.
 2. Run with the arrows, jump with Space; hold Space for a high jump, tap it for a short one. Expected: run and jump animations, the camera follows smoothly and stops at the level edges; the hills scroll slower than the ground.
@@ -318,7 +320,7 @@ Build a template (`pnpm build`) and host `dist/` on an HTTPS server you control 
 
 ## GitHub Actions build workflow of a new game (a GitHub account)
 
-1. `pnpm create blacklight my-game --template platformer`, `cd my-game`, `pnpm install`, commit everything including `pnpm-lock.yaml`, push to a new GitHub repository. Expected: the "Build" workflow runs six jobs (web, desktop win / mac / linux, android, ios) and each uploads an artifact.
+1. `pnpm dlx https://github.com/beedywool/blacklight-engine/releases/latest/download/create-blacklight.tgz my-game --template platformer`, `cd my-game`, `pnpm install`, commit everything including `pnpm-lock.yaml`, push to a new GitHub repository. Expected: the "Build" workflow runs six jobs (web, desktop win / mac / linux, android, ios) and each uploads an artifact.
 2. Download the artifacts. Expected: `web` holds the PWA, `desktop-win` the NSIS installer and portable .exe, `desktop-mac` dmg + zip for x64 and arm64, `desktop-linux` AppImage + deb, `android` a debug APK that installs with `adb install`, `ios` the Simulator `.app`.
 3. Add the signing secrets named in `.github/workflows/build.yml` and run it again (Actions → Build → Run workflow). Expected: signed installers and a release APK.
 4. With no secret at all. Expected: every job succeeds, and the run summary shows one notice per unsigned job (Windows, macOS, Android, iOS) naming the secrets to add; the Windows log never shows `CSC_LINK` set even when the macOS secrets exist.
@@ -332,3 +334,15 @@ Build a template (`pnpm build`) and host `dist/` on an HTTPS server you control 
 3. Open `/playground`, edit a file, copy the address bar into another browser. Expected: the same files and the same game.
 4. Open `/guide/ui-widgets` on a phone. Expected: editor under each preview, previews readable, taps reach the widgets.
 5. Serve `docs/.vitepress/dist` behind the production CSP (see the deployment guide) and open a page with examples. Expected: no CSP violation in the console; the runner page carries its own policy (`blob:` scripts).
+
+## Engine release on GitHub (push rights on the engine repository)
+
+The release workflow is checked by a dry run and `e2e/release.spec.ts` (a packed release served from a local folder); the real GitHub Release, the Pages deployment and the download URLs need a real tag.
+
+1. Once: repository Settings > Pages > Source: "GitHub Actions". Expected: the page names no branch.
+2. Cut a release as CONTRIBUTING.md "Versions and releases" says (bump, tag, `git push origin v<version>`), then `gh run watch <id> --exit-status`. Expected: `pack`, `release` and `registry` succeed; the release page lists one `.tgz` per package (19 files with `create-blacklight.tgz`), `blacklight-vscode-<version>.vsix`, and the notes start with the changelog section of the version.
+3. `curl -s https://beedywool.github.io/blacklight-engine/registry/v1/modules/sqlite.json`. Expected: `"version"` is the new version and `"tarball"` is that release's `blacklight-module-sqlite-<version>.tgz` URL.
+4. In an empty folder, without any engine checkout: `pnpm dlx https://github.com/beedywool/blacklight-engine/releases/latest/download/create-blacklight.tgz my-game && cd my-game && pnpm install && pnpm dev`. Expected: every `@blacklight/*` entry of `package.json` is a URL of the new release, the install fetches them from github.com, the game opens in the browser.
+5. `pnpm blacklight add sqlite`, then `pnpm blacklight add accounts-oidc`. Expected: both modules are installed from the same release's URLs; the second ends with the line asking for `issuer` and `clientId`.
+6. After a second release: `pnpm blacklight upgrade`. Expected: every engine URL moves to the newer release, `pnpm install` runs, `pnpm build` passes.
+7. `code --install-extension blacklight-vscode-<version>.vsix` with the file of the release (or Install from VSIX... in the Extensions view). Expected: "Blacklight Engine" at that version in the Extensions view; it activates in `my-game`.

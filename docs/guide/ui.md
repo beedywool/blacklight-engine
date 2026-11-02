@@ -53,7 +53,8 @@ The [UI tutorial](../tutorials/ui) has exercises to do in the page: push a menu,
 ## Install
 
 ```sh
-pnpm add @blacklight/ui vue
+pnpm blacklight add @blacklight/ui
+pnpm add vue
 ```
 
 When `package.json` lists `@blacklight/ui` (in `dependencies` or `devDependencies`), the entry file the CLI generates installs the UI layer: it calls the `ui()` plugin with every `.vue` file under `ui/` and `scenes/*/ui/`, imports `@blacklight/ui/style.css`, adds the Vue plugin to Vite, keeps a single copy of `vue`, `pixi.js`, `motion`, `@blacklight/core` and `@blacklight/ui`, and excludes `@blacklight/ui` from dependency pre-bundling (its button glyphs are referenced with `new URL(..., import.meta.url)`, which pre-bundling breaks). The entry is written when `blacklight dev` or `blacklight build` starts, so restart the dev server after adding the package.

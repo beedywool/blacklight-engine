@@ -30,15 +30,16 @@ test.beforeAll(async () => {
   test.setTimeout(600_000);
   work = mkdtempSync(join(tmpdir(), 'blacklight-guide-'));
   game = join(work, 'my-game');
-  // 1. Create the project (the local engine instead of npm versions).
+  // 1. Create the project (the local engine instead of a release: e2e/release.spec.ts covers that).
   run(
     process.execPath,
     [join(repo, 'packages/create/dist/index.js'), 'my-game', '--link', repo],
     work,
   );
   run('pnpm', ['install'], game);
-  // 2. Add the UI layer.
-  run('pnpm', ['add', `@blacklight/ui@link:${join(repo, 'packages/ui')}`, 'vue@3.5.44'], game);
+  // 2. Add the UI layer: from the checkout the game links, as it would from its release.
+  run('pnpm', ['blacklight', 'add', '@blacklight/ui'], game);
+  run('pnpm', ['add', 'vue@3.5.44'], game);
   // 3 to 7. Every file the guide shows.
   for (const file of guideFiles()) cpSync(join(finished, file), join(game, file));
   // 8. Check.

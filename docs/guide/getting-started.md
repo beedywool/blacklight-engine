@@ -10,7 +10,7 @@ In a terminal, in the folder that will hold the project:
 
 <<< @/guide/captures/create.txt{console}
 
-`my-game` is the folder to create; without it, the command asks. `--template <name>` starts from another template ([Start from a template](./templates) runs through all six: a platformer, a Persona-style menu, a visual novel, 2D with 3D models and a party game); `--help` lists them. Then install the engine packages:
+`pnpm dlx` downloads `create-blacklight` from the latest [GitHub release](https://github.com/beedywool/blacklight-engine/releases) of the engine and runs it once, without installing anything globally. The new project's `package.json` points every engine package at the tarballs of that same release (`"@blacklight/core": "https://github.com/beedywool/blacklight-engine/releases/download/v1.2.0/blacklight-core-1.2.0.tgz"`), so the engine comes from GitHub and every other dependency from npm. `--engine-version 1.1.0` targets another release, and `pnpm blacklight upgrade` later moves the project to a newer one ([Command line tools](./tooling#upgrade)). `my-game` is the folder to create; without it, the command asks. `--template <name>` starts from another template ([Start from a template](./templates) runs through all six: a platformer, a Persona-style menu, a visual novel, 2D with 3D models and a party game); `--help` lists them. Then install the engine packages:
 
 ```sh
 cd my-game
@@ -50,10 +50,11 @@ Leave the dev server running: every file you save from now on reloads the page, 
 
 ## 2. Add the UI layer
 
-Menus are Vue components drawn over the game canvas. They come with `@blacklight/ui`:
+Menus are Vue components drawn over the game canvas. They come with `@blacklight/ui`, which `blacklight add` installs from the same release as the rest of the engine, and Vue:
 
 ```sh
-pnpm add @blacklight/ui vue
+pnpm blacklight add @blacklight/ui
+pnpm add vue
 ```
 
 The CLI notices the package and installs the UI layer when the game starts: `.vue` files in `ui/` become screens, opened by their file name.
@@ -149,6 +150,7 @@ The web build uses relative URLs, so `dist/` works from any path on a web server
 
 ## Limits
 
-- The guide uses the `empty` template. `pnpm create blacklight my-game --template persona-menu` starts from a complete Persona-style menu instead; [Start from a template](./templates) covers the other five.
+- The guide uses the `empty` template. `pnpm dlx https://github.com/beedywool/blacklight-engine/releases/latest/download/create-blacklight.tgz my-game --template persona-menu` starts from a complete Persona-style menu instead; [Start from a template](./templates) covers the other five.
+- `pnpm dlx` keeps a downloaded package for a day. Within a day of a new release, the `latest` URL can still run the previous scaffolder, which creates a project on the previous engine; the URL of a given release always runs that one: `pnpm dlx https://github.com/beedywool/blacklight-engine/releases/download/v1.2.0/create-blacklight-1.2.0.tgz my-game`.
 - The engine has no visual editor for game logic: objects are placed by code here. The [VS Code extension](./vscode) has a scene editor that saves placements as JSON for `scene.load`.
 - Sound is not covered here: see [Audio](./audio).

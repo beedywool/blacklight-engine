@@ -9,6 +9,8 @@ A Blacklight game is a Node.js project: you write TypeScript, the `blacklight` c
 | VS Code                     | 1.125 or newer     | Editor; any editor works, VS Code has the extension |
 | Blacklight Engine extension | same as the engine | Completion of names, editors, live debugging        |
 
+The engine itself is not installed here: each game downloads it. Every release of the engine is a [GitHub release](https://github.com/beedywool/blacklight-engine/releases) whose assets are one `.tgz` per package (`blacklight-core-1.2.0.tgz`, `create-blacklight-1.2.0.tgz`…) and the extension's `.vsix`. A game's `package.json` points at those files by URL, so `pnpm install` fetches the engine from GitHub and every other dependency from npm. The packages are not on npm and the extension is not on the VS Code Marketplace or Open VSX yet; both may come later.
+
 ## Node.js
 
 Install the current LTS release from [nodejs.org](https://nodejs.org/en/download), with your system's package manager, or with a version manager such as `fnm` or `nvm`. Then check it in a new terminal:
@@ -25,7 +27,7 @@ Install pnpm with one of the methods of [pnpm.io/installation](https://pnpm.io/i
 pnpm --version   # 12.x or newer
 ```
 
-Projects created by `pnpm create blacklight` pin the pnpm version in `package.json` (`packageManager`), so every machine of a team installs the same dependency tree.
+Projects created by `create-blacklight` pin the pnpm version in `package.json` (`packageManager`), so every machine of a team installs the same dependency tree.
 
 ## VS Code
 
@@ -33,9 +35,15 @@ Install VS Code from [code.visualstudio.com](https://code.visualstudio.com/). Th
 
 ## The Blacklight Engine extension
 
-In VS Code, open the Extensions view (`Ctrl+Shift+X`, `Cmd+Shift+X` on macOS), search for "Blacklight Engine" and install it. VSCodium and other editors built on VS Code install it from Open VSX under the same name.
+Download `blacklight-vscode-<version>.vsix` from the assets of the [latest release](https://github.com/beedywool/blacklight-engine/releases/latest) and install it from a terminal:
 
-To use the extension of a local checkout of the engine instead (to try a change, or before a release is published), build the package and install the file:
+```sh
+code --install-extension blacklight-vscode-1.2.0.vsix
+```
+
+or in VS Code: Extensions view (`Ctrl+Shift+X`, `Cmd+Shift+X` on macOS), the `...` menu at the top of the view, **Install from VSIX...**, then pick the file. VSCodium and other editors built on VS Code install the same file the same way (`codium --install-extension ...`). Take the extension of the release your games use; VS Code does not update an extension installed from a file, so install the new `.vsix` after each engine upgrade.
+
+To use the extension of a local checkout of the engine instead (to try a change before it is released), build the package and install the file:
 
 ```sh
 pnpm --filter blacklight-vscode build

@@ -144,7 +144,7 @@ Engine plumbing that games never use (hooks between packages, test helpers of th
 
 ## Versions and releases
 
-Every published package (`@blacklight/*`, `create-blacklight`, `blacklight-vscode`) carries the same version, and games depend on `^<version>` of each, so one number tells which engine a game runs on. Versions follow [semantic versioning](https://semver.org) from 1.0:
+Every published package (`@blacklight/*`, `create-blacklight`, `eslint-plugin-blacklight`, `blacklight-vscode`) carries the same version, and a game depends on the tarballs of one release, so one number tells which engine a game runs on. Versions follow [semantic versioning](https://semver.org) from 1.0:
 
 - **Major** (`2.0.0`): a change to a public API, a configuration field, a file format (saves, `.anim.json`, registry index) or a supported platform that makes an existing game fail to build or behave differently. Saves written by the previous major stay readable through save migrations.
 - **Minor** (`1.1.0`): new features, new optional configuration, deprecations (the old API keeps working and logs how to move until the next major).
@@ -158,16 +158,36 @@ The public API is every symbol exported from an entry point of a published packa
 
 Before 1.0, minor versions may break.
 
-To release, from a clean `main` with CI green:
+Releases are published on GitHub only: no npm, no VS Code Marketplace for now (both may come later). `.github/workflows/release.yml` runs on every `v*` tag:
+
+1. `pack` sets every package to the tag's version, builds them, packs each published package with `scripts/release-pack.mjs` (all of `packages/`, `packages/modules/` and the relay; each `workspace:` engine dependency becomes the URL of the same release's asset, `https://github.com/beedywool/blacklight-engine/releases/download/v<version>/<package>-<version>.tgz`), adds `create-blacklight.tgz` (the scaffolder under a name `releases/latest/download/` can point at), packages the extension as `blacklight-vscode-<version>.vsix`, builds the module registry with the official modules pointing at the release's tarballs, and writes the release notes with `pnpm changelog --notes <version>`;
+2. `release` creates the GitHub Release of the tag with every file attached (a version with `-` is a prerelease);
+3. `registry` deploys the registry to GitHub Pages (`https://beedywool.github.io/blacklight-engine/registry`).
+
+To cut a release, from a clean `main` with CI green:
 
 ```sh
-pnpm -r --filter "./packages/**" exec npm pkg set version=1.1.0   # every package, one version
+pnpm -r --filter "./packages/**" --filter "./servers/relay" exec npm pkg set version=1.1.0   # one version everywhere
 git commit -am "release: 1.1.0"
 git tag v1.1.0
 pnpm changelog                    # rewrites CHANGELOG.md from the git history, 1.1.0 included
 git commit -a --amend --no-edit   # the release commit carries its changelog
 git tag -f v1.1.0
-git push --follow-tags
+git push origin main
+git push origin v1.1.0            # starts the release workflow
+gh run watch "$(gh run list --workflow release.yml --limit 1 --json databaseId --jq '.[0].databaseId')" --exit-status
 ```
+
+The workflow sets the versions from the tag in any case, so a forgotten bump still releases consistent packages, but the commit should carry the version (`create-blacklight --link` and `blacklight --version` read it). A failed run creates no release: fix the cause, move the tag (`git tag -f v1.1.0 && git push -f origin v1.1.0`) and the workflow runs again. GitHub Pages must be enabled with "GitHub Actions" as its source for the `registry` job.
+
+To check the packaging without releasing, run the workflow by hand: it is a dry run by default, which builds everything and uploads it to the run instead of a release.
+
+```sh
+gh workflow run release.yml --ref main                    # version 0.0.0-dev.<run number>
+gh workflow run release.yml --ref main -f version=1.1.0   # the files 1.1.0 would have
+gh run download <run id> --dir release-check
+```
+
+`e2e/release.spec.ts` does the same locally on every CI run: it packs every package, serves the folder over HTTP under the asset names, creates a game with `pnpm dlx <folder>/create-blacklight.tgz` (`BLACKLIGHT_RELEASE_URL` points create-blacklight and `blacklight upgrade` at the local folder), installs it with plain `pnpm install`, builds it, adds a module and upgrades it to a second packed version. `node scripts/release-pack.mjs --version 1.1.0 --out release` packs by hand after `pnpm build`.
 
 `pnpm changelog` (`scripts/changelog.mjs`) writes one section per `v*` tag and an "Unreleased" section for the commits after the last one, grouped by area, with breaking changes listed first. Do not edit `CHANGELOG.md` by hand: fix the history or the script instead.

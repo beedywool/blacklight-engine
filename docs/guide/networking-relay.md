@@ -29,8 +29,10 @@ location / {
 
 ## Node
 
+In a game, `pnpm blacklight add @blacklight/relay` installs the relay of the game's engine release. On a server without a game, install it from the release's asset (here 1.2.0; take the version of your games' engine):
+
 ```sh
-pnpm add @blacklight/relay
+pnpm add https://github.com/beedywool/blacklight-engine/releases/download/v1.2.0/blacklight-relay-1.2.0.tgz
 pnpm exec blacklight-relay
 ```
 

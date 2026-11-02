@@ -160,7 +160,7 @@ A `TilemapLayer` with solid tiles blocks `move()` and stops raycasts like solid 
 `@blacklight/physics` runs [Rapier](https://rapier.rs) 2D rigid bodies: gravity, forces, impulses, friction, restitution, stacking. Install it in the game:
 
 ```sh
-pnpm add @blacklight/physics
+pnpm blacklight add @blacklight/physics
 ```
 
 ```ts

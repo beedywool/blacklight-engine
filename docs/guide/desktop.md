@@ -3,7 +3,7 @@
 The desktop app is Electron running your web build. It needs `@blacklight/native` in the game:
 
 ```sh
-pnpm add @blacklight/native
+pnpm blacklight add @blacklight/native   # already in projects made by create-blacklight
 pnpm blacklight desktop               # the game in the desktop app, with hot reload
 pnpm blacklight build --target linux  # AppImage + deb in release/linux/
 pnpm blacklight build --target win    # NSIS installer + portable .exe in release/win/

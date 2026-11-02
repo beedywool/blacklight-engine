@@ -1,6 +1,6 @@
 # Command line tools
 
-Besides `create`, `dev`, `build` and `preview`, the `blacklight` command checks the machine (`doctor`), checks a game (`lint`) and starts it on a target (`run`). Run them from the game's folder, or pass the folder as the first argument.
+Besides `create`, `dev`, `build` and `preview`, the `blacklight` command checks the machine (`doctor`), checks a game (`lint`), starts it on a target (`run`) and moves it to another engine release (`upgrade`). Run them from the game's folder, or pass the folder as the first argument.
 
 ```sh
 pnpm blacklight doctor
@@ -94,9 +94,23 @@ runners.android = async ({ root, device, port, flags }) => {
 
 The checks of `doctor` are a registry as well (`doctorChecks` in `packages/cli/src/doctor.ts`); a platform appends what its target needs.
 
+## upgrade
+
+```sh
+pnpm blacklight upgrade          # the latest GitHub release
+pnpm blacklight upgrade 1.3.0    # a given release
+```
+
+A game installs the engine from the tarballs of one [GitHub release](https://github.com/beedywool/blacklight-engine/releases): each `@blacklight/*` entry of its `package.json` is a URL such as `https://github.com/beedywool/blacklight-engine/releases/download/v1.2.0/blacklight-core-1.2.0.tgz`. `upgrade` rewrites every such URL to the same package in the other release, keeps the other dependencies as they are, then runs `pnpm install` (or the game's package manager) so the lock file follows. Without a version it asks the GitHub API for the latest release. `--no-install` only rewrites `package.json`.
+
+It refuses a game whose engine is linked to a checkout (`create-blacklight --link`: pull and rebuild the checkout instead) and a game with no engine dependency on a release tarball. Read the release notes between the two versions first: a major version may change the API ([semantic versioning](https://github.com/beedywool/blacklight-engine/blob/main/CONTRIBUTING.md#versions-and-releases)). The VS Code extension is upgraded separately, from the `.vsix` of the new release.
+
+`BLACKLIGHT_RELEASE_URL` replaces the release folder URL (`https://github.com/beedywool/blacklight-engine/releases/download/v<version>`) for `upgrade` and `create-blacklight`; the engine's own tests serve a packed release from a local folder with it.
+
 ## Limits
 
 - `doctor` checks that tools exist and answer; it does not build anything, so a broken SDK installation can still fail at build time.
 - Certificates are found by environment variables and keychain identities; their expiry dates are not checked.
 - `lint` reads code with patterns, not a type checker: names built at runtime (`this.play(\`walk-${dir}\`)`) are not checked.
+- `upgrade` changes which engine the game installs; it does not change the game's code for an API that moved.
 - Only the web target has a runner in this package; desktop and mobile runners come with their platform packages.

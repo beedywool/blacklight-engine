@@ -51,6 +51,10 @@ function usedCaptures(): string[] {
   return [...names].sort();
 }
 
+/** The create command of the guides (docs/guide/getting-started.md, README.md). */
+const CREATE_COMMAND =
+  'pnpm dlx https://github.com/beedywool/blacklight-engine/releases/latest/download/create-blacklight.tgz my-game';
+
 /** Every capture the test writes, by file name. */
 const CAPTURES = [
   'create.txt',
@@ -250,8 +254,10 @@ test('every step of the installation and getting-started guides, captured', asyn
   await page.setViewportSize({ width: 1280, height: 720 });
 
   try {
-    await test.step('pnpm create blacklight', () => {
-      // The local engine instead of npm versions; the output is the same apart from the paths.
+    await test.step('create-blacklight', () => {
+      // The guide runs the scaffolder of the latest GitHub release with `pnpm dlx`; this runs the
+      // same scaffolder from the checkout with the local engine (`--link`) and shows the guide's
+      // command. The output is the same apart from the paths.
       const created = spawnSync(
         process.execPath,
         [join(repo, 'packages/create/dist/index.js'), 'my-game', '--link', repo],
@@ -259,7 +265,7 @@ test('every step of the installation and getting-started guides, captured', asyn
       );
       expect(created.status, created.stderr).toBe(0);
       expect(created.stdout).toContain('from the "empty" template');
-      save('create.txt', `$ pnpm create blacklight my-game\n${clean(created.stdout, work)}\n`);
+      save('create.txt', `$ ${CREATE_COMMAND}\n${clean(created.stdout, work)}\n`);
       run('pnpm', ['install'], game);
     });
 
@@ -332,7 +338,8 @@ test('every step of the installation and getting-started guides, captured', asyn
     await test.step('the guide: UI layer, then every file the guide shows', async () => {
       stop?.();
       stop = undefined;
-      run('pnpm', ['add', `@blacklight/ui@link:${join(repo, 'packages/ui')}`, 'vue@3.5.44'], game);
+      run('pnpm', ['blacklight', 'add', '@blacklight/ui'], game);
+      run('pnpm', ['add', 'vue@3.5.44'], game);
       for (const file of guideFiles()) {
         mkdirSync(join(game, file, '..'), { recursive: true });
         cpSync(join(finished, file), join(game, file));

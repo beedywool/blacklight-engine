@@ -4,21 +4,24 @@ An open-source (MIT) TypeScript game framework for web developers. Games are sce
 
 ## Make a game
 
-Requires Node.js 24+ and [pnpm](https://pnpm.io/installation) 12+.
+Requires Node.js 24+ and [pnpm](https://pnpm.io/installation) 12+. The engine is installed from its [GitHub releases](https://github.com/beedywool/blacklight-engine/releases), not from npm: each release holds one `.tgz` per package and the VS Code extension's `.vsix`, and a game's `package.json` points at the tarballs of one release by URL. Third-party dependencies still come from npm.
 
 ```sh
-pnpm create blacklight my-game
+pnpm dlx https://github.com/beedywool/blacklight-engine/releases/latest/download/create-blacklight.tgz my-game
 cd my-game
 pnpm install
 pnpm dev                 # http://localhost:5173, hot reload keeps the game's state
 pnpm build               # web build in dist/
 pnpm blacklight build --target linux    # or win, mac, steam, android, ios → release/<target>/
 pnpm blacklight doctor   # what each target needs on this machine
+pnpm blacklight upgrade  # move the game to the latest engine release
 ```
 
-A scene is a class in `scenes/<name>/<name>.scene.ts`; the first one is `entry` in `game.config.ts`. Each scene is loaded on demand as its own chunk. The configuration is checked at startup and every invalid field is shown on the page with the fix. Templates: `empty`, `persona-menu`, `visual-novel`, `2d-with-3d` (`pnpm create blacklight my-game --template visual-novel`). The documentation in `docs/` (run `pnpm docs:dev` in this repository) has a guide per subsystem.
+The VS Code extension is `blacklight-vscode-<version>.vsix` in the same release: `code --install-extension blacklight-vscode-<version>.vsix`, or **Install from VSIX...** in the Extensions view. Publishing the packages on npm and the extension on the Marketplace may come later.
 
-Until the packages are published on npm, create games from a checkout with `node packages/create/dist/index.js my-game --link <checkout>` (see `CONTRIBUTING.md`).
+A scene is a class in `scenes/<name>/<name>.scene.ts`; the first one is `entry` in `game.config.ts`. Each scene is loaded on demand as its own chunk. The configuration is checked at startup and every invalid field is shown on the page with the fix. Templates: `empty`, `persona-menu`, `visual-novel`, `2d-with-3d` (`pnpm dlx https://github.com/beedywool/blacklight-engine/releases/latest/download/create-blacklight.tgz my-game --template visual-novel`). The documentation in `docs/` (run `pnpm docs:dev` in this repository) has a guide per subsystem.
+
+To work on the engine itself, create games from a checkout with `node packages/create/dist/index.js my-game --link <checkout>` (see `CONTRIBUTING.md`).
 
 ## Repository
 
@@ -35,7 +38,7 @@ Until the packages are published on npm, create games from a checkout with `node
 | `packages/registry`      | module registry index format, validator, static API generator                                                                                                                |
 | `packages/eslint-plugin` | `eslint-plugin-blacklight`: deterministic simulation code                                                                                                                    |
 | `packages/cli`           | `@blacklight/cli`: the `blacklight` command (create, dev, build every target, run, doctor, lint, types, add/search/publish, sign, upload)                                    |
-| `packages/create`        | `create-blacklight`: the scaffolder behind `pnpm create blacklight`                                                                                                          |
+| `packages/create`        | `create-blacklight`: the project scaffolder, run with `pnpm dlx <release>/create-blacklight.tgz`                                                                             |
 | `packages/vscode`        | Blacklight Engine VS Code extension (editors, completion, asset browser, live debugging)                                                                                     |
 | `servers/`               | relay (online play) and reference server (cloud saves, achievements, accounts); `servers/docker-compose.yml` runs both                                                       |
 | `templates/`             | `empty`, `persona-menu`, `visual-novel`, `2d-with-3d`; `party-game` and `platformer` come with phase 4                                                                       |
@@ -79,6 +82,6 @@ CI (`.github/workflows/ci.yml`) has two tiers. The fast tier runs on every push 
 - On Windows, CI runs the unit tests and builds the installer; the e2e suite and the benchmarks run on a real Windows machine (CONTRIBUTING.md, MANUAL_TESTS.md).
 - Hardware and accounts are checked by hand (`MANUAL_TESTS.md`): real gamepads, phones, the Steam client, Discord, Game Center / Play Games, signing certificates.
 - Controller gyro is not available on desktop (the SDL binding exposes no sensors); Steam leaderboards are missing from steamworks.js.
-- The npm packages are not published and the `@blacklight` npm scope is not yet claimed (`DECISIONS.md`). The default URL of the module registry is a placeholder to confirm; accounts have no default provider (each game sets its own `issuer`).
+- The packages are not on npm and the extension is not on the VS Code Marketplace or Open VSX; everything installs from GitHub releases (`DECISIONS.md`). The module registry is served by GitHub Pages (`https://beedywool.github.io/blacklight-engine/registry`) from the first release on; accounts have no default provider (each game sets its own `issuer`).
 - Unit test coverage of core is below the 80 % target of NF-07.
 - The accepted limitations of 1.0 (shaders and HTML UI, float differences on iOS, Steam overlay in Electron, client-side protection) are in `docs/guide/limitations.md`.

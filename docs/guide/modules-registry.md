@@ -1,12 +1,13 @@
 # Module registry
 
-The registry is the list of modules that `blacklight add` and `blacklight search` know. It indexes npm packages: a module is published on npm like any package, and a one-file pull request on the index repository lists it. The index is a static set of JSON files built by CI from that repository, so anyone can host one; the registry never stores package tarballs.
+The registry is the list of modules that `blacklight add` and `blacklight search` know. It indexes packages: a community module is published on npm like any package, and a one-file pull request on the index repository lists it; the official modules are tarballs of the engine's GitHub releases. The index is a static set of JSON files built by CI, so anyone can host one; the registry never stores package tarballs. The default registry is `https://beedywool.github.io/blacklight-engine/registry`, rebuilt by each engine release ([Deploy the module registry](./deploy-registry)).
 
 ## Commands
 
 ```sh
 blacklight search save           # modules whose name, description or keywords contain "save"
 blacklight add sqlite            # install a module and list it in game.config.ts
+blacklight add @blacklight/ui    # install an engine package from the game's release
 blacklight publish --dry-run     # check a module package before publishing it
 ```
 
@@ -20,7 +21,17 @@ Run it in a game folder. It reads `v1/modules/<module>.json` from the registry, 
 | `--no-install`     | install                                          | Edit `game.config.ts` without running the package manager.                   |
 | `--force`          | off                                              | Install a module whose `engine` range does not include the installed engine. |
 
-The official modules (`http`, `sqlite`, `cloud-save`, `accounts-oidc`, `achievements`, `telemetry`) are known to the CLI: when the registry cannot be reached, `blacklight add` installs `@blacklight/module-<name>` and its known dependencies without the registry data (no engine check). A game created with `create-blacklight --link <checkout>` installs the modules of the same checkout as `link:` dependencies.
+Where a package comes from:
+
+- The official modules (`http`, `sqlite`, `cloud-save`, `accounts-oidc`, `achievements`, `telemetry`) come from the engine release the game installs `@blacklight/core` from: `@blacklight/module-sqlite` is `<release>/blacklight-module-sqlite-<version>.tgz` of the same release, whatever version the registry lists, so modules and engine always match.
+- A module whose registry entry has a `tarball` URL is installed from that URL; any other from npm at the registry's `version`.
+- A game created with `create-blacklight --link <checkout>` installs the modules of the same checkout as `link:` dependencies.
+
+The official modules are known to the CLI: when the registry cannot be reached, or the host has no registry (`v1/index.json` answers 404), `blacklight add` installs them and their known dependencies without the registry data (no engine check).
+
+Some modules need configuration fields that have no default; the type check of `game.config.ts` fails until they are set. `add` names them as its last line, e.g. for `accounts-oidc`: ``add `issuer: 'https://your-provider', clientId: 'your-client-id'` to modules['accounts-oidc'] in game.config.ts`` ([OpenID Connect provider](/publishing/oidc)).
+
+`blacklight add @blacklight/<package>` installs an engine package instead of a module (`ui`, `three`, `physics`, `net`, `native`, `mobile`, `relay`): from the same release as the game's `@blacklight/core`, or from the same checkout with `--link`. It does not touch `game.config.ts`.
 
 When `game.config.ts` is written in an unusual way (no `defineConfig({ ... })` or `export default { ... }`), the file is left untouched and the command prints the line to add.
 
@@ -108,6 +119,8 @@ README.md
 | `repository` | no       | Source URL; defaults to the package's `repository` field.      |
 | `official`   | no       | Set by the maintainers for modules maintained with the engine. |
 
+A built index adds `tarball` to a module (and to each version) when it is built with `--release-url <folder>`: the official modules then point at the tarballs of that release instead of npm. The engine's release workflow builds the official index this way.
+
 The engine repository keeps the official index and a CI template in `packages/registry/index/`. CI runs `blacklight-registry validate` on every pull request: the file name equals `name`, the package is published, its latest version passes the package checks above, its `blacklight.module` equals `name`, no package is listed twice and every dependency has an entry. On `main` and once a day, `blacklight-registry build` writes the static API and the workflow deploys it (GitHub Pages in the template). New versions of a listed package need no pull request; the daily build picks them up.
 
 ```sh
@@ -161,11 +174,11 @@ export BLACKLIGHT_REGISTRY=https://modules.example.com
 blacklight search
 ```
 
-`--registry` on a command overrides the variable. The default registry is the one hosted by BlackLight.
+`--registry` on a command overrides the variable. The default registry is the engine's, on GitHub Pages: `https://beedywool.github.io/blacklight-engine/registry`.
 
 ## Limits
 
-- The registry lists packages; npm hosts them. A package removed from npm breaks `blacklight add` for it, whatever the index says.
+- The registry lists packages; npm or a GitHub release hosts them. A package removed from npm breaks `blacklight add` for it, whatever the index says.
 - Validation checks names, manifests and licenses, not code. Permissions are declarations, not enforced.
 - The engine check compares the manifest's `engine` range with the installed `@blacklight/core`; it cannot tell whether a module actually works with that version.
 - Offline, `blacklight add` only knows the official modules and installs their latest version without the engine check.

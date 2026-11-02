@@ -1,4 +1,4 @@
-$ pnpm create blacklight my-game
+$ pnpm dlx https://github.com/beedywool/blacklight-engine/releases/latest/download/create-blacklight.tgz my-game
 Created ~/my-game from the "empty" template.
 
 Next:

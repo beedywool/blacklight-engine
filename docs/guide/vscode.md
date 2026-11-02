@@ -2,7 +2,7 @@
 
 The Blacklight Engine extension adds editors, completion and live debugging to VS Code. It activates in a folder that contains a `game.config.ts` and finds the game from the open file, so a monorepo with several games works too. Everything it edits stays plain TypeScript or JSON: you can edit the same files by hand, review them in a diff and keep them in git.
 
-Install it from the Marketplace or Open VSX (search "Blacklight Engine"), or from a package built from this repository:
+Install the `.vsix` file attached to each [GitHub release](https://github.com/beedywool/blacklight-engine/releases) (`blacklight-vscode-<version>.vsix`) with `code --install-extension blacklight-vscode-1.2.0.vsix`, or with **Install from VSIX...** in the `...` menu of the Extensions view ([Install the tools](./installation#the-blacklight-engine-extension)). The extension is not on the Marketplace or Open VSX yet. To try a change of this repository, build and install the package yourself:
 
 ```sh
 pnpm --filter blacklight-vscode build

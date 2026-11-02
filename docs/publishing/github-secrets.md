@@ -2,7 +2,7 @@
 
 _Checked 2026-11._
 
-Every game made with `pnpm create blacklight` has `.github/workflows/build.yml`, which builds web, Windows, macOS, Linux, Android and iOS on each push. It signs only with credentials you store as repository secrets. A job whose secrets are missing still succeeds: it builds unsigned (or a debug APK, or the iOS Simulator app) and adds a notice to the run summary naming the secrets it needs. Nothing in the workflow or the engine holds a credential of its own.
+Every game made with `create-blacklight` has `.github/workflows/build.yml`, which builds web, Windows, macOS, Linux, Android and iOS on each push. It signs only with credentials you store as repository secrets. A job whose secrets are missing still succeeds: it builds unsigned (or a debug APK, or the iOS Simulator app) and adds a notice to the run summary naming the secrets it needs. Nothing in the workflow or the engine holds a credential of its own.
 
 Cost: secrets are free on GitHub. Running the workflow uses GitHub Actions minutes; macOS runners count for more minutes than Linux ones on private repositories, see GitHub's current billing.
 
