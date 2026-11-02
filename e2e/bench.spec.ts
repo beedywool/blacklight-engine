@@ -39,11 +39,19 @@ import {
   type TestInfo,
 } from '@playwright/test';
 import { best, compare, formatComparison, summarize } from '../scripts/bench.mjs';
-import { CHROMIUM_ARGS, RUNS, recordRuns, rendererScript } from './bench-shared';
+import {
+  CHROMIUM_ARGS,
+  RUNS,
+  recordRuns,
+  rendererScript,
+  LIMITS_ONLY,
+  LIMITS_ONLY_REASON,
+} from './bench-shared';
 import { run, serve } from './server';
 
 const fixture = resolve(import.meta.dirname, 'fixtures/bench');
 const port = 5440;
+const SOFTWARE_GPU = /SwiftShader|llvmpipe|Software/i;
 
 const PROFILES: Record<string, BrowserContextOptions> = {
   desktop: { viewport: { width: 1920, height: 1080 }, deviceScaleFactor: 1 },
@@ -157,6 +165,13 @@ for (const [name, profile] of Object.entries(PROFILES)) {
       more: () => measureRuns(profile, RUNS),
       testInfo,
     });
+    // NF-01's limit, 60 fps, on a hardware GPU only: a software GPU (CI) measures its own
+    // drawing. 57 leaves room for a missed vsync in a 5 s window.
+    if (!SOFTWARE_GPU.test(gpu)) {
+      expect
+        .soft(Number(best(runs).fps), `fps of the best run on ${gpu} (NF-01: 60 fps)`)
+        .toBeGreaterThanOrEqual(57);
+    }
     expect(
       rows.filter((row) => row.regressed).map((row) => row.metric),
       formatComparison(rows),
@@ -169,6 +184,7 @@ for (const [name, profile] of Object.entries(PROFILES)) {
 // before on the same machine, must be reported as a regression; the clean runs compared with
 // themselves must not.
 test('the regression check fails when every frame does 30 % more work', async () => {
+  test.skip(LIMITS_ONLY, LIMITS_ONLY_REASON);
   test.setTimeout(60_000 + 6 * RUN_MS);
   const profile = PROFILES.desktop!;
   const cleanRuns = await measureRuns(profile, 3);

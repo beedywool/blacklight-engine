@@ -17,6 +17,18 @@ import {
 export const resultsDir = resolve(import.meta.dirname, '../bench-results');
 export const RUNS = Number(process.env.BLACKLIGHT_BENCH_RUNS ?? 5);
 
+/**
+ * `BLACKLIGHT_BENCH_LIMITS_ONLY=1` (CI): only the spec's absolute limits are checked (NF-01 fps on
+ * a hardware GPU, NF-02 3 s / 5 s, NF-03 300 MB); the results are recorded but not compared with
+ * the baseline, and the regression proofs are skipped. Shared runners vary by more than the 10 %
+ * the comparison detects, so that gate runs locally with `pnpm bench` on a stable machine.
+ */
+export const LIMITS_ONLY = process.env.BLACKLIGHT_BENCH_LIMITS_ONLY === '1';
+
+/** Reason given when a regression proof is skipped in {@link LIMITS_ONLY} mode. */
+export const LIMITS_ONLY_REASON =
+  'BLACKLIGHT_BENCH_LIMITS_ONLY: the 10 % regression gate and its proof run locally with pnpm bench';
+
 /** Chromium as a player's browser runs it: a hardware GPU when there is one, no background throttling. */
 export const CHROMIUM_ARGS = [
   // A hardware GPU when there is one (SwiftShader otherwise, as on CI runners). Not on Windows:
@@ -66,7 +78,7 @@ export async function recordRuns(options: {
   const runs = [...options.runs];
   const runner = runnerName(gpu);
   const update = process.env.BLACKLIGHT_BENCH_UPDATE === '1';
-  const baseline = readBaseline()[runner]?.[profile];
+  const baseline = LIMITS_ONLY ? undefined : readBaseline()[runner]?.[profile];
   const current = () => gatedValues({ best: best(runs), median: summarize(runs) });
   let rows = baseline ? compare(gatedValues(baseline), current()) : [];
   if (rows.some((row) => row.regressed) && !update) {
@@ -92,6 +104,10 @@ export async function recordRuns(options: {
   if (update) {
     updateBaseline([file]);
     testInfo.annotations.push({ type: 'baseline', description: `updated for ${runner}` });
+    return { rows: [], runs };
+  }
+  if (LIMITS_ONLY) {
+    testInfo.annotations.push({ type: 'baseline', description: 'not compared: limits only' });
     return { rows: [], runs };
   }
   if (!baseline) {

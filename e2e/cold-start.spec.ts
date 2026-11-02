@@ -37,7 +37,13 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { chromium, expect, test, type TestInfo } from '@playwright/test';
 import { compare, formatComparison, median } from '../scripts/bench.mjs';
-import { CHROMIUM_ARGS, recordRuns, rendererScript } from './bench-shared';
+import {
+  CHROMIUM_ARGS,
+  recordRuns,
+  rendererScript,
+  LIMITS_ONLY,
+  LIMITS_ONLY_REASON,
+} from './bench-shared';
 import { run, serve } from './server';
 
 /** NF-02: cold start under 3 s on desktop. */
@@ -315,6 +321,7 @@ for (const [index, template] of TEMPLATES.entries()) {
 // just before on the same machine, must be reported as a regression; the clean launches compared
 // with themselves must not.
 test('the regression check fails when startup takes 30 % longer', async () => {
+  test.skip(LIMITS_ONLY, LIMITS_ONLY_REASON);
   test.setTimeout(600_000);
   const fixture = join(root, 'e2e/fixtures/bench');
   try {

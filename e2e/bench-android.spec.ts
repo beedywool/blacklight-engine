@@ -48,7 +48,7 @@ import {
 } from '@playwright/test';
 import { findAndroidSdk, findJava } from '../packages/cli/src/targets/mobile-tools';
 import { best, compare, formatComparison, median, summarize } from '../scripts/bench.mjs';
-import { RUNS, recordRuns } from './bench-shared';
+import { RUNS, recordRuns, LIMITS_ONLY, LIMITS_ONLY_REASON } from './bench-shared';
 import { run } from './server';
 
 /** NF-02: first interactive screen under 5 s on mobile. */
@@ -540,6 +540,7 @@ test('NF-01: 300 animated sprites and an animated UI screen in the release app, 
 // frame (`?burn=`, read by the fixture only) must be reported as a regression against clean runs
 // taken just before; the clean runs compared with themselves must not.
 test('NF-01: the regression check fails when every frame does 30 % more work', async () => {
+  test.skip(LIMITS_ONLY, LIMITS_ONLY_REASON);
   test.setTimeout(600_000);
   if (!installed.has('bench')) buildAndInstall('bench');
   const cleanRuns = await measureBenchRuns(3, '');
@@ -649,6 +650,7 @@ for (const app of ['party-game', 'visual-novel'] as const) {
 // first frame worth 30 % of its median start (VITE_BENCH_STARTUP_DELAY_MS, read by the fixture
 // only) must be reported as a regression against the clean build; clean against itself must not.
 test('NF-02: the regression check fails when startup takes 30 % longer', async () => {
+  test.skip(LIMITS_ONLY, LIMITS_ONLY_REASON);
   test.setTimeout(900_000);
   buildAndInstall('bench');
   await launches('bench', 1);
