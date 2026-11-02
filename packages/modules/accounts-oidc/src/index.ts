@@ -71,7 +71,9 @@ export type AccountsConfigInput = Partial<Omit<AccountsConfig, 'clientId' | 'iss
 
 const config: Schema<AccountsConfig, AccountsConfigInput> = t.object({
   preset: t.enum(['blacklight']).optional(),
-  issuer: t.string({ url: true }).optional(),
+  // Required in game.config.ts (the input type says so), but a missing one is reported at setup
+  // with a message that shows what to write, rather than the schema's generic line.
+  issuer: t.string({ url: true }).optional() as Schema<string | undefined, string>,
   clientId: t.string({ min: 1 }),
   scopes: t.array(t.string({ min: 1 })).optional(),
   redirectUri: t.string({ min: 1 }).optional(),
