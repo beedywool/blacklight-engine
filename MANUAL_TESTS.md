@@ -277,6 +277,7 @@ With an Xbox Series, a DualSense, a Switch Pro and a generic USB pad, in the des
 
 1. Windows: `WIN_CSC_LINK=<cert.pfx> WIN_CSC_KEY_PASSWORD=… pnpm blacklight sign --dry-run --target win`, then `blacklight build --target win`. Expected: the plan lists `signtool` with the password masked; the installer and the portable .exe are signed and SmartScreen shows the publisher.
 2. macOS: `CSC_LINK`, `CSC_KEY_PASSWORD`, `APPLE_API_KEY`, `APPLE_API_KEY_ID`, `APPLE_API_ISSUER` set, `blacklight build --target mac`. Expected: notarization succeeds, `xcrun stapler validate` passes, the dmg opens without a Gatekeeper warning on another Mac.
+3. Windows with Azure Trusted Signing (an Azure subscription, a validated identity and a Public Trust certificate profile, see docs/publishing/windows.md): set the seven `AZURE_*` variables, no `WIN_CSC_LINK`, on Windows run `blacklight sign --dry-run --target win`, then `blacklight build --target win`. Expected: the plan shows `Invoke-TrustedSigning` with your account and profile, the build signs, and the installer's Properties → Digital Signatures shows your publisher name with a timestamp.
 
 ## Deep links on desktop
 
@@ -312,6 +313,9 @@ Build a template (`pnpm build`) and host `dist/` on an HTTPS server you control 
 1. `pnpm create blacklight my-game --template platformer`, `cd my-game`, `pnpm install`, commit everything including `pnpm-lock.yaml`, push to a new GitHub repository. Expected: the "Build" workflow runs six jobs (web, desktop win / mac / linux, android, ios) and each uploads an artifact.
 2. Download the artifacts. Expected: `web` holds the PWA, `desktop-win` the NSIS installer and portable .exe, `desktop-mac` dmg + zip for x64 and arm64, `desktop-linux` AppImage + deb, `android` a debug APK that installs with `adb install`, `ios` the Simulator `.app`.
 3. Add the signing secrets named in `.github/workflows/build.yml` and run it again (Actions → Build → Run workflow). Expected: signed installers and a release APK.
+4. With no secret at all. Expected: every job succeeds, and the run summary shows one notice per unsigned job (Windows, macOS, Android, iOS) naming the secrets to add; the Windows log never shows `CSC_LINK` set even when the macOS secrets exist.
+5. With only the iOS secrets (`APPLE_TEAM_ID`, `IOS_DIST_CERT_P12`, `IOS_DIST_CERT_PASSWORD`, `APPLE_API_KEY_P8`, `APPLE_API_KEY_ID`, `APPLE_API_ISSUER`, key with the Admin role). Expected: the `ios` artifact also holds a signed `.ipa` that Transporter accepts for App Store Connect.
+6. With the Android keystore secrets. Expected: the `android` artifact holds a signed release APK and an `.aab` that the Play Console accepts in an internal testing release.
 
 ## Documentation site (phase 4a, any desktop browser and a phone)
 

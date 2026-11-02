@@ -123,13 +123,29 @@ presence.onJoinRequest((user) => presence.accept(user.id)); // "Ask to join"
 
 The app speaks Discord's local RPC protocol directly (no Discord SDK). When Discord is not running it retries every 15 seconds and sends the last presence once connected. On the web and without `discord.appId`, every call does nothing.
 
+## What you need to provide
+
+Certificates, keys and store accounts always come from you, the game developer; the engine ships none and never refers to anyone else's. Without them every desktop build still works: it is unsigned, and the CLI says what is missing (`Windows: unsigned …`, `macOS: unsigned …`).
+
+| Credential                                    | Where to get it                                                                             | Paid or free                                      | Environment variable                                                                                                                                               |
+| --------------------------------------------- | ------------------------------------------------------------------------------------------- | ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Windows code signing, Azure Trusted Signing   | [Windows code signing](../publishing/windows#azure-trusted-signing-cheapest-trusted-option) | paid, monthly                                     | `AZURE_SIGNING_ENDPOINT`, `AZURE_SIGNING_ACCOUNT`, `AZURE_SIGNING_PROFILE`, `AZURE_SIGNING_PUBLISHER`, `AZURE_TENANT_ID`, `AZURE_CLIENT_ID`, `AZURE_CLIENT_SECRET` |
+| Windows code signing, certificate in a `.pfx` | [Windows code signing](../publishing/windows#a-pfx-file)                                    | paid (public CA) or free (self-signed, test only) | `WIN_CSC_LINK`, `WIN_CSC_KEY_PASSWORD`                                                                                                                             |
+| Apple Developer Program membership            | [Apple](../publishing/apple#_1-enroll-in-the-apple-developer-program)                       | paid, yearly                                      | `APPLE_TEAM_ID`                                                                                                                                                    |
+| Developer ID Application certificate (macOS)  | [Apple](../publishing/apple#_2-developer-id-application-certificate-macos)                  | included in the membership                        | `CSC_LINK`, `CSC_KEY_PASSWORD`, or `CSC_NAME`                                                                                                                      |
+| Notarization: App Store Connect API key       | [Apple](../publishing/apple#_3-app-store-connect-api-key-notarization-ios-on-ci)            | included in the membership                        | `APPLE_API_KEY`, `APPLE_API_KEY_ID`, `APPLE_API_ISSUER` (or `APPLE_ID`, `APPLE_APP_SPECIFIC_PASSWORD`, `APPLE_TEAM_ID`)                                            |
+| Steamworks App ID, depots, builder account    | [Steamworks](../publishing/steam)                                                           | paid, once per app (Steam Direct fee)             | `steam.appId` in `game.config.ts`, `STEAM_USERNAME`                                                                                                                |
+| CI: the same values as repository secrets     | [GitHub secrets](../publishing/github-secrets)                                              | free                                              | secrets of the same names (`APPLE_API_KEY_P8` holds the `.p8` contents)                                                                                            |
+
+Linux packages are not signed and need nothing.
+
 ## Signing and notarization
 
 Signing is optional and turns on when certificates are in the environment (variable names are electron-builder's):
 
 | OS      | Variables                                                                                                                                                                                                              | Result                                                   |
 | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------- |
-| Windows | `WIN_CSC_LINK` (a .pfx path or base64), `WIN_CSC_KEY_PASSWORD`                                                                                                                                                         | Installer and executables signed (SHA-256, timestamped). |
+| Windows | `WIN_CSC_LINK` (a .pfx path or base64), `WIN_CSC_KEY_PASSWORD`; or the Azure Trusted Signing variables above                                                                                                           | Installer and executables signed (SHA-256, timestamped). |
 | macOS   | `CSC_LINK` + `CSC_KEY_PASSWORD` (Developer ID Application .p12) or `CSC_NAME`; to notarize, `APPLE_API_KEY` + `APPLE_API_KEY_ID` + `APPLE_API_ISSUER`, or `APPLE_ID` + `APPLE_APP_SPECIFIC_PASSWORD` + `APPLE_TEAM_ID` | Hardened runtime, signed, notarized and stapled.         |
 | Linux   | none                                                                                                                                                                                                                   | AppImage and deb are not signed.                         |
 
@@ -160,4 +176,5 @@ A 512×512 (or larger) `icon.png` at the root of the game becomes the app icon o
 - Steam leaderboards are not available: steamworks.js 0.4.0 does not expose them (`uploadScore` and `getScores` fail with a message); use the reference server for scores. The Steam overlay may not show in Electron (accepted limitation L3); achievements, Cloud and rich presence work.
 - Native addons of modules that use Node's ABI instead of Node-API (better-sqlite3) ship as installed and must be rebuilt for the Electron version (`npx @electron/rebuild`) before packaging; Node-API addons (the SDL binding, steamworks.js) work as is.
 - Signing, notarization and the Steam upload need accounts that do not exist during development; they are covered in dry-run mode only (L6) and by the manual checklist.
+- Windows certificates whose key sits on a USB token or in a CA's own cloud service (every new publicly trusted OV or EV certificate since June 2023) are not driven by the CLI: build unsigned and sign `release/win/*.exe` with the vendor's tools, or use Azure Trusted Signing, which the CLI drives ([Windows code signing](../publishing/windows#ov-and-ev-certificates)).
 - Deep links on Linux work once the scheme is registered: the deb package does it through its `.desktop` entry; an AppImage needs an AppImage launcher (or `xdg-mime`) to register it.

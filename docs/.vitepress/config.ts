@@ -170,6 +170,17 @@ const guide: DefaultTheme.SidebarItem[] = [
     ],
   },
   {
+    text: 'Publishing',
+    items: [
+      { text: 'Apple: macOS and iOS', link: '/publishing/apple' },
+      { text: 'Windows code signing', link: '/publishing/windows' },
+      { text: 'Android and Google Play', link: '/publishing/android' },
+      { text: 'Steamworks', link: '/publishing/steam' },
+      { text: 'OpenID Connect provider', link: '/publishing/oidc' },
+      { text: 'GitHub secrets', link: '/publishing/github-secrets' },
+    ],
+  },
+  {
     text: 'Recipes',
     items: [
       { text: 'All recipes', link: '/recipes/' },
@@ -229,6 +240,7 @@ export default defineConfig({
       '/behaviors/': guide,
       '/recipes/': guide,
       '/tutorials/': guide,
+      '/publishing/': guide,
       '/api/': apiSidebar(),
     },
     search: { provider: 'local' },
