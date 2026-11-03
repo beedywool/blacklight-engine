@@ -1,6 +1,6 @@
 {
   "name": "@blacklight/native",
-  "version": "0.0.0",
+  "version": "1.1.0",
   "description": "Desktop app for Blacklight Engine games: Electron main process, preload, IPC bridge, SDL gamepads, Steamworks, Discord Rich Presence.",
   "license": "MIT",
   "type": "module",

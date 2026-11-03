@@ -1,6 +1,6 @@
 {
   "name": "@blacklight/module-cloud-save",
-  "version": "0.0.0",
+  "version": "1.1.0",
   "description": "Cloud saves for Blacklight Engine games: reference server or Steam Cloud, with conflict resolution.",
   "license": "MIT",
   "type": "module",

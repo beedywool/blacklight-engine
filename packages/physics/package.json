@@ -1,6 +1,6 @@
 {
   "name": "@blacklight/physics",
-  "version": "0.0.0",
+  "version": "1.1.0",
   "description": "Rigid-body physics for Blacklight Engine (Rapier 2D).",
   "license": "MIT",
   "type": "module",

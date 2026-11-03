@@ -2,7 +2,7 @@
   "name": "blacklight-vscode",
   "displayName": "Blacklight Engine",
   "description": "Blacklight Engine tools: scene, object, animation, sprite-sheet, UI timeline and config editors, completion, asset browser and live game debugging.",
-  "version": "0.0.0",
+  "version": "1.1.0",
   "private": true,
   "type": "module",
   "publisher": "blacklight",

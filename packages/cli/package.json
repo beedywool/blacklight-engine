@@ -1,6 +1,6 @@
 {
   "name": "@blacklight/cli",
-  "version": "0.0.0",
+  "version": "1.1.0",
   "description": "The `blacklight` command: create, dev, build.",
   "license": "MIT",
   "type": "module",

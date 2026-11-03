@@ -3,7 +3,38 @@
 Generated from the git history by `pnpm changelog` (`scripts/changelog.mjs`); do not edit by hand.
 Versions follow [semantic versioning](https://semver.org) as described in `CONTRIBUTING.md`.
 
-## Unreleased
+## 1.1.0 (2026-11-03)
+
+### api
+
+- frame.bleedX and frame.bleedY in the report (ece4918)
+
+### changelog
+
+- file conventional type(area) commits under their area, leave out release commits (308b816)
+
+### ci
+
+- deploy docs and registry to GitHub Pages from main (7e7e48f)
+
+### cli
+
+- pre-bundle the dependencies of @blacklight/ui in dev (268d66a)
+
+### docs
+
+- GitHub Pages deployment of the docs site and registry (ba2d754)
+- configurable base path (DOCS_BASE) for serving under a sub-path (b884ecf)
+
+### test
+
+- longer timeout for the changelog git test (slow git on Windows runners) (5b534eb)
+
+### ui
+
+- clip the layer to the canvas and expose the extend bleed (e78ef1b)
+
+## 1.0.0 (2026-11-02)
 
 ### accounts-oidc
 
@@ -339,11 +370,6 @@ Versions follow [semantic versioning](https://semver.org) as described in `CONTR
 - two headless party-game instances play Push-Push online through the real relay (70b39c3)
 - relay server with rooms, codes, lobby, LAN native module and Docker image (c52808d)
 
-### release
-
-- 1.0 summary at the top of the release notes (19655e6)
-- GitHub release workflow with tarballs, vsix, notes and registry deploy; e2e of a packed release (3b77ed7)
-
 ### repo
 
 - changelog generated from the git history, semver policy (DOC-07) (6bd8117)
@@ -406,6 +432,7 @@ Versions follow [semantic versioning](https://semver.org) as described in `CONTR
 
 ### other
 
+- changelog (391809b)
 - Windows signing through the developer's Azure Trusted Signing account (8a7e54c)
 - Template workflow: list the developer's signing secrets, scope them per OS, skip signing with a notice (4a7a5d9)
 - Build the macOS Steam depot as a universal app (d215a1e)

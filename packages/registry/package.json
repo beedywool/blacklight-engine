@@ -1,6 +1,6 @@
 {
   "name": "@blacklight/registry",
-  "version": "0.0.0",
+  "version": "1.1.0",
   "description": "Blacklight module registry: index format, validator and static API generator.",
   "license": "MIT",
   "type": "module",

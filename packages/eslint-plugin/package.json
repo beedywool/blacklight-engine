@@ -1,6 +1,6 @@
 {
   "name": "eslint-plugin-blacklight",
-  "version": "0.0.0",
+  "version": "1.1.0",
   "description": "ESLint rules for Blacklight Engine games: deterministic simulation code for online play.",
   "license": "MIT",
   "type": "module",

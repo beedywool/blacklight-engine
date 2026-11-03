@@ -1,6 +1,6 @@
 {
   "name": "@blacklight/core",
-  "version": "0.0.0",
+  "version": "1.1.0",
   "description": "Blacklight Engine runtime: game loop, scenes, objects, input, audio.",
   "license": "MIT",
   "type": "module",

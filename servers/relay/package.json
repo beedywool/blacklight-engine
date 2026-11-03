@@ -1,6 +1,6 @@
 {
   "name": "@blacklight/relay",
-  "version": "0.0.0",
+  "version": "1.1.0",
   "description": "Relay server for Blacklight Engine online games: rooms, room codes, lobby, WebSocket transport. Runs in Docker, in Node, or inside the desktop app for LAN play.",
   "license": "MIT",
   "type": "module",
@@ -32,8 +32,8 @@
     "ws": "8.22.0"
   },
   "devDependencies": {
-    "@blacklight/net": "workspace:*",
     "@blacklight/core": "workspace:*",
+    "@blacklight/net": "workspace:*",
     "@types/node": "24.19.2",
     "@types/ws": "8.18.2",
     "tsup": "9.0.0",

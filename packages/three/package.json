@@ -1,6 +1,6 @@
 {
   "name": "@blacklight/three",
-  "version": "0.0.0",
+  "version": "1.1.0",
   "description": "Light 3D for Blacklight Engine: glTF models inside 2D scenes and menus (Three.js).",
   "license": "MIT",
   "type": "module",
