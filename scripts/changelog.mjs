@@ -19,12 +19,13 @@ const RECORD = '\x1e';
  * @param {{ hash: string, subject: string, body: string }} commit
  */
 export function parseCommit({ hash, subject, body }) {
-  const match = /^([\w./@-]+(?:, ?[\w./@-]+)*)(!)?: (.+)$/.exec(subject);
-  const breaking = !!match?.[2] || /^BREAKING CHANGE:/m.test(body);
+  // `area: text`, or the conventional `type(area): text`, which files under the area.
+  const match = /^(?:\w+\(([\w./@-]+)\)|([\w./@-]+(?:, ?[\w./@-]+)*))(!)?: (.+)$/.exec(subject);
+  const breaking = !!match?.[3] || /^BREAKING CHANGE:/m.test(body);
   return {
     hash: hash.slice(0, 7),
-    area: match ? match[1].toLowerCase() : 'other',
-    text: match ? match[3] : subject,
+    area: match ? (match[1] ?? match[2]).toLowerCase() : 'other',
+    text: match ? match[4] : subject,
     breaking,
   };
 }
@@ -42,7 +43,8 @@ export function renderChangelog(releases) {
     'Versions follow [semantic versioning](https://semver.org) as described in `CONTRIBUTING.md`.',
   ];
   for (const release of releases) {
-    const commits = release.commits.map(parseCommit);
+    // The version bump (`release: 1.2.0`) is the release itself, not a change in it.
+    const commits = release.commits.map(parseCommit).filter((c) => c.area !== 'release');
     if (commits.length === 0) continue;
     lines.push('', `## ${release.name}${release.date ? ` (${release.date})` : ''}`);
     const breaking = commits.filter((c) => c.breaking);

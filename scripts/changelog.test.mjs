@@ -21,6 +21,10 @@ describe('parseCommit', () => {
     expect(parseCommit({ hash: 'a', subject: 'Fix things', body: '' }).area).toBe('other');
     // `Docs:` and `docs:` are one area.
     expect(parseCommit({ hash: 'a', subject: 'Docs: typo', body: '' }).area).toBe('docs');
+    expect(
+      parseCommit({ hash: 'a', subject: 'fix(cli): pre-bundle deps', body: '' }),
+    ).toMatchObject({ area: 'cli', text: 'pre-bundle deps', breaking: false });
+    expect(parseCommit({ hash: 'a', subject: 'feat(ui)!: drop X', body: '' }).breaking).toBe(true);
   });
 });
 
