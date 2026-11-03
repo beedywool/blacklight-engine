@@ -69,7 +69,7 @@ Replace `game.config.ts`:
 
 ## 4. The hero
 
-A game object lives in its own folder under `objects/`. Create `objects/hero/` and save this sprite sheet in it as `hero@16x16.png` (<a href="/downloads/hero@16x16.png" download>download</a>):
+A game object lives in its own folder under `objects/`. Create `objects/hero/` and save this sprite sheet in it as `hero@16x16.png` (<a href="../downloads/hero@16x16.png" download>download</a>):
 
 ![The hero sheet: two idle frames and four run frames, 16 × 16 pixels each](../examples/getting-started/objects/hero/hero@16x16.png){style="image-rendering: pixelated; width: 384px"}
 

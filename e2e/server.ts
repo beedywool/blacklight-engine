@@ -127,7 +127,9 @@ function kill(pid: number | undefined, signal: NodeJS.Signals = 'SIGKILL'): void
 
 async function answers(port: number): Promise<boolean> {
   try {
-    return (await fetch(`http://localhost:${port}/`)).ok;
+    // Any status: a site built for a sub-path (DOCS_BASE) answers 404 at the root.
+    await fetch(`http://localhost:${port}/`);
+    return true;
   } catch {
     return false;
   }

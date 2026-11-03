@@ -14,7 +14,12 @@ const repo = resolve(import.meta.dirname, '..');
 const docs = join(repo, 'docs');
 const examples = join(docs, 'examples');
 const port = 5380;
-const site = `http://localhost:${port}`;
+/**
+ * `DOCS_BASE=/blacklight-engine/` checks a build made for a sub-path (GitHub Pages): `vitepress
+ * preview` reads the same variable through the config and serves the site under that path.
+ */
+const base = (process.env.DOCS_BASE ?? '').replace(/^\/*/, '/').replace(/\/+$/, '');
+const site = `http://localhost:${port}${base}`;
 let stop: (() => void) | undefined;
 /**
  * First appearance of the code editor: CodeMirror is a chunk loaded when an editor mounts, and

@@ -35,6 +35,12 @@ const BEHAVIORS = [
   'flash',
   'fade',
 ];
+/**
+ * Path the site is served under: `/` (default, local dev and a domain of its own) or
+ * `/blacklight-engine/` on GitHub Pages (`.github/workflows/pages.yml` sets `DOCS_BASE`).
+ */
+const base = `/${(process.env.DOCS_BASE ?? '/').replace(/^\/+|\/+$/g, '')}/`.replace(/^\/\/$/, '/');
+
 const kebab = (name: string) => name.replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`);
 
 const guide: DefaultTheme.SidebarItem[] = [
@@ -211,6 +217,7 @@ export default defineConfig({
   description:
     'A TypeScript game framework for web developers: scenes, objects, Persona-grade UI, every platform.',
   lang: 'en',
+  base,
   cleanUrls: true,
   // Site data and the page hash map go to one shared chunk instead of being inlined in each of
   // the ~900 pages (the API reference alone has 740).
@@ -222,7 +229,7 @@ export default defineConfig({
   // The API reference is generated; its pages link to each other by file name.
   ignoreDeadLinks: [/^\.\.?\/api\//],
   head: [
-    ['link', { rel: 'icon', type: 'image/png', href: '/logo_bulb_only.png' }],
+    ['link', { rel: 'icon', type: 'image/png', href: `${base}logo_bulb_only.png` }],
     ['meta', { name: 'theme-color', content: '#080808' }],
   ],
   themeConfig: {
