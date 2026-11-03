@@ -78,7 +78,7 @@ pnpm bench               # NF-01 to NF-03 benchmarks (docs/benchmarks.md)
 
 ## Documentation
 
-The site in `docs/` (guides, tutorials with exercises, live examples, playground, API reference) runs locally. The API reference is generated from the packages' built declarations, so build them first:
+The site of the latest release is at https://beedywool.github.io/blacklight-engine/. The site in `docs/` (guides, tutorials with exercises, live examples, playground, API reference) runs locally. The API reference is generated from the packages' built declarations, so build them first:
 
 ```sh
 pnpm install && pnpm build
@@ -111,6 +111,6 @@ CI (`.github/workflows/ci.yml`) has two tiers. The fast tier runs on every push 
 - On Windows, CI runs the unit tests, the VS Code extension tests and the installer build; the e2e suite and the benchmarks run on a real Windows machine (CONTRIBUTING.md, MANUAL_TESTS.md).
 - CI runs GitHub's current runner images (`ubuntu-latest`, `macos-latest`, `windows-latest`, an API 35 Android emulator, the iOS Simulator of `macos-26`); the oldest supported versions of NF-05 (Windows 10, macOS 12, Ubuntu 22.04, Android 8, iOS 15) and the previous version of each browser are checked by hand.
 - No controller gyroscope or accelerometer (the SDL binding exposes no sensors), no Steam leaderboards (steamworks.js does not expose them; scores go to the reference server).
-- Everything installs from GitHub releases: the packages are not on npm and the extension is not on the VS Code Marketplace or Open VSX (`DECISIONS.md`). The module registry is served by GitHub Pages (`https://beedywool.github.io/blacklight-engine/registry`) from the first release on. The documentation site is built locally (`pnpm docs:dev`) or deployed by you (`docs/guide/deploy-docs.md`); it is not hosted by the project.
+- Everything installs from GitHub releases: the packages are not on npm and the extension is not on the VS Code Marketplace or Open VSX (`DECISIONS.md`). The documentation site (`https://beedywool.github.io/blacklight-engine/`) and the module registry (`https://beedywool.github.io/blacklight-engine/registry`) are served by GitHub Pages, deployed by `.github/workflows/pages.yml` after each release; the site documents the latest release, `pnpm docs:dev` the checkout.
 - Accounts have no default provider: each game sets its own OIDC `issuer` (`docs/publishing/oidc.md`).
 - The accepted limitations of 1.0 (shaders cannot read the HTML UI, float differences between V8 and JavaScriptCore, the Steam overlay in Electron, client-side protection, bytecode per Electron version, controller sensors, Steam leaderboards) are in `docs/guide/limitations.md`.

@@ -25,14 +25,14 @@ The base URL is, in order: the `--registry <url>` option of `add`, `search` or `
 
 ## The official registry
 
-The engine's own index, `packages/registry/index/`, is built and deployed by the release workflow (`.github/workflows/release.yml`) on every release tag, to GitHub Pages:
+The engine's own index, `packages/registry/index/`, is built and deployed to GitHub Pages by `.github/workflows/pages.yml`, together with the docs site, after every release:
 
 | URL                                                                             | Content                      |
 | ------------------------------------------------------------------------------- | ---------------------------- |
 | `https://beedywool.github.io/blacklight-engine/registry/v1/index.json`          | every official module        |
 | `https://beedywool.github.io/blacklight-engine/registry/v1/modules/<name>.json` | one module with its versions |
 
-The workflow builds it from the checkout of the tag, not from npm, and points each official module at the release's tarball:
+The workflow builds it from the checkout of the release tag, not from npm, and points each official module at the release's tarball:
 
 ```sh
 node packages/registry/dist/cli.js build packages/registry/index --out site/registry \
@@ -40,7 +40,13 @@ node packages/registry/dist/cli.js build packages/registry/index --out site/regi
   --release-url https://github.com/beedywool/blacklight-engine/releases/download/v1.2.0
 ```
 
-`--release-url <folder>` adds `tarball` to the `@blacklight/module-*` entries (`<folder>/blacklight-module-sqlite-1.2.0.tgz`), and `blacklight add` installs that URL. The Pages site holds the registry under `registry/` so that the documentation can share the site later; the deploy replaces the whole site, so a docs deployment to the same Pages site must come from the same workflow. GitHub Pages must be enabled with "GitHub Actions" as the source (repository Settings > Pages). Until the first release is deployed the URL answers 404, and `blacklight add` falls back to its built-in list of official modules.
+`--release-url <folder>` adds `tarball` to the `@blacklight/module-*` entries (`<folder>/blacklight-module-sqlite-1.2.0.tgz`), and `blacklight add` installs that URL. The registry lives under `registry/` of the same Pages site as the docs (at the root): GitHub Pages serves one site per repository and each deployment replaces it, so `pages.yml` builds both into one artifact and deploys them together. It starts when the Release workflow succeeds on a tag push, and runs on `main`, since the `github-pages` environment accepts deployments from `main` only (a job of the release runs on the tag and is refused). To deploy a release again, or after a manual release:
+
+```sh
+gh workflow run pages.yml --ref main -f tag=v1.2.0
+```
+
+GitHub Pages must be enabled with "GitHub Actions" as the source (repository Settings > Pages). When the registry moves to a custom domain, [Deploy the docs](/guide/deploy-docs#github-pages) lists the steps; `DEFAULT_REGISTRY` changes with them. When the host has no registry (`index.json` answers 404), `blacklight add` falls back to its built-in list of official modules.
 
 Each release replaces the index: `versions` lists the release's version only, since `--local` reads one version per package. Games on an older release are not affected: `blacklight add` installs official modules from the game's own release, whatever the registry's `version` says.
 
@@ -167,7 +173,7 @@ New versions need no pull request. Removing a module is a pull request that dele
 
 ## Limits
 
-- `@blacklight/registry` is not published on npm (engine packages are GitHub release assets), so the template workflow's `npx -p @blacklight/registry@1` step fails; replace it with the release tarball (`npx --yes -p https://github.com/beedywool/blacklight-engine/releases/download/v1.2.0/blacklight-registry-1.2.0.tgz blacklight-registry validate .`) or run the tool from the engine checkout as shown in [Build](#build). Validating the official index against npm fails for the same reason; `--local packages/modules` builds it from the checkout, as the release workflow does.
+- `@blacklight/registry` is not published on npm (engine packages are GitHub release assets), so the template workflow's `npx -p @blacklight/registry@1` step fails; replace it with the release tarball (`npx --yes -p https://github.com/beedywool/blacklight-engine/releases/download/v1.2.0/blacklight-registry-1.2.0.tgz blacklight-registry validate .`) or run the tool from the engine checkout as shown in [Build](#build). Validating the official index against npm fails for the same reason; `--local packages/modules` builds it from the checkout, as `pages.yml` does.
 - The registry is rebuilt on a schedule, not on npm events: a new version appears after the next build (at most a day with the template workflow, plus the cache lifetime).
 - The build reads every listed package from npm one after another; a large index takes as long as that many requests, and an npm outage fails the build (the previous deployment stays online).
 - The index checks names, manifests and licenses, not code, and does not mirror tarballs: a package removed from npm cannot be installed, whatever the index says.

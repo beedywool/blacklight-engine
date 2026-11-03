@@ -178,7 +178,7 @@ git push origin v1.1.0            # starts the release workflow
 gh run watch "$(gh run list --workflow release.yml --limit 1 --json databaseId --jq '.[0].databaseId')" --exit-status
 ```
 
-The workflow sets the versions from the tag in any case, so a forgotten bump still releases consistent packages, but the commit should carry the version (`create-blacklight --link` and `blacklight --version` read it). A failed run creates no release: fix the cause, move the tag (`git tag -f v1.1.0 && git push -f origin v1.1.0`) and the workflow runs again. GitHub Pages must be enabled with "GitHub Actions" as its source for the `registry` job.
+The workflow sets the versions from the tag in any case, so a forgotten bump still releases consistent packages, but the commit should carry the version (`create-blacklight --link` and `blacklight --version` read it). A failed run creates no release: fix the cause, move the tag (`git tag -f v1.1.0 && git push -f origin v1.1.0`) and the workflow runs again. When the release succeeds, `.github/workflows/pages.yml` deploys the docs and the module registry of the tag to GitHub Pages from `main` (`docs/guide/deploy-docs.md`); GitHub Pages must be enabled with "GitHub Actions" as its source. `gh workflow run pages.yml --ref main -f tag=v1.1.0` deploys a release again.
 
 To check the packaging without releasing, run the workflow by hand: it is a dry run by default, which builds everything and uploads it to the run instead of a release.
 
