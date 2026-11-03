@@ -410,8 +410,13 @@ export function createViteConfig(gameRoot: string, options: ViteConfigOptions = 
       dedupe: ['vue', 'pixi.js', 'motion', 'three', '@blacklight/core', '@blacklight/ui'],
     },
     // The UI package references its glyph files with `new URL(..., import.meta.url)`, which
-    // pre-bundling would break.
-    optimizeDeps: { exclude: ['@blacklight/ui'] },
+    // pre-bundling would break. Excluding it also hides its imports from the dependency scan, so
+    // its own dependencies are listed: unbundled, pixi.js pulls the CommonJS build of
+    // eventemitter3 into the browser and the game stops on a blank page.
+    optimizeDeps: {
+      exclude: ['@blacklight/ui'],
+      include: ['@blacklight/ui > pixi.js', '@blacklight/ui > inkjs', '@blacklight/ui > motion'],
+    },
     server: {
       port: options.port,
       host: options.host,

@@ -37,4 +37,16 @@ describe('createViteConfig', () => {
     expect(config.build?.outDir).toBe(join(root, 'dist'));
     expect(config.base).toBe('./');
   });
+
+  it('pre-bundles the dependencies of the excluded UI package', () => {
+    const { optimizeDeps } = createViteConfig(game());
+    expect(optimizeDeps?.exclude).toContain('@blacklight/ui');
+    expect(optimizeDeps?.include).toEqual(
+      expect.arrayContaining([
+        '@blacklight/ui > pixi.js',
+        '@blacklight/ui > inkjs',
+        '@blacklight/ui > motion',
+      ]),
+    );
+  });
 });
