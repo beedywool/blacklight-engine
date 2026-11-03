@@ -1602,7 +1602,7 @@ class UiRuntime implements UiHost
   readonly element: HTMLElement
   readonly entries: ScreenEntry[]
   readonly focus: FocusManager
-  readonly frame: { height: number; scale: number; width: number; x: number; y: number }
+  readonly frame: { bleedX: number; bleedY: number; height: number; scale: number; width: number; x: number; y: number }
   readonly fx: FxLayer
   readonly game: Game
   readonly global: UiStack
