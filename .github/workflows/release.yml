@@ -3,12 +3,14 @@ name: Release
 # DOC-07. Engine releases live on GitHub only (no npm, no VS Code Marketplace for now).
 # - `pack` sets every package to the version of the tag, builds, packs each published package
 #   (scripts/release-pack.mjs: engine dependencies point at this release's asset URLs), packages
-#   the VS Code extension, builds the module registry for GitHub Pages and the release notes
-#   (`pnpm changelog --notes`). Everything is uploaded to the workflow run.
+#   the VS Code extension and writes the release notes (`pnpm changelog --notes`). Everything is
+#   uploaded to the workflow run.
 # - `release` attaches the files to the GitHub Release of the tag.
-# - `registry` deploys the registry index to https://beedywool.github.io/blacklight-engine/registry.
-# A tag push `v*` runs all three. A manual run is a dry run by default: `pack` only, the files stay
-# on the run (`gh run download <id>`).
+# A tag push `v*` runs both. A manual run is a dry run by default: `pack` only, the files stay on
+# the run (`gh run download <id>`).
+# The docs and the module registry go to GitHub Pages from pages.yml, which starts when this
+# workflow succeeds on a tag push: the `github-pages` environment accepts deployments from `main`
+# only, and a run of this workflow is on the tag.
 on:
   push:
     tags: ['v*']
@@ -18,7 +20,7 @@ on:
         description: 'Version to pack (x.y.z). Empty: 0.0.0-dev.<run number>. A real release needs the tag v<version> to exist.'
         default: ''
       dry-run:
-        description: 'Upload the files to the workflow run only: no GitHub Release, no registry deployment'
+        description: 'Upload the files to the workflow run only: no GitHub Release'
         type: boolean
         default: true
 
@@ -62,13 +64,6 @@ jobs:
       - run: |
           pnpm --filter blacklight-vscode package
           mv packages/vscode/dist/blacklight.vsix "release/blacklight-vscode-${{ steps.version.outputs.version }}.vsix"
-      # The registry index: official modules point at this release's tarballs. The site keeps
-      # registry/ in a folder of its own so the docs can share the Pages site later.
-      - run: |
-          node packages/registry/dist/cli.js build packages/registry/index --out site/registry \
-            --local packages/modules \
-            --release-url "https://github.com/${GITHUB_REPOSITORY}/releases/download/v${{ steps.version.outputs.version }}"
-          touch site/.nojekyll
       - env:
           EVENT: ${{ github.event_name }}
           VERSION: ${{ steps.version.outputs.version }}
@@ -97,9 +92,6 @@ jobs:
             release/
             release-notes.md
           if-no-files-found: error
-      - uses: actions/upload-pages-artifact@v4
-        with:
-          path: site
 
   release:
     needs: pack
@@ -120,17 +112,3 @@ jobs:
           if [[ "$VERSION" == *-* ]]; then flags+=(--prerelease); fi
           gh release create "v$VERSION" release/* --repo "$GITHUB_REPOSITORY" --verify-tag \
             --title "Blacklight Engine $VERSION" --notes-file release-notes.md "${flags[@]}"
-
-  registry:
-    needs: [pack, release]
-    if: github.event_name == 'push' || !inputs.dry-run
-    runs-on: ubuntu-latest
-    permissions:
-      pages: write
-      id-token: write
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}registry/v1/index.json
-    steps:
-      - id: deployment
-        uses: actions/deploy-pages@v4

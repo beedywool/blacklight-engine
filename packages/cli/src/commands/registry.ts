@@ -19,7 +19,7 @@ import { generateTypes } from '../vite';
 
 /**
  * Registry used when neither `--registry` nor `BLACKLIGHT_REGISTRY` is set: the engine's GitHub
- * Pages site, rebuilt by each release (`.github/workflows/release.yml`).
+ * Pages site, deployed after each release (`.github/workflows/pages.yml`).
  */
 export const DEFAULT_REGISTRY = 'https://beedywool.github.io/blacklight-engine/registry';
 

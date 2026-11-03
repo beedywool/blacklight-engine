@@ -1,0 +1,107 @@
+name: Pages
+
+# The GitHub Pages site of the engine: the docs at https://beedywool.github.io/blacklight-engine/
+# and the module registry under registry/ (`DEFAULT_REGISTRY` in packages/cli/src/commands/registry.ts
+# requests registry/v1/index.json). Pages hosts one site per repository and every deployment
+# replaces it, so both parts are built and deployed together, from one release's source.
+#
+# The run itself is on `main`: the `github-pages` environment only accepts deployments from `main`,
+# and a run of the Release workflow is on the tag. `workflow_run` always runs on the default
+# branch, so a tag push releases first (release.yml), then this workflow checks out that tag,
+# builds and deploys. A manual run (`gh workflow run pages.yml --ref main -f tag=v1.2.0`) deploys
+# any release again; an empty tag means the latest release.
+on:
+  workflow_run:
+    workflows: [Release]
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag to deploy (v1.2.0). Empty: the latest release.'
+        default: ''
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    # A release made by a tag push; manual Release runs (dry runs by default) deploy nothing.
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push')
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.tag.outputs.tag }}
+    steps:
+      - id: tag
+        env:
+          GH_TOKEN: ${{ github.token }}
+          INPUT_TAG: ${{ inputs.tag }}
+          RUN_TAG: ${{ github.event.workflow_run.head_branch }}
+        run: |
+          if [ "$GITHUB_EVENT_NAME" = workflow_run ]; then tag="$RUN_TAG"; else tag="$INPUT_TAG"; fi
+          if [ -z "$tag" ]; then
+            tag="$(gh release view --repo "$GITHUB_REPOSITORY" --json tagName --jq .tagName)"
+          fi
+          # The registry points at the release's tarballs: the release must exist.
+          if ! gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null; then
+            echo "::error::No GitHub Release \"$tag\": run the Release workflow for it first."; exit 1
+          fi
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+      # The whole history: the docs show each page's last-updated date from Git.
+      - uses: actions/checkout@v5
+        with:
+          ref: refs/tags/${{ steps.tag.outputs.tag }}
+          fetch-depth: 0
+      # v1.0.0 predates DOCS_BASE: its docs assume the root of a domain. Take the two files that
+      # made the site work under a path from this workflow's commit (no other change to them since).
+      - run: |
+          if ! grep -q DOCS_BASE docs/.vitepress/config.ts; then
+            git checkout "$GITHUB_SHA" -- docs/.vitepress/config.ts docs/guide/getting-started.md
+          fi
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      # Same versions as the release's packages (release.yml): the registry lists them.
+      - env:
+          TAG: ${{ steps.tag.outputs.tag }}
+        run: pnpm -r --filter "./packages/**" --filter "./servers/relay" exec npm pkg set "version=${TAG#v}"
+      - run: pnpm build
+      - run: pnpm docs:build
+        env:
+          DOCS_BASE: /blacklight-engine/
+      # One folder: the docs at the root (with VitePress's 404.html), the registry in registry/.
+      - env:
+          TAG: ${{ steps.tag.outputs.tag }}
+        run: |
+          cp -r docs/.vitepress/dist site
+          node packages/registry/dist/cli.js build packages/registry/index --out site/registry \
+            --local packages/modules \
+            --release-url "https://github.com/${GITHUB_REPOSITORY}/releases/download/$TAG"
+          touch site/.nojekyll
+          test -f site/index.html
+          test -f site/404.html
+          test -f site/registry/v1/index.json
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
