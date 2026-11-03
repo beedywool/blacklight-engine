@@ -123,5 +123,6 @@ describe('readReleases', () => {
     expect(renderNotes(releases, 'v1.0.0')).toMatch(/^## core\n\n- first \([0-9a-f]{7}\)\n$/);
     expect(renderNotes(releases, 'Unreleased')).toContain('## cli\n\n- third');
     expect(() => renderNotes(releases, '9.9.9')).toThrow(/git tag v9.9.9/);
-  });
+    // A dozen git processes: well over the 5 s default on GitHub's Windows runners.
+  }, 30_000);
 });
