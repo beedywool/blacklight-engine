@@ -82,7 +82,8 @@ async function select(value: string) {
 }
 .title__band {
   position: absolute;
-  inset: -20% 52% -20% -14%;
+  inset: calc(-20% - var(--bl-bleed-y, 0px)) 52% calc(-20% - var(--bl-bleed-y, 0px))
+    calc(-14% - var(--bl-bleed-x, 0px));
   background: var(--bl-color-primary);
   transform: skewX(-16deg);
   mix-blend-mode: multiply;

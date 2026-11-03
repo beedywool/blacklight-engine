@@ -100,7 +100,8 @@ async function select(value: string) {
 }
 .pause__backdrop {
   position: absolute;
-  inset: -10% 38% -10% -20%;
+  inset: calc(-10% - var(--bl-bleed-y, 0px)) 38% calc(-10% - var(--bl-bleed-y, 0px))
+    calc(-20% - var(--bl-bleed-x, 0px));
   background: var(--bl-color-primary);
   transform: skewX(-14deg);
   overflow: hidden;

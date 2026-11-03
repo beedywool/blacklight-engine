@@ -36,12 +36,18 @@ function select(value: string) {
 .title {
   position: absolute;
   inset: 0;
+}
+/* The backdrop reaches the screen's edges in `extend` mode; the content keeps design coordinates. */
+.title::before {
+  content: '';
+  position: absolute;
+  inset: calc(-1 * var(--bl-bleed-y, 0px)) calc(-1 * var(--bl-bleed-x, 0px));
   background: #111;
-  overflow: hidden;
 }
 .title__stripe {
   position: absolute;
-  inset: -20% 46% -20% -10%;
+  inset: calc(-20% - var(--bl-bleed-y, 0px)) 46% calc(-20% - var(--bl-bleed-y, 0px))
+    calc(-10% - var(--bl-bleed-x, 0px));
   background: var(--bl-color-primary);
   transform: skewX(-18deg);
 }

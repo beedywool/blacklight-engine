@@ -8,6 +8,10 @@ export default class Title extends Scene {
 
   override create() {
     const sky = this.spawn(Graphics, { zIndex: -1 });
+    // `extend` shows more than 1920×1080 on other aspect ratios: the first and last colors run
+    // past every edge.
+    sky.draw.rect(-960, -1080, 3840, 1170).fill(0x3a1024);
+    sky.draw.rect(-960, 1080, 3840, 1080).fill(0x08080c);
     // Bands of a dusk gradient and a skyline: the FX layer's halftone turns them into print dots.
     for (let i = 0; i < 12; i++) {
       const t = i / 11;

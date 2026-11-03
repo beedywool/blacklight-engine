@@ -18,6 +18,9 @@ const style = computed(() => ({
   ...themeVariables(resolveTheme(activeTheme.value)),
   '--bl-ui-scale': String(props.runtime.scale.value),
   '--bl-text-scale': String(accessibility.textScale),
+  // What `extend` shows past the design area: full-screen bands add it to their insets.
+  '--bl-bleed-x': `${frame.bleedX}px`,
+  '--bl-bleed-y': `${frame.bleedY}px`,
   width: `${frame.width}px`,
   height: `${frame.height}px`,
   transform: `translate(${frame.x}px, ${frame.y}px) scale(${frame.scale})`,

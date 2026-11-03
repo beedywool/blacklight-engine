@@ -82,6 +82,10 @@ export default class Story extends Scene<Params> implements Saveable {
     const bg = BACKGROUNDS[name] ?? BACKGROUNDS.street!;
     this.background = name;
     const draw = this.art.draw.clear();
+    // `extend` shows more than 1920×1080 on other aspect ratios: the sky and the street run past
+    // every edge.
+    draw.rect(-960, -1080, 3840, 1172).fill(bg.top);
+    draw.rect(-960, 1080, 3840, 1080).fill(0x07070b);
     for (let i = 0; i < 12; i++) {
       const t = i / 11;
       const mix = (shift: number) =>

@@ -209,3 +209,50 @@ describe('Timeline', () => {
     expect(() => timeline.labelTime('nope')).toThrow(/Unknown timeline label/);
   });
 });
+
+describe('UiRuntime frame', () => {
+  const rect = (x: number, y: number, width: number, height: number) =>
+    ({ left: x, top: y, width, height, right: x + width, bottom: y + height }) as DOMRect;
+
+  it('clips the layer to a letterboxed canvas and reports no bleed', () => {
+    const { runtime, game } = installUi();
+    game.mount.getBoundingClientRect = () => rect(0, 0, 1000, 1000);
+    game.app.canvas.getBoundingClientRect = () => rect(0, 219, 1000, 562);
+    game.events.emit('resize', {
+      viewport: {
+        canvasWidth: 1000,
+        canvasHeight: 562,
+        scale: 1000 / 1920,
+        originX: 0,
+        originY: 0,
+        visibleWidth: 1920,
+        visibleHeight: 1080,
+      },
+    });
+    expect(runtime.element.style.clipPath).toBe('inset(219px 0px 219px 0px)');
+    expect([runtime.frame.x, runtime.frame.y]).toEqual([0, 219]);
+    expect([runtime.frame.bleedX, runtime.frame.bleedY]).toEqual([0, 0]);
+  });
+
+  it('reports how far an extended screen shows past the design area', async () => {
+    const { runtime, game } = installUi();
+    game.mount.getBoundingClientRect = () => rect(0, 0, 960, 1080);
+    game.app.canvas.getBoundingClientRect = () => rect(0, 0, 960, 1080);
+    game.events.emit('resize', {
+      viewport: {
+        canvasWidth: 960,
+        canvasHeight: 1080,
+        scale: 0.5,
+        originX: 0,
+        originY: 270,
+        visibleWidth: 1920,
+        visibleHeight: 2160,
+      },
+    });
+    await settle();
+    expect(runtime.element.style.clipPath).toBe('');
+    expect([runtime.frame.bleedX, runtime.frame.bleedY]).toEqual([0, 540]);
+    const root = runtime.element.querySelector<HTMLElement>('.bl-ui')!;
+    expect(root.style.getPropertyValue('--bl-bleed-y')).toBe('540px');
+  });
+});

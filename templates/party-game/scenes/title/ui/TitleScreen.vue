@@ -93,7 +93,8 @@ async function select(value: string) {
 }
 .title__stripe {
   position: absolute;
-  inset: -20% 50% -20% -12%;
+  inset: calc(-20% - var(--bl-bleed-y, 0px)) 50% calc(-20% - var(--bl-bleed-y, 0px))
+    calc(-12% - var(--bl-bleed-x, 0px));
   background: var(--bl-color-primary);
   transform: skewX(-16deg);
 }

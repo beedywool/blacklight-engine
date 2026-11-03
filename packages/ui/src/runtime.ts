@@ -239,7 +239,14 @@ export class UiRuntime implements UiHost {
     width: number;
     /** Design height in virtual pixels. */
     height: number;
-  } = reactive({ x: 0, y: 0, scale: 1, width: 0, height: 0 });
+    /**
+     * Visible width past each side of the design area, in virtual pixels (`extend` mode on a
+     * wider screen; 0 in `letterbox`). CSS reads it as `--bl-bleed-x`.
+     */
+    bleedX: number;
+    /** Visible height past the top and the bottom of the design area (`--bl-bleed-y`). */
+    bleedY: number;
+  } = reactive({ x: 0, y: 0, scale: 1, width: 0, height: 0, bleedX: 0, bleedY: 0 });
   /** Safe area in virtual pixels (moves with notches and system bars). */
   readonly safeArea: {
     /** Left edge in virtual pixels (negative when it extends past the design area). */
@@ -570,11 +577,23 @@ export class UiRuntime implements UiHost {
   private layout(viewport: Viewport): void {
     const canvas = this.game.app.canvas.getBoundingClientRect();
     const mount = this.game.mount.getBoundingClientRect();
-    this.frame.x = canvas.left - mount.left + viewport.originX;
-    this.frame.y = canvas.top - mount.top + viewport.originY;
+    const left = canvas.left - mount.left;
+    const top = canvas.top - mount.top;
+    // Screens bleed past the design area (skewed bands, `inset: -20%`): the game's canvas is where
+    // they may show. A letterboxed canvas is smaller than the mount, and its bars stay black.
+    const right = Math.max(0, mount.width - left - canvas.width);
+    const bottom = Math.max(0, mount.height - top - canvas.height);
+    this.element.style.clipPath =
+      left > 0.5 || top > 0.5 || right > 0.5 || bottom > 0.5
+        ? `inset(${top}px ${right}px ${bottom}px ${left}px)`
+        : '';
+    this.frame.x = left + viewport.originX;
+    this.frame.y = top + viewport.originY;
     this.frame.scale = viewport.scale;
     this.frame.width = this.game.config.resolution.width;
     this.frame.height = this.game.config.resolution.height;
+    this.frame.bleedX = Math.max(0, (viewport.visibleWidth - this.frame.width) / 2);
+    this.frame.bleedY = Math.max(0, (viewport.visibleHeight - this.frame.height) / 2);
     Object.assign(this.safeArea, this.game.safeArea);
   }
 

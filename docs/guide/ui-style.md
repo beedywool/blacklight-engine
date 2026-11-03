@@ -51,7 +51,18 @@ Assigning an unregistered name throws `Unknown UI theme "...". Themes: blackligh
 | `radius`            | `--bl-radius`           | Corner radius of buttons and dialogs. Default `0px`.                            |
 | `tokens`            | `--bl-<key>`            | Extra variables: `{ 'shadow-offset': '8px' }` → `--bl-shadow-offset`.           |
 
-The runtime also sets `--bl-ui-scale` (the player's UI scale). Components read these variables, with their defaults when unset:
+The runtime also sets `--bl-ui-scale` (the player's UI scale), and `--bl-bleed-x` and `--bl-bleed-y`: how far the screen shows past each side of the design area, in virtual pixels. They are `0px` in `letterbox` mode and when the screen has the design's aspect ratio; in `extend` mode a wider screen raises `--bl-bleed-x` and a taller one `--bl-bleed-y`. A shape that must reach the screen's edges (a band across the menu, a backdrop) adds them to its insets; the layer is clipped to the game's canvas, so nothing shows on letterbox bars:
+
+```css
+.title__band {
+  position: absolute;
+  inset: calc(-20% - var(--bl-bleed-y)) 52% calc(-20% - var(--bl-bleed-y))
+    calc(-14% - var(--bl-bleed-x));
+  transform: skewX(-16deg);
+}
+```
+
+Components read these variables, with their defaults when unset:
 
 | Variable             | Default | Used by                                       |
 | -------------------- | ------- | --------------------------------------------- |
